@@ -1,0 +1,11 @@
+# postgres conf
+
+postgres:
+  database: animeta_users
+  user: postgres
+  password: '123'
+  host: localhost
+  port: 5432
+admin_user:
+  username: admin
+  password: adminadmin
