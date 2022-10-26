@@ -3,10 +3,10 @@ import json
 
 from sqlalchemy.exc import IntegrityError
 
-from user.core.logic import registration
+from user.core.logic import registration, login
 
 
-async def home_page_view(request):
+async def registration_endpoint(request):
     data = await request.json()
     try:
         user = await registration(data['username'], data['password'])
@@ -18,6 +18,23 @@ async def home_page_view(request):
         return web.Response(text=json.dumps(response_obj), status=400)
     response_obj = {
         'status': 'Ok',
-        'user_name': user['username']
+        'user': user
+    }
+    return web.Response(text=json.dumps(response_obj), status=200)
+
+
+async def login_endpoint(request):
+    data = await request.json()
+    try:
+        user = await login(data['username'], data['password'])
+    except ValueError as ex:
+        response_obj = {
+            'status': 'Error',
+            'massage': ex.args[0]
+        }
+        return web.Response(text=json.dumps(response_obj), status=400)
+    response_obj = {
+        'status': 'Ok',
+        'user': user
     }
     return web.Response(text=json.dumps(response_obj), status=200)
