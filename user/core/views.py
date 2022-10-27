@@ -25,14 +25,9 @@ async def registration_endpoint(request):
 
 async def login_endpoint(request):
     data = await request.json()
-    try:
-        user = await login(data['username'], data['password'])
-    except ValueError as ex:
-        response_obj = {
-            'status': 'Error',
-            'massage': ex.args[0]
-        }
-        return web.Response(text=json.dumps(response_obj), status=400)
+    user = await login(data['username'], data['password'])
+
+
     response_obj = {
         'status': 'Ok',
         'user': user

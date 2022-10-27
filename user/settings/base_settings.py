@@ -19,3 +19,5 @@ config = get_config(config_path)
 DSN = "postgresql://{user}:{password}@{host}:{port}/{database}"
 db_url = DSN.format(**config['postgres'])
 DATABASE_ENGINE = create_engine(db_url)
+JWT_PRIVATE_KEY = config['jwt']['private_key'].encode('ascii')
+JWT_PUBLIC_KEY = config['jwt']['public_key'].encode('ascii')
