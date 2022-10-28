@@ -16,8 +16,13 @@ def get_config(path):
 
 config = get_config(config_path)
 
+# Database Config
 DSN = "postgresql://{user}:{password}@{host}:{port}/{database}"
 db_url = DSN.format(**config['postgres'])
 DATABASE_ENGINE = create_engine(db_url)
-JWT_PRIVATE_KEY = config['jwt']['private_key'].encode('ascii')
-JWT_PUBLIC_KEY = config['jwt']['public_key'].encode('ascii')
+
+# JWT Config
+jwt_private_file = open("user/config/private.key", "r")
+jwt_public_file = open("user/config/public.key", "r")
+JWT_PRIVATE_KEY = jwt_private_file.read().encode('ascii')
+JWT_PUBLIC_KEY = jwt_public_file.read().encode('ascii')

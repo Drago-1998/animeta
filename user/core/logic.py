@@ -9,6 +9,14 @@ async def registration(username: str,
                        password: str,
                        first_name: str = None,
                        second_name: str = None) -> dict:
+    """
+    Registration user and return username with JWT
+    :param username:
+    :param password:
+    :param first_name:
+    :param second_name:
+    :return:
+    """
     session = await get_db_session()
     user = User(username=username,
                 first_name=first_name,
@@ -25,6 +33,12 @@ async def registration(username: str,
 
 async def login(username: str,
                 password: str) -> dict:
+    """
+    Login user and return user information with JWT
+    :param username:
+    :param password:
+    :return:
+    """
     session = await get_db_session()
     user = session.query(User).filter(User.username == username).first()
     if not user:
@@ -42,6 +56,11 @@ async def login(username: str,
 
 
 async def create_jwt(user: User) -> str:
+    """
+    Create jwt token (RS256) from User instance
+    :param user:
+    :return token -> str:
+    """
     jw_token = jwt.encode(
         {
             "user": {
@@ -58,6 +77,11 @@ async def create_jwt(user: User) -> str:
 
 
 async def read_jwt(jw_token: str) -> dict:
+    """
+    Read Payload (Dict)
+    :param jw_token:
+    :return:
+    """
     return jwt.decode(
         jw_token,
         JWT_PUBLIC_KEY,
