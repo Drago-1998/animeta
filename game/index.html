@@ -177,6 +177,7 @@ body {
 <div class="overlay" id="card"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 (() => {
 'use strict';
@@ -290,7 +291,7 @@ const wait = s => tween(s, () => {});
 /* ---------- textures ---------- */
 const FONT = '"Unbounded", "Arial Black", sans-serif';
 let pcbTex, stickerTex, oldBatTex, newBatTex, crustTex, stainTex, shadowTex;
-const screenTex = canvasTex(256, 192, () => {});
+const screenTex = canvasTex(256, 160, () => {});
 function drawScreen(phase) {
   const cv = screenTex.cv, g = cv.getContext('2d'), w = cv.width, h = cv.height;
   if (phase < 0) {
@@ -300,10 +301,10 @@ function drawScreen(phase) {
   } else {
     g.fillStyle = '#a9d6c4'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#1f3d36'; g.textAlign = 'center';
-    const y = Math.min(phase, 1) * 92;
+    const y = Math.min(phase, 1) * 70;
     g.font = `700 30px ${FONT}`; g.fillText('POCKET', w / 2, y - 6);
     g.font = `700 30px ${FONT}`; g.fillText('PAL', w / 2, y + 28);
-    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 160); g.globalAlpha = 1; }
+    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 140); g.globalAlpha = 1; }
     for (let i = 0; i < h; i += 3) { g.fillStyle = 'rgba(31,61,54,.06)'; g.fillRect(0, i, w, 1); }
   }
   screenTex.needsUpdate = true;
@@ -359,16 +360,110 @@ function makeTextures() {
 
 /* ---------- build the gadget ---------- */
 const VARIANTS = [
-  { body: 0x3f8f86, cover: 0x357a72, accent: 0xe07a35 },
-  { body: 0xe1a945, cover: 0xc99234, accent: 0x3f8f86 },
-  { body: 0xe9dcc0, cover: 0xd8c9a8, accent: 0xc0442f },
+  { body: 0x3f8f86, cover: 0x357a72, accent: 0xe07a35, trim: 0x2f6d66 },
+  { body: 0xe1a945, cover: 0xc99234, accent: 0x3f8f86, trim: 0xb3832c },
+  { body: 0xe9dcc0, cover: 0xd8c9a8, accent: 0xc0442f, trim: 0xb39b74 },
 ];
 const SCREW_POS = [[-1.15, 2.0], [1.15, 2.0], [-1.15, -2.0], [1.15, -2.0]];
-const SLOT = new THREE.Vector3(0, -1.2, -0.35);
-let parts = {};
+let SLOT = new THREE.Vector3(0, -1.2, -0.35);
+let parts = {}, MODEL = null;
 
-function build(variant) {
-  while (device.children.length) device.remove(device.children[0]);
+function clearDevice() { while (device.children.length) device.remove(device.children[0]); }
+function makeDirt(x, y, z, w, h, tex) {
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const m = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)); m.position.set(x, y, z); m.userData.dirt = 1;
+  device.add(m); return m;
+}
+function makeBattery(w, h, d, bulge, side, label) {
+  const g = new THREE.BoxGeometry(w, h, d, bulge ? 18 : 1, bulge ? 12 : 1, 1);
+  if (bulge) {
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      if (z < 0) p.setZ(i, z - bulge * (1 - Math.pow(x / (w / 2), 2)) * (1 - Math.pow(y / (h / 2), 2)));
+    }
+    g.computeVertexNormals();
+  }
+  const m = new THREE.Mesh(g, [side, side, side, side, side, label]); device.add(m); return m;
+}
+function build(variant) { if (MODEL) buildFromModel(variant); else buildProcedural(variant); }
+
+/* the artist's model: every part is its own node, front faces +Z, back cover faces -Z */
+const COVER_PARTS = /^(back_cover|back_sticker_area|back_sticker|grip_rib_\d+|battery_bay_rim|battery_bay_panel)$/;
+function buildFromModel(variant) {
+  clearDevice();
+  const v = VARIANTS[variant % VARIANTS.length];
+  const root = MODEL.clone(true); root.updateMatrixWorld(true);
+  const byName = {}, meshes = [];
+  root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach(m => {
+    m.matrixWorld.decompose(m.position, m.quaternion, m.scale);
+    m.material = m.material.clone(); byName[m.name] = m; device.add(m);
+  });
+  meshes.forEach(m => {
+    // the file has no normals, so flat-shaded faces catch more light; darken to keep the palette
+    if (/^(front_shell|back_cover|battery_bay_panel)$/.test(m.name)) m.material.color.setHex(v.body).multiplyScalar(.8);
+    else if (/^(housing_\w+_wall|back_sticker_area|grip_rib_\d+|battery_bay_rim|thumb_dial_base|\w+_rim)$/.test(m.name)) m.material.color.setHex(v.trim).multiplyScalar(.8);
+  });
+
+  // components sit on the front side of the board in the file; flip them so they show when the cover is off
+  const pcbZ = byName.pcb.position.z;
+  meshes.filter(m => /^(chip|chip_pin_|pcb_component_)/.test(m.name)).forEach(m => { if (m.position.z > pcbZ) m.position.z = 2 * pcbZ - m.position.z; });
+
+  const cover = new THREE.Group(); device.add(cover);
+  const coverMats = [];
+  meshes.filter(m => COVER_PARTS.test(m.name)).forEach(m => { cover.add(m); coverMats.push(m.material); });
+  const coverOuter = byName.back_cover.position.z - .055;
+  const st = byName.back_sticker;
+  if (st) {
+    const label = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(.98, .5), std(0xffffff, { map: stickerTex, roughness: .8 })));
+    label.position.set(st.position.x, st.position.y, st.position.z - .008); cover.add(label);
+  }
+
+  const holeMat = std(0x1e1b18);
+  const steelMats = [];
+  const screws = [1, 2, 3, 4].map(i => {
+    const head = byName['screw_' + i], slot = byName['screw_slot_' + i];
+    const g = new THREE.Group(); g.position.copy(head.position); device.add(g);
+    [head, slot].forEach(m => { if (!m) return; m.position.sub(g.position); g.add(m); steelMats.push(m.material); });
+    g.scale.setScalar(1.5);
+    const hole = facingBack(new THREE.Mesh(new THREE.CircleGeometry(.09, 24), holeMat)); hole.position.set(g.position.x, g.position.y, coverOuter - .002); cover.add(hole);
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(.3), hitMat); g.add(hit);
+    g.userData = { progress: 0, out: false, home: g.position.clone(), hit }; hit.userData.screw = g;
+    return g;
+  });
+
+  // swap the flat battery for a swollen one we can animate
+  const ob = byName.battery; ob.visible = false; if (byName.battery_label) byName.battery_label.visible = false;
+  SLOT = ob.position.clone();
+  const batSide = std(0xcbb06a), batLabel = std(0xffffff, { map: oldBatTex });
+  const battery = makeBattery(1.05, .72, .12, .05, batSide, batLabel); battery.position.copy(SLOT);
+  const newSide = std(0x4f8fc0), newLabel = std(0xffffff, { map: newBatTex });
+  const newBattery = makeBattery(1.05, .72, .12, 0, newSide, newLabel); newBattery.visible = false;
+
+  const dirt = [];
+  ['contact_left', 'contact_right'].forEach(n => {
+    const c = byName[n]; if (!c) return;
+    c.position.z = SLOT.z - .02;
+    dirt.push(makeDirt(c.position.x + Math.sign(c.position.x) * .06, c.position.y, SLOT.z - .07, .34, .62, crustTex));
+  });
+  dirt.push(makeDirt(.35, .55, pcbZ - .08, .95, .75, stainTex));
+
+  const lcd = byName.lcd_panel;
+  meshes.filter(m => /^pixel_detail_/.test(m.name)).forEach(m => m.visible = false);
+  lcd.material.color.setHex(0x26302a); if (byName.screen) byName.screen.material.color.setHex(0x334034);
+  const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.66, 1.04), new THREE.MeshBasicMaterial({ map: screenTex }));
+  screenPlane.position.copy(lcd.position); screenPlane.position.z += .008; screenPlane.visible = false; device.add(screenPlane);
+
+  const power = byName.power_button;
+  const powerHit = new THREE.Mesh(new THREE.SphereGeometry(.35), hitMat); powerHit.position.copy(power.position); device.add(powerHit);
+
+  parts = { battery, newBattery, cover, screws, dirt, power, powerHit, screenPlane,
+    glow: { screws: steelMats, cover: coverMats, battery: [batSide, batLabel], newBattery: [newSide, newLabel], power: [power.material] } };
+}
+
+function buildProcedural(variant) {
+  clearDevice();
   const v = VARIANTS[variant % VARIANTS.length];
   const bodyMat = std(v.body), coverMat = std(v.cover), dark = std(0x2f2c36, { roughness: .4 });
   const accent = std(v.accent, { roughness: .35 });
@@ -401,26 +496,13 @@ function build(variant) {
   const gold = std(0xd9b45a, { metalness: .6, roughness: .3 });
   const contacts = [-1.0, 1.0].map(x => { const m = new THREE.Mesh(new THREE.BoxGeometry(.14, .5, .1), gold); m.position.set(x, -1.2, -.3); device.add(m); return m; });
 
-  const dirt = [];
-  const addDirt = (x, y, w, h, tex) => {
-    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-    const m = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)); m.position.set(x, y, -.36); m.userData.dirt = 1; m.userData.base = { w, h };
-    device.add(m); dirt.push(m);
-  };
-  addDirt(-1.0, -1.2, .6, .8, crustTex); addDirt(1.0, -1.2, .6, .8, crustTex); addDirt(.35, .95, 1.2, .9, stainTex);
+  const dirt = [makeDirt(-1.0, -1.2, -.36, .6, .8, crustTex), makeDirt(1.0, -1.2, -.36, .6, .8, crustTex), makeDirt(.35, .95, -.36, 1.2, .9, stainTex)];
 
-  // swollen battery
-  const bg = new THREE.BoxGeometry(1.7, 1.0, .18, 18, 12, 1), p = bg.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    if (z < 0) p.setZ(i, z - .09 * (1 - Math.pow(x / .85, 2)) * (1 - Math.pow(y / .5, 2)));
-  }
-  bg.computeVertexNormals();
+  SLOT = new THREE.Vector3(0, -1.2, -0.35);
   const batSide = std(0xcbb06a), batLabel = std(0xffffff, { map: oldBatTex });
-  const battery = new THREE.Mesh(bg, [batSide, batSide, batSide, batSide, batSide, batLabel]); battery.position.copy(SLOT); device.add(battery);
+  const battery = makeBattery(1.7, 1.0, .18, .09, batSide, batLabel); battery.position.copy(SLOT);
   const newSide = std(0x4f8fc0), newLabel = std(0xffffff, { map: newBatTex });
-  const newBattery = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.0, .18), [newSide, newSide, newSide, newSide, newSide, newLabel]);
-  newBattery.visible = false; device.add(newBattery);
+  const newBattery = makeBattery(1.7, 1.0, .18, 0, newSide, newLabel); newBattery.visible = false;
 
   // back cover
   const cover = new THREE.Group(); device.add(cover);
@@ -444,8 +526,8 @@ function build(variant) {
     device.add(g); return g;
   });
 
-  parts = { battery, newBattery, cover, coverMesh, screws, dirt, power, powerHit, screen,
-    mats: { steel, batSide, batLabel, newSide, newLabel, coverMat, powerMat, gold } };
+  parts = { battery, newBattery, cover, screws, dirt, power, powerHit, screenPlane: screen,
+    glow: { screws: [steel], cover: [coverMat], battery: [batSide, batLabel], newBattery: [newSide, newLabel], power: [powerMat] } };
 }
 
 /* shadow on the bench */
@@ -558,14 +640,14 @@ function setStep(s) {
   const P = parts;
   if (s === 'unscrew') {
     setTask('Открути 4 винта', 'Крути пальцем по кругу вокруг винта · 0/4');
-    setGlow([P.mats.steel]); nextScrewHint();
+    setGlow(P.glow.screws); nextScrewHint();
   } else if (s === 'cover') {
     setTask('Сними заднюю крышку', 'Смахни её пальцем в сторону');
-    setGlow([P.mats.coverMat]); setHint('drag', { obj: device, at: new THREE.Vector3(0, -.3, -.6) }, [0, -90]);
+    setGlow(P.glow.cover); setHint('drag', { obj: device, at: new THREE.Vector3(0, -.3, -.6) }, [0, -90]);
   } else if (s === 'battery_out') {
     setTask('Батарейка вздулась!', 'Вытащи её — потяни пальцем в сторону');
     sfx.buzz(); buzz(80);
-    setGlow([P.mats.batSide, P.mats.batLabel]); setHint('drag', { obj: device, at: SLOT }, [-90, 30]);
+    setGlow(P.glow.battery); setHint('drag', { obj: device, at: SLOT }, [-90, 30]);
   } else if (s === 'clean') {
     setTask('Почисти окисление', 'Три пальцем грязные места · 0/3');
     setHint('tap', { obj: P.dirt[0] });
@@ -573,20 +655,20 @@ function setStep(s) {
     setTask('Поставь новую батарейку', 'Перетащи её в отсек');
     const nb = P.newBattery; nb.visible = true; nb.position.set(0, -3.4, -1.0); nb.scale.setScalar(.01); nb.rotation.set(0, 0, .2);
     tween(.45, k => nb.scale.setScalar(Math.max(.01, k)), ease.back); sfx.pop();
-    setGlow([P.mats.newSide, P.mats.newLabel]); setHint('drag', { obj: device, at: new THREE.Vector3(0, -3.4, -1.0) }, [0, -80]);
+    setGlow(P.glow.newBattery); setHint('drag', { obj: device, at: new THREE.Vector3(0, -3.4, -1.0) }, [0, -80]);
   } else if (s === 'close') {
     setTask('Отличная работа', 'Осталось собрать обратно'); setHint(null);
     const b = $('action'); b.textContent = 'Закрыть крышку'; b.hidden = false;
   } else if (s === 'screw_in') {
     setTask('Закрути винты', 'Нажимай на каждый винт · 0/4');
-    setGlow([P.mats.steel]); nextScrewHint(true);
+    setGlow(P.glow.screws); nextScrewHint(true);
   } else if (s === 'flip') {
     setTask('Переворачиваем…', ''); setHint(null); busy = true; sfx.whoosh();
     tween(1.0, k => { device.rotation.y = Math.PI + Math.PI * k; holder.position.z = Math.sin(k * Math.PI) * 1.2; }, ease.inOut)
       .then(() => { device.rotation.y = 0; busy = false; setStep('power'); });
   } else if (s === 'power') {
     setTask('Проверка', 'Нажми красную кнопку питания');
-    setGlow([P.mats.powerMat]); setHint('tap', { obj: P.power });
+    setGlow(P.glow.power); setHint('tap', { obj: P.power });
   }
 }
 function nextScrewHint(inMode) {
@@ -764,7 +846,7 @@ async function powerOn() {
   await tween(.12, k => p.position.z = z - .05 * k);
   sfx.clunk(); buzz(30);
   await tween(.12, k => p.position.z = z - .05 * (1 - k));
-  sfx.boot();
+  sfx.boot(); parts.screenPlane.visible = true;
   await tween(1.6, k => drawScreen(k * 1.6), k => k);
   const secs = Math.round((performance.now() - startTime) / 1000);
   const tip = secs < 75 ? 20 : secs < 130 ? 10 : 0;
@@ -835,7 +917,12 @@ function start(data) {
   requestAnimationFrame(frame);
 }
 const fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
-fontsReady.then(() => {
+const modelReady = new Promise(res => {
+  if (!THREE.GLTFLoader) return res(null);
+  new THREE.GLTFLoader().load('device.glb', g => res(g.scene), undefined, () => res(null));
+  setTimeout(() => res(null), 15000);
+}).then(m => { MODEL = m; });
+Promise.all([fontsReady, modelReady]).then(() => {
   const h = window.claude?.hot;
   if (h?.ready) h.ready(start); else start(h?.data ?? {});
 });
