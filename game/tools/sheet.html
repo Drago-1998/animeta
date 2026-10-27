@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Pocket Pal: лист моделей</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@600;800&display=swap">
+<style>body { margin: 0; background: #2f3033; } canvas { display: block; max-width: 100%; }</style>
+</head>
+<body>
+<!-- Dev tool: renders the reference sheet of the model and exports it to .glb.
+     window.renderSheet() → PNG data URL, window.exportGLB() → base64 of the binary glTF. -->
+<canvas id="sheet" width="1536" height="1024"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+<script src="../pocket-pal.js"></script>
+<script>
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+const scene = new THREE.Scene();
+scene.environment = PocketPal.environment(renderer);
+const camera = new THREE.PerspectiveCamera(16, 1, 0.1, 200);
+scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x3a3530, 0.45));
+const key = new THREE.DirectionalLight(0xfff4e6, 0.8); key.position.set(-4, 5, 3); camera.add(key);
+const fill = new THREE.DirectionalLight(0xcfdcff, 0.25); fill.position.set(5, -1, 3); camera.add(fill);
+
+const model = PocketPal.build({});
+scene.add(model.root);
+const sheet = document.getElementById('sheet').getContext('2d');
+
+function view(x, y, w, h, dir, up, fitW, fitH, label, target = [0, 0, 0]) {
+  renderer.setSize(w * 2, h * 2, false);
+  camera.aspect = w / h; camera.up.set(...up);
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const d = Math.max(fitH / 2 / t, fitW / 2 / (t * camera.aspect)) + 2;
+  const v = new THREE.Vector3(...dir).normalize().multiplyScalar(d);
+  camera.position.set(target[0] + v.x, target[1] + v.y, target[2] + v.z);
+  camera.lookAt(...target); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  renderer.render(scene, camera);
+  sheet.drawImage(renderer.domElement, x, y, w, h);
+  sheet.fillStyle = '#c9c6bf'; sheet.font = '800 17px Nunito, Arial'; sheet.textAlign = 'center';
+  sheet.fillText(label, x + w / 2, y + h + 22);
+}
+const homeZ = new Map(model.root.children.map(c => [c, c.position.z]));
+function setExplode(k) {
+  model.root.children.forEach(c => { c.position.z = homeZ.get(c) + (c.userData.explode || 0) * k; });
+}
+
+window.renderSheet = async () => {
+  await document.fonts.ready;
+  const g = sheet, W = 1536, H = 1024;
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#45464a'); bg.addColorStop(1, '#2c2d30');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#efe7d6'; g.font = '700 22px Unbounded, Arial'; g.textAlign = 'left';
+  g.fillText('Pocket Pal PP-90 · 3D-модель', 28, 40);
+  g.fillStyle = '#a9a59c'; g.font = '600 15px Nunito, Arial';
+  g.fillText('Построена в коде по листу деталей: 120+ деталей, у каждой своё имя и своя ось', 30, 64);
+
+  setExplode(0);
+  view(24, 84, 290, 430, [0, 0, 1], [0, 1, 0], 3.2, 5.1, 'Спереди');
+  view(330, 84, 290, 430, [0, 0, -1], [0, 1, 0], 3.2, 5.1, 'Сзади');
+  view(636, 84, 96, 430, [-1, 0, 0], [0, 1, 0], 0.9, 5.1, 'Слева');
+  view(744, 84, 96, 430, [1, 0, 0], [0, 1, 0], 0.9, 5.1, 'Справа');
+  view(856, 84, 340, 190, [0, 1, 0], [0, 0, -1], 3.3, 0.9, 'Сверху');
+  view(856, 324, 340, 190, [0, -1, 0], [0, 0, 1], 3.3, 0.9, 'Снизу');
+  model.cover.visible = false; model.screws.forEach(s => { s.visible = false; });
+  view(1214, 84, 298, 430, [0, 0, -1], [0, 1, 0], 3.2, 5.1, 'Без задней крышки');
+  model.cover.visible = true; model.screws.forEach(s => { s.visible = true; });
+
+  setExplode(2.1);
+  view(24, 560, 1010, 430, [0.95, 0.4, -0.7], [0, 1, 0], 11.5, 6.4, 'Разнесённый вид (сзади)', [0.4, 0, 0]);
+  setExplode(0);
+  view(1050, 560, 222, 430, [0.55, 0.35, 1], [0, 1, 0], 4.2, 5.8, 'Изометрия спереди');
+  view(1290, 560, 222, 430, [-0.55, 0.35, -1], [0, 1, 0], 4.2, 5.8, 'Изометрия сзади');
+  window.stats = { triangles: renderer.info.render.triangles, calls: renderer.info.render.calls, meshes: (() => { let n = 0; model.root.traverse(o => { if (o.isMesh) n++; }); return n; })() };
+  return document.getElementById('sheet').toDataURL('image/png');
+};
+
+window.exportGLB = () => new Promise(resolve => {
+  setExplode(0);
+  // the r128 exporter writes RGB textures as JPEG: keep PNG only where a texture needs transparency
+  const opaque = new Map();
+  model.root.traverse(o => { if (o.isMesh && o.material.map && !o.material.transparent) opaque.set(o.material.map, o.material.map.format); });
+  opaque.forEach((f, t) => { t.format = THREE.RGBFormat; });
+  // extrusions come out unindexed; weld identical vertices so the file stays small
+  const out = model.root.clone(true);
+  out.traverse(o => { if (o.isMesh) o.geometry = THREE.BufferGeometryUtils.mergeVertices(o.geometry.index ? o.geometry : o.geometry.clone(), 1e-5); });
+  new THREE.GLTFExporter().parse(out, buf => {
+    opaque.forEach((f, t) => { t.format = f; });
+    const bytes = new Uint8Array(buf); let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    resolve(btoa(s));
+  }, { binary: true, maxTextureSize: 1024 });
+});
+window.ready = true;
+</script>
+</body>
+</html>

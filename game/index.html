@@ -177,7 +177,7 @@ body {
 <div class="overlay" id="card"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="pocket-pal.js"></script>
 <script>
 (() => {
 'use strict';
@@ -236,8 +236,9 @@ renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, .1, 200);
-scene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a2414, .85));
-const key = new THREE.DirectionalLight(0xffd59a, .95); key.position.set(-5, 6, 9); scene.add(key);
+scene.environment = PocketPal.environment(renderer);
+scene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a2414, .5));
+const key = new THREE.DirectionalLight(0xffd59a, .75); key.position.set(-5, 6, 9); scene.add(key);
 const fill = new THREE.DirectionalLight(0x9fb7ff, .3); fill.position.set(6, -2, 5); scene.add(fill);
 
 const holder = new THREE.Group(); scene.add(holder);
@@ -257,27 +258,12 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 /* ---------- helpers ---------- */
-function rrShape(w, h, r) {
-  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
-  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
-  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
-  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
-  return s;
-}
-function slab(w, h, r, depth, bev) {
-  const g = new THREE.ExtrudeGeometry(rrShape(w - 2 * bev, h - 2 * bev, Math.max(.02, r - bev)),
-    { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 4, curveSegments: 12 });
-  g.translate(0, 0, -depth / 2);
-  return g;
-}
 function canvasTex(w, h, draw) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   draw(cv.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.cv = cv;
   return t;
 }
-const std = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .55, metalness: 0 }, o));
 const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
 function facingBack(mesh) { mesh.rotation.y = Math.PI; return mesh; }
 
@@ -290,55 +276,26 @@ const wait = s => tween(s, () => {});
 
 /* ---------- textures ---------- */
 const FONT = '"Unbounded", "Arial Black", sans-serif';
-let pcbTex, stickerTex, oldBatTex, newBatTex, crustTex, stainTex, shadowTex;
-const screenTex = canvasTex(256, 160, () => {});
+let crustTex, stainTex, shadowTex;
+const screenTex = canvasTex(256, 192, () => {});
 function drawScreen(phase) {
   const cv = screenTex.cv, g = cv.getContext('2d'), w = cv.width, h = cv.height;
   if (phase < 0) {
-    g.fillStyle = '#28302b'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2e3828'; g.fillRect(0, 0, w, h);
     const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,.10)'); gr.addColorStop(.45, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   } else {
-    g.fillStyle = '#a9d6c4'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#1f3d36'; g.textAlign = 'center';
-    const y = Math.min(phase, 1) * 70;
+    g.fillStyle = '#a7bd73'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2b3d20'; g.textAlign = 'center';
+    const y = Math.min(phase, 1) * 86;
     g.font = `700 30px ${FONT}`; g.fillText('POCKET', w / 2, y - 6);
-    g.font = `700 30px ${FONT}`; g.fillText('PAL', w / 2, y + 28);
-    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 140); g.globalAlpha = 1; }
-    for (let i = 0; i < h; i += 3) { g.fillStyle = 'rgba(31,61,54,.06)'; g.fillRect(0, i, w, 1); }
+    g.font = `700 30px ${FONT}`; g.fillText('PAL', w / 2, y + 30);
+    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 165); g.globalAlpha = 1; }
+    for (let i = 0; i < h; i += 3) { g.fillStyle = 'rgba(43,61,32,.07)'; g.fillRect(0, i, w, 1); }
   }
   screenTex.needsUpdate = true;
 }
 function makeTextures() {
-  pcbTex = canvasTex(512, 868, (g, w, h) => {
-    g.fillStyle = '#1e6447'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#2f8a5f'; g.lineWidth = 5; g.lineCap = 'round';
-    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    for (let i = 0; i < 46; i++) {
-      let x = rnd() * w, y = rnd() * h; g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 3; k++) { if (rnd() < .5) x += (rnd() - .5) * 220; else y += (rnd() - .5) * 220; g.lineTo(x, y); }
-      g.stroke(); g.fillStyle = '#d9b45a'; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill();
-    }
-    g.fillStyle = '#e8f0e0'; g.font = `600 22px ${FONT}`; g.fillText('PP-90  REV.B', 40, h - 40);
-    g.font = `600 16px ${FONT}`; g.fillText('© 1991', 40, h - 14);
-  });
-  stickerTex = canvasTex(512, 300, (g, w, h) => {
-    g.fillStyle = '#f2e6c9'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#3b2a1c'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
-    g.fillStyle = '#3b2a1c'; g.font = `700 44px ${FONT}`; g.fillText('POCKET PAL', 34, 78);
-    g.font = `600 22px ${FONT}`; g.fillText('MODEL PP-90   4×AA / Li 3.7V', 34, 122);
-    g.fillText('SERIAL 4471-92-0318', 34, 156);
-    for (let i = 0; i < 40; i++) { const bw = (i * 7 % 3) + 2; g.fillRect(34 + i * 7, 176, bw, 54); }
-    g.font = `600 18px ${FONT}`; g.fillText('Гарантия недействительна при вскрытии', 34, 266);
-  });
-  const bat = (bg, fg, a, b) => canvasTex(512, 300, (g, w, h) => {
-    g.fillStyle = bg; g.fillRect(0, 0, w, h);
-    g.fillStyle = fg; g.fillRect(0, 210, w, 40);
-    g.fillStyle = '#1b1410'; g.font = `700 52px ${FONT}`; g.fillText(a, 34, 100);
-    g.font = `600 26px ${FONT}`; g.fillText(b, 34, 160);
-  });
-  oldBatTex = bat('#d8c483', '#b58f3e', 'LI-ION 3.7V', '900 mAh · 1993');
-  newBatTex = bat('#69a8d8', '#2f6f9e', 'LI-ION 3.7V', '1200 mAh · НОВАЯ');
   crustTex = canvasTex(256, 256, (g, w, h) => {
     for (let i = 0; i < 70; i++) {
       const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .75, r = 10 + Math.random() * 26;
@@ -358,176 +315,34 @@ function makeTextures() {
   });
 }
 
-/* ---------- build the gadget ---------- */
+/* ---------- build the gadget (the model itself lives in pocket-pal.js) ---------- */
 const VARIANTS = [
-  { body: 0x3f8f86, cover: 0x357a72, accent: 0xe07a35, trim: 0x2f6d66 },
-  { body: 0xe1a945, cover: 0xc99234, accent: 0x3f8f86, trim: 0xb3832c },
-  { body: 0xe9dcc0, cover: 0xd8c9a8, accent: 0xc0442f, trim: 0xb39b74 },
+  { body: 0xc6b291, trim: 0xb29e7f },
+  { body: 0x4f9a90, trim: 0x3f8178 },
+  { body: 0xd9a646, trim: 0xbf8d36 },
 ];
-const SCREW_POS = [[-1.15, 2.0], [1.15, 2.0], [-1.15, -2.0], [1.15, -2.0]];
-let SLOT = new THREE.Vector3(0, -1.2, -0.35);
-let parts = {}, MODEL = null;
+let SLOT = new THREE.Vector3(0, -1.2, 0);
+let parts = {};
 
-function clearDevice() { while (device.children.length) device.remove(device.children[0]); }
 function makeDirt(x, y, z, w, h, tex) {
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
   const m = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)); m.position.set(x, y, z); m.userData.dirt = 1;
   device.add(m); return m;
 }
-function makeBattery(w, h, d, bulge, side, label) {
-  const g = new THREE.BoxGeometry(w, h, d, bulge ? 18 : 1, bulge ? 12 : 1, 1);
-  if (bulge) {
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-      if (z < 0) p.setZ(i, z - bulge * (1 - Math.pow(x / (w / 2), 2)) * (1 - Math.pow(y / (h / 2), 2)));
-    }
-    g.computeVertexNormals();
-  }
-  const m = new THREE.Mesh(g, [side, side, side, side, side, label]); device.add(m); return m;
-}
-function build(variant) { if (MODEL) buildFromModel(variant); else buildProcedural(variant); }
-
-/* the artist's model: every part is its own node, front faces +Z, back cover faces -Z */
-const COVER_PARTS = /^(back_cover|back_sticker_area|back_sticker|grip_rib_\d+|battery_bay_rim|battery_bay_panel)$/;
-function buildFromModel(variant) {
-  clearDevice();
+function build(variant) {
+  device.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
+  while (device.children.length) device.remove(device.children[0]);
   const v = VARIANTS[variant % VARIANTS.length];
-  const root = MODEL.clone(true); root.updateMatrixWorld(true);
-  const byName = {}, meshes = [];
-  root.traverse(o => { if (o.isMesh) meshes.push(o); });
-  meshes.forEach(m => {
-    m.matrixWorld.decompose(m.position, m.quaternion, m.scale);
-    m.material = m.material.clone(); byName[m.name] = m; device.add(m);
-  });
-  meshes.forEach(m => {
-    // the file has no normals, so flat-shaded faces catch more light; darken to keep the palette
-    if (/^(front_shell|back_cover|battery_bay_panel)$/.test(m.name)) m.material.color.setHex(v.body).multiplyScalar(.8);
-    else if (/^(housing_\w+_wall|back_sticker_area|grip_rib_\d+|battery_bay_rim|thumb_dial_base|\w+_rim)$/.test(m.name)) m.material.color.setHex(v.trim).multiplyScalar(.8);
-  });
-
-  // components sit on the front side of the board in the file; flip them so they show when the cover is off
-  const pcbZ = byName.pcb.position.z;
-  meshes.filter(m => /^(chip|chip_pin_|pcb_component_)/.test(m.name)).forEach(m => { if (m.position.z > pcbZ) m.position.z = 2 * pcbZ - m.position.z; });
-
-  const cover = new THREE.Group(); device.add(cover);
-  const coverMats = [];
-  meshes.filter(m => COVER_PARTS.test(m.name)).forEach(m => { cover.add(m); coverMats.push(m.material); });
-  const coverOuter = byName.back_cover.position.z - .055;
-  const st = byName.back_sticker;
-  if (st) {
-    const label = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(.98, .5), std(0xffffff, { map: stickerTex, roughness: .8 })));
-    label.position.set(st.position.x, st.position.y, st.position.z - .008); cover.add(label);
-  }
-
-  const holeMat = std(0x1e1b18);
-  const steelMats = [];
-  const screws = [1, 2, 3, 4].map(i => {
-    const head = byName['screw_' + i], slot = byName['screw_slot_' + i];
-    const g = new THREE.Group(); g.position.copy(head.position); device.add(g);
-    [head, slot].forEach(m => { if (!m) return; m.position.sub(g.position); g.add(m); steelMats.push(m.material); });
-    g.scale.setScalar(1.5);
-    const hole = facingBack(new THREE.Mesh(new THREE.CircleGeometry(.09, 24), holeMat)); hole.position.set(g.position.x, g.position.y, coverOuter - .002); cover.add(hole);
-    const hit = new THREE.Mesh(new THREE.SphereGeometry(.3), hitMat); g.add(hit);
-    g.userData = { progress: 0, out: false, home: g.position.clone(), hit }; hit.userData.screw = g;
-    return g;
-  });
-
-  // swap the flat battery for a swollen one we can animate
-  const ob = byName.battery; ob.visible = false; if (byName.battery_label) byName.battery_label.visible = false;
-  SLOT = ob.position.clone();
-  const batSide = std(0xcbb06a), batLabel = std(0xffffff, { map: oldBatTex });
-  const battery = makeBattery(1.05, .72, .12, .05, batSide, batLabel); battery.position.copy(SLOT);
-  const newSide = std(0x4f8fc0), newLabel = std(0xffffff, { map: newBatTex });
-  const newBattery = makeBattery(1.05, .72, .12, 0, newSide, newLabel); newBattery.visible = false;
-
-  const dirt = [];
-  ['contact_left', 'contact_right'].forEach(n => {
-    const c = byName[n]; if (!c) return;
-    c.position.z = SLOT.z - .02;
-    dirt.push(makeDirt(c.position.x + Math.sign(c.position.x) * .06, c.position.y, SLOT.z - .07, .34, .62, crustTex));
-  });
-  dirt.push(makeDirt(.35, .55, pcbZ - .08, .95, .75, stainTex));
-
-  const lcd = byName.lcd_panel;
-  meshes.filter(m => /^pixel_detail_/.test(m.name)).forEach(m => m.visible = false);
-  lcd.material.color.setHex(0x26302a); if (byName.screen) byName.screen.material.color.setHex(0x334034);
-  const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.66, 1.04), new THREE.MeshBasicMaterial({ map: screenTex }));
-  screenPlane.position.copy(lcd.position); screenPlane.position.z += .008; screenPlane.visible = false; device.add(screenPlane);
-
-  const power = byName.power_button;
-  const powerHit = new THREE.Mesh(new THREE.SphereGeometry(.35), hitMat); powerHit.position.copy(power.position); device.add(powerHit);
-
-  parts = { battery, newBattery, cover, screws, dirt, power, powerHit, screenPlane,
-    glow: { screws: steelMats, cover: coverMats, battery: [batSide, batLabel], newBattery: [newSide, newLabel], power: [power.material] } };
-}
-
-function buildProcedural(variant) {
-  clearDevice();
-  const v = VARIANTS[variant % VARIANTS.length];
-  const bodyMat = std(v.body), coverMat = std(v.cover), dark = std(0x2f2c36, { roughness: .4 });
-  const accent = std(v.accent, { roughness: .35 });
-
-  device.add(new THREE.Mesh(slab(3, 4.9, .38, .36, .06), bodyMat));
-
-  // front face
-  const bezel = new THREE.Mesh(slab(2.5, 1.95, .16, .02, .01), dark); bezel.position.set(0, 1.12, .25); device.add(bezel);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.5), new THREE.MeshBasicMaterial({ map: screenTex }));
-  screen.position.set(0, 1.12, .275); device.add(screen); drawScreen(-1);
-  const dial = new THREE.Mesh(new THREE.CylinderGeometry(.44, .44, .12, 40), dark); dial.rotation.x = Math.PI / 2; dial.position.set(-.78, -.75, .27); device.add(dial);
-  const dialTop = new THREE.Mesh(new THREE.CylinderGeometry(.3, .34, .1, 40), std(0x45414f)); dialTop.rotation.x = Math.PI / 2; dialTop.position.set(-.78, -.75, .35); device.add(dialTop);
-  const notch = new THREE.Mesh(new THREE.BoxGeometry(.06, .22, .04), std(0xf7ead0)); notch.position.set(-.78, -.58, .41); device.add(notch);
-  [[.55, -.45], [1.0, -.8], [.5, -1.12]].forEach(([x, y]) => {
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(.19, .19, .12, 32), accent); b.rotation.x = Math.PI / 2; b.position.set(x, y, .28); device.add(b);
-  });
-  for (let i = 0; i < 4; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(.07, .5, .03), dark); s.position.set(.55 + i * .16, -1.85, .25); s.rotation.z = .5; device.add(s); }
-  const powerMat = std(0xc0442f, { roughness: .3 });
-  const power = new THREE.Mesh(new THREE.CylinderGeometry(.17, .17, .1, 32), powerMat); power.rotation.x = Math.PI / 2; power.position.set(-.85, -1.9, .27); device.add(power);
-  const powerRing = new THREE.Mesh(new THREE.TorusGeometry(.24, .03, 8, 32), dark); powerRing.position.set(-.85, -1.9, .25); device.add(powerRing);
-  const powerHit = new THREE.Mesh(new THREE.SphereGeometry(.45), hitMat); powerHit.position.copy(power.position); device.add(powerHit);
-
-  // inside
-  const pcb = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(2.6, 4.4), std(0xffffff, { map: pcbTex, roughness: .7 }))); pcb.position.z = -.245; device.add(pcb);
-  const chip = std(0x1d1d22, { roughness: .35 });
-  [[-.45, 1.2, .95, .95], [.65, 1.55, .6, .45], [.6, .55, .45, .6], [-.6, .1, .7, .3]].forEach(([x, y, w, h]) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .08), chip); m.position.set(x, y, -.29); device.add(m);
-  });
-  const bay = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(1.95, 1.2), std(0x2a2a2a, { roughness: .9 }))); bay.position.set(0, -1.2, -.252); device.add(bay);
-  const gold = std(0xd9b45a, { metalness: .6, roughness: .3 });
-  const contacts = [-1.0, 1.0].map(x => { const m = new THREE.Mesh(new THREE.BoxGeometry(.14, .5, .1), gold); m.position.set(x, -1.2, -.3); device.add(m); return m; });
-
-  const dirt = [makeDirt(-1.0, -1.2, -.36, .6, .8, crustTex), makeDirt(1.0, -1.2, -.36, .6, .8, crustTex), makeDirt(.35, .95, -.36, 1.2, .9, stainTex)];
-
-  SLOT = new THREE.Vector3(0, -1.2, -0.35);
-  const batSide = std(0xcbb06a), batLabel = std(0xffffff, { map: oldBatTex });
-  const battery = makeBattery(1.7, 1.0, .18, .09, batSide, batLabel); battery.position.copy(SLOT);
-  const newSide = std(0x4f8fc0), newLabel = std(0xffffff, { map: newBatTex });
-  const newBattery = makeBattery(1.7, 1.0, .18, 0, newSide, newLabel); newBattery.visible = false;
-
-  // back cover
-  const cover = new THREE.Group(); device.add(cover);
-  const coverMesh = new THREE.Mesh(slab(3, 4.9, .38, .24, .04), coverMat); coverMesh.position.z = -.40; cover.add(coverMesh);
-  const sticker = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.17), std(0xffffff, { map: stickerTex, roughness: .8 }))); sticker.position.set(0, .45, -.563); cover.add(sticker);
-  const grooveMat = std(v.cover, { roughness: .8 }); grooveMat.color.multiplyScalar(.8);
-  for (let i = 0; i < 5; i++) { const gm = new THREE.Mesh(new THREE.BoxGeometry(1.6, .06, .02), grooveMat); gm.position.set(0, -1.0 - i * .22, -.565); cover.add(gm); }
-  SCREW_POS.forEach(([x, y]) => { const h = facingBack(new THREE.Mesh(new THREE.CircleGeometry(.15, 24), dark)); h.position.set(x, y, -.562); cover.add(h); });
-
-  // screws
-  const steel = std(0xb9bcc4, { metalness: .8, roughness: .3 });
-  const slotMat = std(0x3a3d44, { metalness: .5 });
-  const screws = SCREW_POS.map(([x, y]) => {
-    const g = new THREE.Group(); g.position.set(x, y, -.6);
-    const head = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .08, 28), steel); head.rotation.x = Math.PI / 2; g.add(head);
-    const s1 = new THREE.Mesh(new THREE.BoxGeometry(.2, .04, .03), slotMat); s1.position.z = -.04; g.add(s1);
-    const s2 = s1.clone(); s2.rotation.z = Math.PI / 2; g.add(s2);
-    const hit = new THREE.Mesh(new THREE.SphereGeometry(.42), hitMat); g.add(hit);
-    g.userData = { progress: 0, out: false, home: g.position.clone(), hit };
-    hit.userData.screw = g;
-    device.add(g); return g;
-  });
-
-  parts = { battery, newBattery, cover, screws, dirt, power, powerHit, screenPlane: screen,
-    glow: { screws: [steel], cover: [coverMat], battery: [batSide, batLabel], newBattery: [newSide, newLabel], power: [powerMat] } };
+  drawScreen(-1);
+  const m = PocketPal.build({ body: v.body, trim: v.trim, screen: screenTex, font: FONT });
+  device.add(m.root);
+  SLOT = m.slot.clone();
+  m.screws.forEach(s => { s.userData = { progress: 0, out: false, home: s.position.clone() }; });
+  const powerHit = new THREE.Mesh(new THREE.SphereGeometry(.35), hitMat); powerHit.position.copy(m.power.parent.position); device.add(powerHit);
+  const st = m.spots.stain;
+  const dirt = [...m.spots.contacts.map(p => makeDirt(p.x, p.y, p.z, .3, .5, crustTex)), makeDirt(st.x, st.y, st.z, .9, .7, stainTex)];
+  parts = { battery: m.battery, newBattery: m.newBattery, cover: m.cover, screws: m.screws, dirt, power: m.power, powerHit,
+    led: m.led, screenPlane: m.screen, glow: m.glow };
 }
 
 /* shadow on the bench */
@@ -846,7 +661,7 @@ async function powerOn() {
   await tween(.12, k => p.position.z = z - .05 * k);
   sfx.clunk(); buzz(30);
   await tween(.12, k => p.position.z = z - .05 * (1 - k));
-  sfx.boot(); parts.screenPlane.visible = true;
+  sfx.boot(); parts.led.material.color.setHex(0xff5a3c); parts.led.material.emissive.setHex(0xe0200c);
   await tween(1.6, k => drawScreen(k * 1.6), k => k);
   const secs = Math.round((performance.now() - startTime) / 1000);
   const tip = secs < 75 ? 20 : secs < 130 ? 10 : 0;
@@ -890,14 +705,14 @@ function flyCoins(total) {
 /* ---------- loop ---------- */
 let last = performance.now(), clock = 0;
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; clock += dt;
+  const dt = Math.min(.1, (now - last) / 1000); last = now; clock += dt;
   for (let i = tweens.length - 1; i >= 0; i--) {
     const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t / tw.dur); tw.fn(tw.e(k));
     if (k >= 1) { tweens.splice(i, 1); tw.res(); }
   }
   holder.rotation.y = Math.sin(clock * .6) * .05;
   holder.position.y = Math.sin(clock * 1.1) * .03;
-  const pulse = .14 + .14 * Math.sin(clock * 5);
+  const pulse = .07 + .07 * Math.sin(clock * 5);
   glow.forEach(m => m.emissive && m.emissive.setRGB(pulse, pulse * .55, pulse * .15));
   if (parts.battery && parts.battery.visible && (step === 'battery_out' || step === 'unscrew' || step === 'cover') && !(drag && drag.obj === parts.battery))
     parts.battery.scale.z = 1 + Math.sin(clock * 3) * .06;
@@ -916,17 +731,11 @@ function start(data) {
   makeTextures(); buildShadow(); showIntro();
   requestAnimationFrame(frame);
 }
-const fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
-const modelReady = new Promise(res => {
-  if (!THREE.GLTFLoader) return res(null);
-  // the model ships as base64 text: artifact hosting only serves web file types
-  fetch('device.b64.txt').then(r => r.ok ? r.text() : Promise.reject())
-    .then(t => { const bin = atob(t.trim()), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-      new THREE.GLTFLoader().parse(buf.buffer, '', g => res(g.scene), () => res(null)); })
-    .catch(() => res(null));
-  setTimeout(() => res(null), 15000);
-}).then(m => { MODEL = m; });
-Promise.all([fontsReady, modelReady]).then(() => {
+// labels on the model are painted once, so wait for the faces they use (but never block the game on them)
+const fontsReady = document.fonts && document.fonts.load
+  ? Promise.race([Promise.all(['700 30px Unbounded', '600 20px Unbounded', '700 22px Nunito', '600 22px Nunito'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]).catch(() => {})
+  : Promise.resolve();
+fontsReady.then(() => {
   const h = window.claude?.hot;
   if (h?.ready) h.ready(start); else start(h?.data ?? {});
 });
