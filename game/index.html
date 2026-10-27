@@ -919,7 +919,11 @@ function start(data) {
 const fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
 const modelReady = new Promise(res => {
   if (!THREE.GLTFLoader) return res(null);
-  new THREE.GLTFLoader().load('device.glb', g => res(g.scene), undefined, () => res(null));
+  // the model ships as base64 text: artifact hosting only serves web file types
+  fetch('device.b64.txt').then(r => r.ok ? r.text() : Promise.reject())
+    .then(t => { const bin = atob(t.trim()), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      new THREE.GLTFLoader().parse(buf.buffer, '', g => res(g.scene), () => res(null)); })
+    .catch(() => res(null));
   setTimeout(() => res(null), 15000);
 }).then(m => { MODEL = m; });
 Promise.all([fontsReady, modelReady]).then(() => {
