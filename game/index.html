@@ -4,15 +4,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@600;800&display=swap">
 <style>
-/* Layout: one portrait screen — painted workshop behind, 3D gadget on the bench, HUD on top, step rail at the bottom. */
+/* Layout: one portrait screen — painted workshop behind, the gadget on the bench in 3D, the mechanic's
+   speech panel on top, the bench (removed parts, screw cup, parts box) along the bottom, the tablet as an overlay. */
 :root {
   --cream: #f7ead0;
+  --paper: #f3ead9;
   --ink: #23170f;
-  --panel: rgba(35, 23, 15, .84);
+  --panel: rgba(35, 23, 15, .86);
   --line: rgba(247, 234, 208, .16);
   --teal: #3f8f86;
   --mustard: #e7b04a;
   --orange: #e07a35;
+  --red: #c4432c;
+  --green: #4f8f4a;
   --muted: #c9b391;
   --display: "Unbounded", "Arial Rounded MT Bold", system-ui, sans-serif;
   --body: "Nunito", "Segoe UI", system-ui, sans-serif;
@@ -20,17 +24,15 @@
 }
 html, body { height: 100%; overflow: hidden; }
 body {
-  background: #1d140e;
-  color: var(--cream);
-  font-family: var(--body);
-  font-size: 15px;
-  -webkit-user-select: none; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none;
+  background: #1d140e; color: var(--cream);
+  font-family: var(--body); font-size: 15px;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
 }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--mustard); outline-offset: 2px; }
 #bg { position: fixed; inset: 0; background: #1d140e url("workshop.webp") center / cover no-repeat; }
 #bg::after { content: ""; position: absolute; inset: 0;
-  background: radial-gradient(ellipse 80% 55% at 50% 62%, rgba(20,10,4,0) 35%, rgba(20,10,4,.6) 100%),
+  background: radial-gradient(ellipse 80% 55% at 50% 52%, rgba(20,10,4,0) 35%, rgba(20,10,4,.6) 100%),
               linear-gradient(rgba(20,10,4,.35), rgba(20,10,4,0) 30%); }
 #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
@@ -38,120 +40,169 @@ body {
 #hud {
   position: fixed; left: 0; right: 0; top: 0; z-index: 5;
   padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; align-items: center; gap: 8px;
 }
 .chip {
-  display: inline-flex; align-items: center; gap: 8px;
-  height: 38px; padding-inline: 14px; border-radius: 19px;
-  background: var(--panel); border: 1px solid var(--line);
-  color: var(--cream); font: 700 14px/1 var(--display);
-  font-variant-numeric: tabular-nums; backdrop-filter: blur(6px);
+  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 14px; border-radius: 19px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--cream);
+  font: 700 14px/1 var(--display); font-variant-numeric: tabular-nums; backdrop-filter: blur(6px);
 }
+button.chip { cursor: pointer; }
 .coin { width: 18px; height: 18px; border-radius: 50%; flex: none;
-  background: radial-gradient(circle at 35% 35%, #ffe08a, var(--mustard) 55%, #a8701c);
-  box-shadow: inset 0 0 0 2px rgba(120,70,10,.35); }
-#orderLbl { font: 800 13px/1 var(--body); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-#snd { margin-left: auto; width: 38px; padding: 0; justify-content: center; cursor: pointer; }
+  background: radial-gradient(circle at 35% 35%, #ffe08a, var(--mustard) 55%, #a8701c); box-shadow: inset 0 0 0 2px rgba(120,70,10,.35); }
+#tabletBtn { font: 800 14px/1 var(--body); }
+#tabletBtn svg { width: 18px; height: 18px; }
+#tabletBtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-left: -4px; }
+#snd { margin-left: auto; width: 38px; padding: 0; justify-content: center; }
 #snd svg { width: 18px; height: 18px; }
-#snd:focus-visible, button:focus-visible { outline: 2px solid var(--mustard); outline-offset: 2px; }
 
+/* the mechanic's speech panel */
 #task {
-  position: fixed; z-index: 4; left: 16px; right: 16px; margin-inline: auto; max-width: 360px;
-  top: calc(env(safe-area-inset-top, 0px) + 60px);
-  padding: 10px 14px 10px 10px; border-radius: 16px;
+  position: fixed; z-index: 4; left: 16px; right: 16px; margin-inline: auto; max-width: 380px;
+  top: calc(env(safe-area-inset-top, 0px) + 58px);
+  padding: 8px 14px 8px 8px; border-radius: 16px;
   background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px);
-  display: flex; align-items: center; gap: 12px; transition: opacity .3s;
+  display: flex; align-items: center; gap: 12px;
 }
 #task .txt { min-width: 0; }
-/* the mechanic: one strip of expressions from his character sheet */
-.hero { flex: none; width: 56px; height: 70px; border-radius: 12px; background: #f6ecdc url("hero.webp") 0 0 / 560px 70px no-repeat;
+#taskTitle { font: 700 15px/1.25 var(--display); text-wrap: balance; }
+#taskSub { margin-top: 3px; color: var(--muted); font-weight: 700; font-size: 14px; line-height: 1.3; }
+#task.flash { animation: flash .45s; }
+@keyframes flash { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+.hero { flex: none; width: 48px; height: 60px; border-radius: 11px; background: #f6ecdc url("hero.webp") 0 0 / 480px 60px no-repeat;
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
 .hero.react { animation: react .45s cubic-bezier(.2,1.6,.4,1); }
 @keyframes react { 0% { transform: scale(.82) rotate(-4deg); } 100% { transform: none; } }
 .hero.big { width: 88px; height: 110px; border-radius: 18px; background-size: 880px 110px; margin: 0 auto -4px; }
-#taskTitle { font: 700 16px/1.25 var(--display); text-wrap: balance; }
-#taskSub { margin-top: 4px; color: var(--muted); font-weight: 600; font-size: 14px; }
-#task.flash { animation: flash .5s; }
-@keyframes flash { 0% { transform: scale(.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
 
-/* bottom rail */
-#bottom {
+/* the bench */
+#bench {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  pointer-events: none;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
 }
-#bottom > * { pointer-events: auto; }
-#steps { list-style: none; margin: 0; padding: 8px 10px; display: flex; gap: 4px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px);
-  max-width: 100%; }
-#steps li { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; flex: 1 1 0;
-  font-size: 11px; font-weight: 800; color: var(--muted); opacity: .55; padding-inline: 4px; }
-#steps li i { display: block; width: 100%; min-width: 34px; height: 5px; border-radius: 3px; background: var(--line); }
-#steps li.now { opacity: 1; color: var(--cream); }
-#steps li.now i { background: var(--mustard); }
-#steps li.done { opacity: .9; }
-#steps li.done i { background: var(--teal); }
+#bench > * { pointer-events: auto; }
+#benchActions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+#benchActions:empty { display: none; }
+.pill { appearance: none; border: 1px solid var(--line); cursor: pointer; height: 38px; padding: 0 16px; border-radius: 19px;
+  background: var(--panel); color: var(--cream); font: 800 14px/1 var(--body); backdrop-filter: blur(6px);
+  display: inline-flex; align-items: center; gap: 8px; }
+.pill svg { width: 18px; height: 18px; }
+#tray {
+  display: flex; gap: 8px; align-items: stretch; padding: 8px; border-radius: 18px;
+  background: rgba(58, 38, 24, .9); border: 1px solid var(--line);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.35);
+}
+.slotbtn { appearance: none; flex: none; width: 64px; height: 76px; border-radius: 12px; border: 1px solid var(--line); cursor: grab;
+  background: rgba(255,255,255,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  touch-action: none; position: relative; padding: 0; }
+.slotbtn b { font: 700 15px/1 var(--display); font-variant-numeric: tabular-nums; }
+.slotbtn span { font-size: 11px; font-weight: 800; color: var(--muted); }
+.slotbtn svg { width: 26px; height: 26px; }
+.slotbtn.empty { opacity: .45; }
+#trayItems { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+#trayItems::-webkit-scrollbar { display: none; }
+#trayItems:empty::after { content: "Снятые детали лягут сюда"; align-self: center; margin: auto; color: var(--muted); font-weight: 700; font-size: 13px; text-align: center; padding: 0 6px; }
+.part { flex: none; width: 76px; height: 76px; border-radius: 12px; background: #eadcc3; position: relative; cursor: grab; touch-action: none;
+  border: 0; padding: 0; box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
+.part img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block; }
+.badge { position: absolute; left: 4px; right: 4px; bottom: 4px; border-radius: 6px; padding: 2px 4px;
+  font: 800 10px/1.2 var(--body); color: #fff; text-align: center; letter-spacing: .02em; }
+.badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.fresh { background: var(--green); }
+#boxBtn svg { width: 28px; height: 28px; }
 
-.btn {
-  appearance: none; border: 0; cursor: pointer;
-  font: 700 15px/1 var(--display); color: var(--ink);
-  background: var(--mustard); padding: 16px 26px; border-radius: 16px;
-  box-shadow: 0 4px 0 #a8701c, 0 10px 24px rgba(0,0,0,.35);
-  transition: transform .08s, box-shadow .08s;
-}
-.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8701c, 0 6px 14px rgba(0,0,0,.35); }
+#ghost { position: fixed; z-index: 40; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; pointer-events: none;
+  border-radius: 14px; background: rgba(234,220,195,.85); box-shadow: 0 10px 30px rgba(0,0,0,.45); display: none; }
+#ghost img, #ghost svg { width: 100%; height: 100%; object-fit: contain; }
+#ghost.screw { width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; }
 
 /* gesture hints */
-#hint { position: fixed; z-index: 3; left: 0; top: 0; width: 96px; height: 96px; margin: -48px 0 0 -48px;
-  pointer-events: none; opacity: 0; transition: opacity .25s; }
+#hint { position: fixed; z-index: 3; left: 0; top: 0; width: 96px; height: 96px; margin: -48px 0 0 -48px; pointer-events: none; opacity: 0; transition: opacity .25s; }
 #hint.on { opacity: 1; }
 #hint svg { width: 100%; height: 100%; overflow: visible; }
 #hint.spin svg { animation: spin 1.6s linear infinite; }
-#hint.tap svg { animation: pulse 1s ease-in-out infinite; }
 #hint.drag svg { animation: dragHint 1.4s ease-in-out infinite; }
 @keyframes spin { to { transform: rotate(-360deg); } }
-@keyframes pulse { 50% { transform: scale(1.18); opacity: .6; } }
 @keyframes dragHint { 0% { transform: translate(0,0); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(var(--dx,0px), var(--dy,-70px)); opacity: 0; } }
-
-#brush { position: fixed; z-index: 3; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px;
-  border-radius: 50%; border: 2px dashed rgba(247,234,208,.8); background: rgba(247,234,208,.08);
-  pointer-events: none; display: none; }
-.spark { position: fixed; z-index: 6; width: 10px; height: 10px; margin: -5px 0 0 -5px; pointer-events: none;
-  background: #fff6cf; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-  animation: spark .7s ease-out forwards; }
+.spark { position: fixed; z-index: 45; width: 10px; height: 10px; margin: -5px 0 0 -5px; pointer-events: none;
+  background: #fff6cf; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: spark .7s ease-out forwards; }
 @keyframes spark { to { transform: translate(var(--x), var(--y)) scale(.2) rotate(120deg); opacity: 0; } }
-.flycoin { position: fixed; z-index: 30; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; }
+.flycoin { position: fixed; z-index: 50; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; }
 
-/* cards */
+/* cards and sheets */
 .overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px);
   background: rgba(20,10,4,.55); backdrop-filter: blur(3px); }
-.card { width: min(360px, 100%); background: var(--cream); color: var(--ink); border-radius: 22px;
-  padding: 22px 20px 20px; box-shadow: 0 20px 50px rgba(0,0,0,.5);
-  display: flex; flex-direction: column; gap: 14px; animation: cardIn .35s cubic-bezier(.2,1.4,.4,1); }
-@keyframes cardIn { from { transform: translateY(30px) scale(.9); opacity: 0; } }
+.overlay.sheet { align-items: end; }
+.card { width: min(380px, 100%); max-height: 100%; overflow-y: auto; background: var(--cream); color: var(--ink); border-radius: 22px;
+  padding: 20px 18px 18px; box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; gap: 12px; animation: cardIn .3s cubic-bezier(.2,1.4,.4,1); }
+@keyframes cardIn { from { transform: translateY(30px) scale(.94); opacity: 0; } }
 .eyebrow { font: 800 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: #8a6a45; }
+.card h2 { margin: 0; font: 700 24px/1.15 var(--display); text-align: center; text-wrap: balance; }
+.card h3 { margin: 0; font: 700 18px/1.2 var(--display); }
+.card p { margin: 0; line-height: 1.4; font-weight: 600; }
 .who { display: flex; gap: 12px; align-items: center; }
-.ava { width: 56px; height: 70px; border-radius: 14px; flex: none;
-  background: #f6ecdc url("customers.webp") 0 0 / 672px 70px no-repeat; box-shadow: inset 0 0 0 2px rgba(255,255,255,.6); }
-.who b { display: block; font: 700 17px/1.2 var(--display); }
-.who span { font-size: 14px; color: #6b5238; font-weight: 600; }
-.quote { margin: 0; padding: 12px 14px; background: #efdcb8; border-radius: 14px; font-size: 15px; line-height: 1.4; font-weight: 600; }
-.rows { display: flex; flex-direction: column; gap: 6px; font-weight: 700; }
-.rows div { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.ava { width: 48px; height: 60px; border-radius: 12px; flex: none;
+  background: #f6ecdc url("customers.webp") 0 0 / 576px 60px no-repeat; box-shadow: inset 0 0 0 2px rgba(255,255,255,.6); }
+.who b { display: block; font: 700 16px/1.2 var(--display); }
+.who span { font-size: 13px; color: #6b5238; font-weight: 700; }
+.quote { margin: 0; padding: 10px 12px; background: #efdcb8; border-radius: 12px; font-size: 14px; line-height: 1.4; font-weight: 700; }
+.rows { display: flex; flex-direction: column; gap: 6px; font-weight: 800; }
+.rows div { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
 .rows .total { border-top: 2px dashed #d6bf95; padding-top: 8px; font: 700 18px/1.2 var(--display); }
-.card h2 { margin: 0; font: 700 26px/1.1 var(--display); text-align: center; }
 .stars { display: flex; justify-content: center; gap: 6px; }
-.stars svg { width: 40px; height: 40px; }
-.card .btn { align-self: stretch; }
-@media (prefers-reduced-motion: reduce) {
-  .card, #task.flash, #hint svg { animation: none !important; }
-}
+.stars svg { width: 38px; height: 38px; }
+.btn { appearance: none; border: 0; cursor: pointer; font: 700 15px/1 var(--display); color: var(--ink);
+  background: var(--mustard); padding: 15px 22px; border-radius: 15px;
+  box-shadow: 0 4px 0 #a8701c, 0 8px 18px rgba(0,0,0,.25); transition: transform .08s, box-shadow .08s; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8701c; }
+.btn.alt { background: #e6d6b8; box-shadow: 0 4px 0 #b9a27c; }
+.btn.danger { background: #e9b3a6; box-shadow: 0 4px 0 #b97a6a; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btns { display: flex; flex-direction: column; gap: 10px; }
+.itemhead { display: flex; gap: 14px; align-items: center; }
+.itemhead img { width: 96px; height: 96px; border-radius: 14px; background: #eadcc3; object-fit: contain; flex: none; }
+.state { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 8px; font: 800 12px/1.2 var(--body); color: #fff; background: #7d8a5c; }
+.state.dirty { background: #8a5a2b; } .state.broken { background: var(--red); }
+
+/* cleaning station */
+.cleanArea { position: relative; width: 100%; aspect-ratio: 1; max-width: 320px; margin: 0 auto; border-radius: 18px; overflow: hidden;
+  background: repeating-linear-gradient(45deg, #2f6d63 0 14px, #2a6259 14px 28px); touch-action: none; }
+.cleanArea img, .cleanArea canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.meter { height: 10px; border-radius: 5px; background: #e1cfaf; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--teal); transition: width .2s; }
+
+/* tablet */
+#tablet { z-index: 30; background: rgba(15,8,3,.6); }
+.tablet { width: min(430px, 100%); height: min(780px, 100%); background: #1f1c1a; border-radius: 30px; padding: 12px;
+  box-shadow: 0 30px 70px rgba(0,0,0,.6), inset 0 0 0 2px #3a3530; display: flex; animation: cardIn .3s cubic-bezier(.2,1.2,.4,1); }
+.screen { flex: 1; min-width: 0; background: var(--paper); color: var(--ink); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
+.screen header { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
+.screen header b { font: 700 16px/1 var(--display); flex: 1; }
+.bal { display: inline-flex; align-items: center; gap: 6px; font: 700 15px/1 var(--display); font-variant-numeric: tabular-nums; }
+.x { appearance: none; border: 0; width: 36px; height: 36px; border-radius: 50%; background: #e3d5bb; cursor: pointer; font: 700 18px/1 var(--display); color: var(--ink); }
+.tabs { display: flex; gap: 4px; margin: 0 12px; padding: 4px; border-radius: 14px; background: #e3d5bb; }
+.tabs button { appearance: none; border: 0; flex: 1; min-width: 0; padding: 9px 2px; border-radius: 10px; background: none; cursor: pointer;
+  font: 800 13px/1 var(--body); color: #6b5238; }
+.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+#tabBody { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.note { font-weight: 700; color: #7a6040; font-size: 13px; line-height: 1.4; }
+.row { background: #fffaf0; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+.row .top { display: flex; gap: 12px; align-items: center; }
+.row .meta { flex: 1; min-width: 0; }
+.row .meta b { display: block; font: 700 14px/1.25 var(--display); }
+.row .meta span { display: block; font-size: 13px; font-weight: 700; color: #7a6040; margin-top: 2px; }
+.row .price { font: 700 15px/1 var(--display); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.row img.th { width: 56px; height: 56px; border-radius: 12px; background: #eadcc3; object-fit: contain; flex: none; }
+.row .btn { padding: 12px 16px; font-size: 14px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font: 800 12px/1 var(--body); padding: 5px 8px; border-radius: 8px; background: #efe2c8; color: #6b5238; }
+.toast { position: sticky; bottom: 0; align-self: center; background: var(--ink); color: var(--cream); font-weight: 800; padding: 10px 14px; border-radius: 12px; }
+@media (prefers-reduced-motion: reduce) { .card, .tablet, #task.flash, #hint svg, .hero.react { animation: none !important; } }
 </style>
 
 <div id="bg"></div>
@@ -159,29 +210,45 @@ body {
 
 <div id="hud">
   <div class="chip"><span class="coin"></span><span id="money">0</span></div>
-  <div class="chip" id="orderLbl">Заказ №1</div>
+  <button class="chip" id="tabletBtn" aria-label="Открыть планшет">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10 18.5h4" stroke-linecap="round"/></svg>
+    Планшет<span class="dot" id="tabletDot" hidden></span>
+  </button>
   <button class="chip" id="snd" aria-label="Выключить звук">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path id="sndWave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   </button>
 </div>
 
-<div id="task" hidden><div class="hero" id="hero" aria-hidden="true"></div><div class="txt"><div id="taskTitle"></div><div id="taskSub"></div></div></div>
+<div id="task"><div class="hero" id="hero" aria-hidden="true"></div><div class="txt"><div id="taskTitle"></div><div id="taskSub" aria-live="polite"></div></div></div>
 <div id="hint"><svg viewBox="0 0 96 96"></svg></div>
-<div id="brush"></div>
 
-<div id="bottom">
-  <button class="btn" id="action" hidden>Закрыть крышку</button>
-  <ol id="steps">
-    <li data-s="unscrew"><i></i>Винты</li>
-    <li data-s="cover"><i></i>Крышка</li>
-    <li data-s="battery_out"><i></i>Батарея</li>
-    <li data-s="clean"><i></i>Чистка</li>
-    <li data-s="assemble"><i></i>Сборка</li>
-    <li data-s="power"><i></i>Проверка</li>
-  </ol>
+<div id="bench">
+  <div id="benchActions"></div>
+  <div id="tray">
+    <button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
+    <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button>
+    <div id="trayItems"></div>
+    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#e7b04a" stroke-width="2" stroke-linejoin="round"><path d="M4 11l12-6 12 6v12l-12 6-12-6z"/><path d="M4 11l12 6 12-6M16 17v12"/></svg>
+      <span>Коробка</span>
+    </button>
+  </div>
 </div>
+<div id="ghost"></div>
 
-<div class="overlay" id="card"></div>
+<div class="overlay sheet" id="sheet" hidden></div>
+<div class="overlay" id="cleanUi" hidden></div>
+<div class="overlay" id="tablet" hidden>
+  <div class="tablet" role="dialog" aria-label="Планшет"><div class="screen">
+    <header><b>Мастерская</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Закрыть планшет">×</button></header>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="orders">Заказы</button><button role="tab" data-tab="market">Барахолка</button>
+      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="box">Коробка</button>
+    </div>
+    <div id="tabBody"></div>
+  </div></div>
+</div>
+<div class="overlay" id="card" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="pocket-pal.js"></script>
@@ -189,11 +256,7 @@ body {
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-
-/* ---------- save (per-device convenience only) ---------- */
-let money = 0, orderNo = 1;
-try { const s = JSON.parse(localStorage.getItem('retro-repair') || '{}'); money = s.money || 0; orderNo = s.orderNo || 1; } catch (e) {}
-function save() { try { localStorage.setItem('retro-repair', JSON.stringify({ money, orderNo })); } catch (e) {} }
+const V3 = THREE.Vector3;
 
 /* ---------- audio ---------- */
 let ac = null, muted = false;
@@ -228,6 +291,7 @@ const sfx = {
   boot: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? .5 : .14, 'square', .06, i * .11)),
   coin: () => { tone(1320, .07, 'square', .05); tone(1980, .16, 'square', .05, .06); },
   buzz: () => tone(90, .25, 'sawtooth', .07),
+  nope: () => { tone(220, .09, 'square', .06); tone(165, .14, 'square', .06, .09); },
 };
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 $('snd').addEventListener('click', () => {
@@ -247,19 +311,18 @@ scene.environment = PocketPal.environment(renderer);
 scene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a2414, .5));
 const key = new THREE.DirectionalLight(0xffd59a, .75); key.position.set(-5, 6, 9); scene.add(key);
 const fill = new THREE.DirectionalLight(0x9fb7ff, .3); fill.position.set(6, -2, 5); scene.add(fill);
-
 const holder = new THREE.Group(); scene.add(holder);
-holder.rotation.x = -0.32;
+holder.rotation.x = -0.3;
 const device = new THREE.Group(); holder.add(device);
 
 function resize() {
   const w = innerWidth, h = innerHeight, a = w / h;
   renderer.setSize(w, h, false);
   camera.aspect = a;
-  const needH = Math.max(6.4 / 0.5, (3.9 / 0.86) / a);
+  const needH = Math.max(4.9 / 0.5, (3.6 / 0.9) / a);
   camera.position.set(0, 0, needH / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))));
   camera.lookAt(0, 0, 0);
-  camera.setViewOffset(w, h, 0, -0.11 * h, w, h);
+  camera.setViewOffset(w, h, 0, 0.03 * h, w, h);
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -272,18 +335,15 @@ function canvasTex(w, h, draw) {
   return t;
 }
 const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-function facingBack(mesh) { mesh.rotation.y = Math.PI; return mesh; }
-
-/* ---------- tweens ---------- */
 const tweens = [];
 const ease = { out: k => 1 - Math.pow(1 - k, 3), inOut: k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2,
   back: k => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); }, in: k => k * k * k };
 function tween(dur, fn, e = ease.out) { return new Promise(res => tweens.push({ t: 0, dur, fn, e, res })); }
 const wait = s => tween(s, () => {});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- textures ---------- */
 const FONT = '"Unbounded", "Arial Black", sans-serif';
-let crustTex, stainTex, shadowTex;
 const screenTex = canvasTex(256, 192, () => {});
 function drawScreen(phase) {
   const cv = screenTex.cv, g = cv.getContext('2d'), w = cv.width, h = cv.height;
@@ -302,119 +362,314 @@ function drawScreen(phase) {
   }
   screenTex.needsUpdate = true;
 }
-function makeTextures() {
-  crustTex = canvasTex(256, 256, (g, w, h) => {
-    for (let i = 0; i < 70; i++) {
-      const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .75, r = 10 + Math.random() * 26;
-      const c = ['rgba(150,210,175,.9)', 'rgba(230,240,225,.9)', 'rgba(90,160,130,.85)', 'rgba(200,230,200,.9)'][i % 4];
-      g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-    }
-  });
-  stainTex = canvasTex(256, 256, (g, w, h) => {
-    for (let i = 0; i < 40; i++) {
-      const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .6, r = 14 + Math.random() * 34;
-      g.fillStyle = i % 3 ? 'rgba(92,52,24,.55)' : 'rgba(60,32,14,.6)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-    }
-  });
-  shadowTex = canvasTex(128, 128, (g, w, h) => {
-    const gr = g.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  });
-}
+// grime painters, shared by the 3D overlays and the cleaning station
+const GRIME = {
+  crust: (g, w, h, n = 70) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .75, r = (10 + Math.random() * 26) * w / 256;
+    g.fillStyle = ['rgba(150,210,175,.92)', 'rgba(230,240,225,.92)', 'rgba(90,160,130,.88)', 'rgba(200,230,200,.92)'][i % 4]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+  stain: (g, w, h, n = 40) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .6, r = (14 + Math.random() * 34) * w / 256;
+    g.fillStyle = i % 3 ? 'rgba(92,52,24,.6)' : 'rgba(60,32,14,.65)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+  juice: (g, w, h, n = 46) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .75, y = h / 2 + (Math.random() - .5) * h * .7, r = (10 + Math.random() * 30) * w / 256;
+    g.fillStyle = i % 3 ? 'rgba(150,62,90,.55)' : 'rgba(205,140,40,.55)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+};
+const grimeTex = {};
+const shadowTex = canvasTex(128, 128, (g) => {
+  const gr = g.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+});
 
-/* ---------- build the gadget (the model itself lives in pocket-pal.js) ---------- */
-const VARIANTS = [
-  { body: 0xc6b291, trim: 0xb29e7f },
-  { body: 0x4f9a90, trim: 0x3f8178 },
-  { body: 0xd9a646, trim: 0xbf8d36 },
+/* ---------- catalogue ---------- */
+const VARIANTS = [{ body: 0xc6b291, trim: 0xb29e7f }, { body: 0x4f9a90, trim: 0x3f8178 }, { body: 0xc4963f, trim: 0xa97f31 }];
+// serviceable slots: what sits on top of each part (must come off first) and what it mounts on
+const PARTS = {
+  cover: { name: 'Задняя крышка', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4'], view: 'back' },
+  battery: { name: 'Аккумулятор', over: ['cover'], support: 'pcb', price: 15, view: 'back', drop: 'вытащи аккумулятор' },
+  pcb: { name: 'Плата', over: ['cover', 'battery', 'bscrew_1', 'bscrew_2'], price: 40, view: 'back', drop: 'сними плату' },
+  pads: { name: 'Резинки кнопок', over: ['pcb'], price: 8, view: 'back', drop: 'сними резинки' },
+  lcd: { name: 'Экран', over: ['pcb'], price: 25, view: 'front', drop: 'сними экран' },
+  speaker: { name: 'Динамик', over: ['pcb'], price: 10, view: 'back', drop: 'сними динамик' },
+};
+PARTS.cover.drop = 'сними крышку';
+const PART_SLOTS = ['lcd', 'pads', 'speaker', 'pcb', 'battery', 'cover'];
+const SCREW_SLOTS = ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1', 'bscrew_2'];
+const SCREW = {
+  screw: { name: 'Винты корпуса', short: 'винты', support: 'cover', over: [], lift: .28, pack: 4, price: 4 },
+  bscrew: { name: 'Винтики платы', short: 'винтики', support: 'pcb', over: ['cover'], lift: .12, pack: 2, price: 3 },
+};
+const kindOf = slot => slot.startsWith('b') ? 'bscrew' : 'screw';
+const COND = { ok: 'исправна', dirty: 'грязная', broken: 'сломана' };
+const FAULTS = {
+  battery: { slot: 'battery', cond: 'broken', pay: 25, hint: 'Сзади выпирает крышка, не включается.' },
+  board: { slot: 'pcb', cond: 'dirty', pay: 30, hint: 'Её залило водой — включается через раз.' },
+  pads: { slot: 'pads', cond: 'dirty', pay: 20, hint: 'Пролили сок, кнопки залипают.' },
+  lcd: { slot: 'lcd', cond: 'broken', pay: 40, hint: 'Уронили — экран в трещинах.' },
+  speaker: { slot: 'speaker', cond: 'broken', pay: 20, hint: 'Звука нет совсем.' },
+  screws: { pay: 8, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
+};
+// what the power test shows, worst problem first
+const DIAG = [
+  { slot: 'battery', cond: 'broken', boot: false, text: 'Не включается совсем. Похоже, дело в питании.' },
+  { slot: 'pcb', cond: 'broken', boot: false, text: 'Не включается, пахнет горелым. Что-то с платой.' },
+  { slot: 'pcb', cond: 'dirty', boot: false, blink: true, text: 'Мигает и гаснет. Внутри что-то окислилось.' },
+  { slot: 'lcd', cond: 'broken', boot: true, text: 'Звук есть, а сквозь трещины ничего не видно.' },
+  { slot: 'speaker', cond: 'broken', boot: true, mute: true, text: 'Картинка есть, а звука нет.' },
+  { slot: 'pads', cond: 'dirty', boot: true, text: 'Включилась, но кнопки залипают.' },
 ];
-let SLOT = new THREE.Vector3(0, -1.2, 0);
-let parts = {};
+// face: index of the "upset" portrait in customers.webp; the next one is the same person happy
+const CUSTOMERS = [
+  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, story: 'Дарил её внуку в девяносто первом.', thanks: 'Как новенькая! Внук будет счастлив.' },
+  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, story: 'Купил на барахолке за 300 рублей.', thanks: 'Огонь! Пойду рекорды ставить.' },
+  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
+  { name: 'Ваня', who: 'ученик второго класса', face: 6, story: 'Папа сказал, что она сломалась навсегда. Это правда?', thanks: 'Ура, работает! Спасибо!' },
+  { name: 'Лёва', who: 'музыкант', face: 8, story: 'Хочу записывать с неё восьмибитные звуки для альбома.', thanks: 'Вот это звук! Будет хит.' },
+  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, story: 'Редкая расцветка, мне нужна в идеальном состоянии.', thanks: 'Безупречно. Я ещё вернусь.' },
+];
+const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
+const SELL_PRICE = 70;
 
-function makeDirt(x, y, z, w, h, tex) {
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  const m = facingBack(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)); m.position.set(x, y, z); m.userData.dirt = 1;
-  device.add(m); return m;
+/* ---------- save ---------- */
+const SAVE_KEY = 'retro-repair-v2';
+function newGame() {
+  return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
+    orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, seen: false };
 }
-function build(variant) {
-  device.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => m.dispose()); });
+let S = null;
+try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
+if (!S || !Array.isArray(S.box)) S = newGame();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+const item = (type, cond = 'ok', fresh = false) => ({ id: S.uid++, type, cond, fresh });
+const pick1 = a => a[Math.floor(Math.random() * a.length)];
+
+function makeOrder() {
+  const first = S.ordersDone === 0 && !S.orders.length && !S.job;
+  const cust = S.nextCustomer++ % CUSTOMERS.length;
+  let faults;
+  if (first) faults = ['battery'];
+  else {
+    const pool = Object.keys(FAULTS).sort(() => Math.random() - .5);
+    faults = pool.slice(0, 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 2 && Math.random() < .35 ? 1 : 0));
+  }
+  return { id: S.uid++, cust, faults, pay: 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0), variant: Math.floor(Math.random() * VARIANTS.length) };
+}
+function makeOffer() {
+  const roll = (ok, dirty) => { const r = Math.random(); return r < ok ? 'ok' : r < ok + dirty ? 'dirty' : 'broken'; };
+  const conds = { battery: roll(.6, 0), pcb: roll(.55, .25), lcd: roll(.6, 0), speaker: roll(.65, 0), pads: Math.random() < .6 ? 'ok' : 'dirty' };
+  if (Object.values(conds).every(c => c === 'ok')) conds[pick1(['battery', 'lcd', 'speaker'])] = 'broken';
+  const desc = conds.lcd === 'broken' ? 'Разбит экран' : conds.battery === 'broken' ? 'Раздулась батарейка' : conds.pcb === 'dirty' ? 'Побывала в воде'
+    : conds.speaker === 'broken' ? 'Нет звука' : conds.pcb === 'broken' ? 'Не включается' : 'Залипают кнопки';
+  const okCount = Object.values(conds).filter(c => c === 'ok').length;
+  return { id: S.uid++, conds, desc, missing: Math.random() < .3 ? 1 + (Math.random() < .5 ? 1 : 0) : 0,
+    price: 10 + okCount * 4 + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * VARIANTS.length) };
+}
+function ensureListings() {
+  while (S.orders.length < 3) S.orders.push(makeOrder());
+  while (S.offers.length < 3) S.offers.push(makeOffer());
+}
+
+/* ---------- the device on the bench ---------- */
+let K = null, powerHit = null;
+const objs = new Map(); // slot → 3D object currently installed
+const J = () => S.job;
+
+function grime(kind) {
+  if (!grimeTex[kind]) grimeTex[kind] = canvasTex(256, 256, (g, w, h) => GRIME[kind](g, w, h));
+  return grimeTex[kind];
+}
+function makePart(kit, type, cond, fresh) {
+  const o = kit.make[type]({ swollen: type === 'battery' && cond === 'broken', fresh, cracked: type === 'lcd' && cond === 'broken',
+    burnt: (type === 'speaker' || type === 'pcb') && cond === 'broken' });
+  if (cond === 'dirty') (kit.spots[type] || []).forEach(sp => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(sp.w, sp.h), new THREE.MeshBasicMaterial({ map: grime(sp.kind), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.y = Math.PI; m.position.set(sp.x, sp.y, sp.z); m.name = 'grime'; o.add(m);
+  });
+  return o;
+}
+function objFor(slot, v) {
+  const o = SCREW_SLOTS.includes(slot) ? K.make[kindOf(slot)](+slot.slice(-1)) : makePart(K, v.type, v.cond, v.fresh);
+  o.userData.slot = slot;
+  return o;
+}
+function place(slot) {
+  const v = J().slots[slot]; if (!v) return null;
+  const o = objFor(slot, v);
+  o.position.copy(K.pose[slot]);
+  if (SCREW_SLOTS.includes(slot) && !J().tight[slot]) o.position.z -= SCREW[kindOf(slot)].lift;
+  device.add(o); objs.set(slot, o);
+  return o;
+}
+function clearDevice() {
+  device.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m !== hitMat) m.dispose(); }); });
   while (device.children.length) device.remove(device.children[0]);
-  const v = VARIANTS[variant % VARIANTS.length];
+  objs.clear(); K = null; powerHit = null;
+}
+function buildJobScene() {
+  clearDevice();
+  if (!J()) return;
+  const v = VARIANTS[J().variant % VARIANTS.length];
   drawScreen(-1);
-  const m = PocketPal.build({ body: v.body, trim: v.trim, screen: screenTex, font: FONT });
-  device.add(m.root);
-  SLOT = m.slot.clone();
-  m.screws.forEach(s => { s.userData = { progress: 0, out: false, home: s.position.clone() }; });
-  const powerHit = new THREE.Mesh(new THREE.SphereGeometry(.35), hitMat); powerHit.position.copy(m.power.parent.position); device.add(powerHit);
-  const st = m.spots.stain;
-  const dirt = [...m.spots.contacts.map(p => makeDirt(p.x, p.y, p.z, .3, .5, crustTex)), makeDirt(st.x, st.y, st.z, .9, .7, stainTex)];
-  parts = { battery: m.battery, newBattery: m.newBattery, cover: m.cover, screws: m.screws, dirt, power: m.power, powerHit,
-    led: m.led, screenPlane: m.screen, glow: m.glow };
+  K = PocketPal.kit({ body: v.body, trim: v.trim, screen: screenTex, font: FONT });
+  device.add(K.shell);
+  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.power.parent.position); device.add(powerHit);
+  [...PART_SLOTS, ...SCREW_SLOTS].forEach(place);
+  device.rotation.set(0, J().side === 'back' ? Math.PI : 0, 0);
 }
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 6.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: .6 }));
+shadow.position.set(.25, -.35, -1.1); holder.add(shadow);
 
-/* shadow on the bench */
-let shadow;
-function buildShadow() {
-  shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 6.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: .6 }));
-  shadow.position.set(.25, -.35, -1.1); holder.add(shadow);
+/* rules */
+const filled = s => !!J().slots[s];
+const overOf = slot => SCREW_SLOTS.includes(slot) ? SCREW[kindOf(slot)].over : PARTS[slot].over;
+const supportOf = slot => SCREW_SLOTS.includes(slot) ? SCREW[kindOf(slot)].support : PARTS[slot].support;
+const blockers = slot => overOf(slot).filter(filled);
+function canInstall(slot) { return !filled(slot) && !blockers(slot).length && (!supportOf(slot) || filled(supportOf(slot))); }
+function blockerText(list) {
+  const out = [];
+  if (list.some(s => s.startsWith('screw'))) out.push('открути винты');
+  if (list.some(s => s.startsWith('bscrew'))) out.push('открути винтики платы');
+  list.filter(s => PARTS[s]).forEach(s => out.push(PARTS[s].drop));
+  return out.join(', ');
 }
+const assembled = () => [...PART_SLOTS, ...SCREW_SLOTS].every(filled) && SCREW_SLOTS.every(s => J().tight[s]);
 
-/* ---------- highlight pulse ---------- */
-let glow = [];
-function setGlow(mats) { glow.forEach(m => m.emissive && m.emissive.setRGB(0, 0, 0)); glow = mats || []; }
+/* ---------- part thumbnails (rendered from the same 3D parts) ---------- */
+const thumbR = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+thumbR.setPixelRatio(1);
+const thumbScene = new THREE.Scene();
+thumbScene.environment = PocketPal.environment(thumbR);
+thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x3a3530, .55));
+const tKey = new THREE.DirectionalLight(0xfff4e6, .8); tKey.position.set(-3, 4, 6); thumbScene.add(tKey);
+const thumbCam = new THREE.PerspectiveCamera(26, 1, .1, 100);
+const thumbCache = new Map();
+let thumbKit = null;
+function thumb(it, size = 152, clean = false) {
+  const cond = clean ? 'ok' : it.cond, k = [it.type, cond, !!it.fresh, size].join('|');
+  if (thumbCache.has(k)) return thumbCache.get(k);
+  if (!thumbKit) thumbKit = PocketPal.kit({ font: FONT });
+  const o = makePart(thumbKit, it.type, cond, it.fresh);
+  const g = new THREE.Group(); g.add(o); thumbScene.add(g);
+  g.rotation.set(-.38, PARTS[it.type].view === 'back' ? Math.PI + .3 : .3, 0);
+  g.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(o), c = box.getCenter(new V3()), r = box.getSize(new V3()).length() / 2;
+  g.position.sub(c);
+  thumbR.setSize(size, size, false);
+  thumbCam.position.set(0, 0, r / Math.tan(THREE.MathUtils.degToRad(13)) * 1.02); thumbCam.lookAt(0, 0, 0);
+  thumbR.render(thumbScene, thumbCam);
+  const url = thumbR.domElement.toDataURL('image/png');
+  thumbScene.remove(g);
+  thumbCache.set(k, url);
+  return url;
+}
 
 /* ---------- picking ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-function pick(e, objs) {
+function pick(e, list) {
   ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  return ray.intersectObjects(objs, true)[0];
+  return ray.intersectObjects(list, true)[0];
 }
 function toScreen(obj, local) {
-  const v = local ? local.clone() : new THREE.Vector3();
+  const v = local ? local.clone() : new V3();
   obj.localToWorld(v); v.project(camera);
   return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
 }
 function pointerLocal(e, z) {
-  // intersect pointer ray with the device-local plane at depth z
   ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const n = new THREE.Vector3(0, 0, 1).transformDirection(device.matrixWorld);
-  const p = device.localToWorld(new THREE.Vector3(0, 0, z));
-  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, p);
-  const hit = new THREE.Vector3();
-  if (!ray.ray.intersectPlane(plane, hit)) return null;
-  return device.worldToLocal(hit);
+  const n = new V3(0, 0, 1).transformDirection(device.matrixWorld);
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(n, device.localToWorld(new V3(0, 0, z)));
+  const hit = new V3();
+  return ray.ray.intersectPlane(plane, hit) ? device.worldToLocal(hit) : null;
 }
 
-/* ---------- UI ---------- */
-const STEP_RAIL = { unscrew: 'unscrew', cover: 'cover', battery_out: 'battery_out', clean: 'clean', battery_in: 'assemble', close: 'assemble', screw_in: 'assemble', flip: 'assemble', power: 'power', done: 'end' };
-const RAIL = ['unscrew', 'cover', 'battery_out', 'clean', 'assemble', 'power'];
-function setTask(title, sub) {
-  const t = $('task'); t.hidden = false;
-  $('taskTitle').textContent = title; $('taskSub').textContent = sub || '';
-  t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
+/* ---------- mechanic: faces and words ---------- */
+const FACES = ['happy', 'excited', 'focused', 'thinking', 'surprised', 'worried', 'proud', 'relieved', 'determined', 'laughing'];
+function face(el, name) {
+  el.style.backgroundPositionX = (-FACES.indexOf(name) * (el.classList.contains('big') ? 88 : 48)) + 'px';
+  el.classList.remove('react'); void el.offsetWidth; el.classList.add('react');
 }
-function setRail(step) {
-  const cur = RAIL.indexOf(STEP_RAIL[step]);
-  document.querySelectorAll('#steps li').forEach((li, i) => {
-    li.classList.toggle('now', i === cur);
-    li.classList.toggle('done', cur === -1 ? step === 'done' : i < cur);
-  });
+let sayUntil = 0;
+function say(text, mood) {
+  $('taskSub').textContent = text; sayUntil = performance.now() + 4200;
+  if (mood) face($('hero'), mood);
+  const t = $('task'); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
 }
+function situation() {
+  const j = J();
+  if (!j) return ['Мастерская', S.orders.length ? 'Открой планшет и возьми заказ.' : 'Новых заказов пока нет.'];
+  const c = j.kind === 'order' ? CUSTOMERS[j.order.cust] : null;
+  const title = c ? 'Заказ: ' + c.name : 'Разбор: б/у Pocket Pal';
+  if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Переверни приставку, чтобы её разобрать.'];
+  const tight = SCREW_SLOTS.filter(s => filled(s) && j.tight[s]), loose = SCREW_SLOTS.filter(s => filled(s) && !j.tight[s]);
+  if (loose.length) return [title, 'Закрути винт — крути пальцем по кругу.'];
+  if (filled('cover') && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Переверни и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
+  if (filled('cover')) return [title, 'Поставь винты из чашки и закрути их.'];
+  return [title, 'Снимай детали, смотри, что сломано. Ставь их обратно, перетаскивая со стола.'];
+}
+function refreshHint(force) {
+  const [title, sub] = situation();
+  $('taskTitle').textContent = title;
+  if (force || performance.now() > sayUntil) $('taskSub').textContent = sub;
+  tutorial();
+  renderActions();
+}
+
+/* gesture hints for the very first job */
 const hintEl = $('hint'), hintSvg = hintEl.querySelector('svg');
 const HINTS = {
   spin: '<circle cx="48" cy="48" r="38" fill="none" stroke="#f7ead0" stroke-width="4" stroke-dasharray="150 90" stroke-linecap="round"/><path d="M80 30 l6 16 -16 -4z" fill="#f7ead0"/>',
-  tap: '<circle cx="48" cy="48" r="30" fill="rgba(247,234,208,.15)" stroke="#f7ead0" stroke-width="4"/>',
   drag: '<circle cx="48" cy="48" r="16" fill="rgba(247,234,208,.85)"/><circle cx="48" cy="48" r="26" fill="none" stroke="#f7ead0" stroke-width="3"/>',
 };
 let hintTarget = null;
-function setHint(kind, target, dir) {
-  hintTarget = target ? { obj: target.obj || device, at: target.at } : null;
+function setHint(kind, obj, at, dir) {
+  hintTarget = kind ? { obj, at } : null;
   hintEl.className = kind ? kind + ' on' : '';
   if (kind) hintSvg.innerHTML = HINTS[kind];
   if (dir) { hintEl.style.setProperty('--dx', dir[0] + 'px'); hintEl.style.setProperty('--dy', dir[1] + 'px'); }
 }
+function tutorial() {
+  const j = J();
+  if (!j || S.ordersDone > 0 || j.opened || j.side !== 'back' || drag) return setHint(null);
+  const tight = ['screw_1', 'screw_2', 'screw_3', 'screw_4'].find(s => filled(s) && j.tight[s]);
+  if (filled('cover') && tight) return setHint('spin', objs.get(tight));
+  if (filled('cover') && !SCREW_SLOTS.slice(0, 4).some(filled)) return setHint('drag', device, new V3(0, -.3, -.4), [0, -90]);
+  setHint(null);
+}
+
+/* ---------- bench UI ---------- */
+const screwIcon = (big) => `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="${big ? 12 : 9}" fill="#c9ccd1" stroke="#7d828a" stroke-width="2"/><path d="M${big ? 10 : 12} 16h${big ? 12 : 8}M16 ${big ? 10 : 12}v${big ? 12 : 8}" stroke="#3a3d44" stroke-width="3" stroke-linecap="round"/></svg>`;
+function renderCup() {
+  ['screw', 'bscrew'].forEach(k => {
+    const el = $(k === 'screw' ? 'cupScrew' : 'cupBscrew');
+    el.innerHTML = screwIcon(k === 'screw') + `<b>${S.cup[k]}</b><span>${SCREW[k].short}</span>`;
+    el.classList.toggle('empty', !S.cup[k]);
+  });
+}
+function badge(it) {
+  if (it.cond === 'dirty') return '<span class="badge dirty">грязная</span>';
+  if (it.cond === 'broken') return '<span class="badge broken">сломана</span>';
+  if (it.fresh) return '<span class="badge fresh">новая</span>';
+  return '';
+}
+function renderTray() {
+  $('trayItems').innerHTML = S.tray.map(it => `<button class="part" data-id="${it.id}" aria-label="${esc(PARTS[it.type].name)}"><img alt="" src="${thumb(it)}">${badge(it)}</button>`).join('');
+  renderCup();
+}
+function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'); $('tabMoney').textContent = S.money.toLocaleString('ru-RU'); }
+function renderActions() {
+  const j = J(), el = $('benchActions'), html = [];
+  if (j) html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
+  if (j && j.kind === 'donor') html.push('<button class="pill" id="finishBtn">Убрать со стола</button>');
+  const sig = html.join('');
+  if (el.dataset.sig !== sig) { el.innerHTML = sig; el.dataset.sig = sig; }
+  $('tabletDot').hidden = !(!j && S.orders.length);
+}
+$('benchActions').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || busy) return;
+  initAudio();
+  if (b.id === 'flipBtn') flip();
+  if (b.id === 'finishBtn') askFinishDonor();
+});
+
+const uiOpen = () => !$('sheet').hidden || !$('cleanUi').hidden || !$('tablet').hidden || !$('card').hidden;
 function sparkle(x, y, n = 10) {
   for (let i = 0; i < n; i++) {
     const s = document.createElement('div'); s.className = 'spark';
@@ -424,313 +679,502 @@ function sparkle(x, y, n = 10) {
     document.body.appendChild(s); setTimeout(() => s.remove(), 750);
   }
 }
-function renderMoney() { $('money').textContent = money.toLocaleString('ru-RU'); $('orderLbl').textContent = 'Заказ №' + orderNo; }
 
-/* ---------- customers ---------- */
-// face: index of the "upset" portrait in customers.webp; the next one is the same person happy
-const CUSTOMERS = [
-  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, pay: 40,
-    quote: 'Дарил эту приставку внуку в девяносто первом. Батарейку раздуло, крышка не закрывается.',
-    thanks: 'Как новенькая! Внук будет счастлив.' },
-  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, pay: 35,
-    quote: 'Купил на барахолке за 300 рублей. Продавец клялся, что работает. Не работает.',
-    thanks: 'Огонь! Пойду рекорды ставить.' },
-  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, pay: 50,
-    quote: 'Это мой первый гаджет. Хочу поставить на стол в кабинете, а он даже не включается.',
-    thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
-  { name: 'Ваня', who: 'ученик второго класса', face: 6, pay: 30,
-    quote: 'Папа сказал, что она сломалась навсегда. Это правда?',
-    thanks: 'Ура, работает! Спасибо!' },
-  { name: 'Лёва', who: 'музыкант', face: 8, pay: 40,
-    quote: 'Хочу записать с неё восьмибитные звуки для альбома. А она молчит.',
-    thanks: 'Вот это звук! Будет хит.' },
-  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, pay: 60,
-    quote: 'Редкая расцветка. Мне нужна в идеальном состоянии. Плачу соответственно.',
-    thanks: 'Безупречно. Я ещё вернусь.' },
-];
-
-/* ---------- game flow ---------- */
-let step = 'intro', busy = false, drag = null, startTime = 0, cust = null;
+/* ---------- working on the device ---------- */
+let busy = false, drag = null;
 const NEED = Math.PI * 2.5;
 
-function showIntro() {
-  cust = CUSTOMERS[(orderNo - 1) % CUSTOMERS.length];
-  build(orderNo - 1);
-  device.rotation.set(0, Math.PI, 0);
-  step = 'intro'; $('task').hidden = true; setHint(null); setRail('intro'); renderMoney();
-  const card = $('card');
-  card.innerHTML = `<div class="card" role="dialog" aria-label="Новый заказ">
-    <div class="eyebrow">Новый заказ · №${orderNo}</div>
-    <div class="who"><div class="ava" style="background-position-x:${-cust.face * 56}px"></div>
-      <div><b>${cust.name}</b><span>${cust.who}</span></div></div>
-    <p class="quote">«${cust.quote}»</p>
-    <div class="rows"><div><span>Устройство</span><span>Pocket Pal PP-90</span></div><div><span>Оплата</span><span>${cust.pay}</span></div></div>
-    <button class="btn" id="go">Взять в работу</button></div>`;
-  card.hidden = false;
-  $('go').onclick = () => { initAudio(); sfx.pop(); card.hidden = true; startTime = performance.now(); setStep('unscrew'); };
+async function flip() {
+  const j = J(); if (!j || busy) return;
+  busy = true; sfx.whoosh(); setHint(null);
+  const from = device.rotation.y;
+  await tween(.8, k => { device.rotation.y = from + Math.PI * k; holder.position.z = Math.sin(k * Math.PI) * 1.0; }, ease.inOut);
+  j.side = j.side === 'back' ? 'front' : 'back';
+  device.rotation.y = j.side === 'back' ? Math.PI : 0;
+  busy = false; save(); refreshHint(true);
 }
 
-const FACES = ['happy', 'excited', 'focused', 'thinking', 'surprised', 'worried', 'proud', 'relieved', 'determined', 'laughing'];
-const STEP_FACE = { unscrew: 'focused', cover: 'determined', battery_out: 'surprised', clean: 'focused', battery_in: 'happy',
-  close: 'proud', screw_in: 'determined', flip: 'excited', power: 'thinking' };
-function face(el, name) {
-  el.style.backgroundPositionX = (-FACES.indexOf(name) * (el.classList.contains('big') ? 88 : 56)) + 'px';
-  el.classList.remove('react'); void el.offsetWidth; el.classList.add('react');
-}
-function setStep(s) {
-  step = s; setRail(s); $('action').hidden = true; setGlow([]);
-  const P = parts;
-  if (STEP_FACE[s]) face($('hero'), STEP_FACE[s]);
-  if (s === 'unscrew') {
-    setTask('Открути 4 винта', 'Крути пальцем по кругу вокруг винта · 0/4');
-    setGlow(P.glow.screws); nextScrewHint();
-  } else if (s === 'cover') {
-    setTask('Сними заднюю крышку', 'Смахни её пальцем в сторону');
-    setGlow(P.glow.cover); setHint('drag', { obj: device, at: new THREE.Vector3(0, -.3, -.6) }, [0, -90]);
-  } else if (s === 'battery_out') {
-    setTask('Батарейка вздулась!', 'Вытащи её — потяни пальцем в сторону');
-    sfx.buzz(); buzz(80);
-    setGlow(P.glow.battery); setHint('drag', { obj: device, at: SLOT }, [-90, 30]);
-  } else if (s === 'clean') {
-    setTask('Почисти окисление', 'Три пальцем грязные места · 0/3');
-    setHint('tap', { obj: P.dirt[0] });
-  } else if (s === 'battery_in') {
-    setTask('Поставь новую батарейку', 'Перетащи её в отсек');
-    const nb = P.newBattery; nb.visible = true; nb.position.set(0, -3.4, -1.0); nb.scale.setScalar(.01); nb.rotation.set(0, 0, .2);
-    tween(.45, k => nb.scale.setScalar(Math.max(.01, k)), ease.back); sfx.pop();
-    setGlow(P.glow.newBattery); setHint('drag', { obj: device, at: new THREE.Vector3(0, -3.4, -1.0) }, [0, -80]);
-  } else if (s === 'close') {
-    setTask('Отличная работа', 'Осталось собрать обратно'); setHint(null);
-    const b = $('action'); b.textContent = 'Закрыть крышку'; b.hidden = false;
-  } else if (s === 'screw_in') {
-    setTask('Закрути винты', 'Нажимай на каждый винт · 0/4');
-    setGlow(P.glow.screws); nextScrewHint(true);
-  } else if (s === 'flip') {
-    setTask('Переворачиваем…', ''); setHint(null); busy = true; sfx.whoosh();
-    tween(1.0, k => { device.rotation.y = Math.PI + Math.PI * k; holder.position.z = Math.sin(k * Math.PI) * 1.2; }, ease.inOut)
-      .then(() => { device.rotation.y = 0; busy = false; setStep('power'); });
-  } else if (s === 'power') {
-    setTask('Проверка', 'Нажми красную кнопку питания');
-    setGlow(P.glow.power); setHint('tap', { obj: P.power });
-  }
-}
-function nextScrewHint(inMode) {
-  const s = parts.screws.find(s => inMode ? !s.userData.in : !s.userData.out);
-  if (s) setHint(inMode ? 'tap' : 'spin', { obj: s }); else setHint(null);
-}
-
-$('action').addEventListener('click', async () => {
-  if (step !== 'close' || busy) return;
-  busy = true; $('action').hidden = true; initAudio();
-  const c = parts.cover; c.visible = true;
-  const from = c.position.clone(), fromR = c.rotation.z; sfx.whoosh();
-  await tween(.6, k => { c.position.lerpVectors(from, new THREE.Vector3(0, 0, 0), k); c.rotation.z = fromR * (1 - k); }, ease.inOut);
-  sfx.clunk(); buzz(30);
-  parts.screws.forEach(s => {
-    s.visible = true; s.scale.setScalar(1); s.userData.in = false;
-    s.position.copy(s.userData.home); s.position.z -= .3; s.rotation.z = 0;
+function nearestScrew(e) {
+  const j = J(); let best = null, bd = 56;
+  SCREW_SLOTS.forEach(s => {
+    const o = objs.get(s); if (!o || blockers(s).length) return;
+    const p = toScreen(o), d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
+    if (d < bd) { bd = d; best = s; }
   });
-  busy = false; setStep('screw_in');
-});
+  return best;
+}
+function partAt(e) {
+  const list = PART_SLOTS.map(s => objs.get(s)).filter(Boolean);
+  const h = pick(e, list); if (!h) return null;
+  let o = h.object; while (o && !o.userData.slot) o = o.parent;
+  return o ? o.userData.slot : null;
+}
 
-/* ---------- pointer input ---------- */
-const brushEl = $('brush');
 canvas.addEventListener('pointerdown', e => {
-  if (busy || step === 'intro' || step === 'done') return;
+  if (busy || !J() || uiOpen() || drag) return;
   initAudio();
-  const P = parts;
-  if (step === 'unscrew') {
-    const s = nearestScrew(e, s => !s.userData.out);
-    if (s) { drag = { type: 'screw', s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); }
-  } else if (step === 'cover') {
-    if (pick(e, [P.cover])) startDrag(e, P.cover, -.1, 1.4);
-  } else if (step === 'battery_out') {
-    if (pick(e, [P.battery])) startDrag(e, P.battery, -.7, 1.2);
-  } else if (step === 'battery_in') {
-    if (pick(e, [P.newBattery])) startDrag(e, P.newBattery, -1.0, 0);
-  } else if (step === 'clean') {
-    drag = { type: 'scrub', x: e.clientX, y: e.clientY, t: 0 }; canvas.setPointerCapture(e.pointerId);
-    brushEl.style.display = 'block'; moveBrush(e); scrubAt(e, 0);
-  } else if (step === 'screw_in') {
-    const s = nearestScrew(e, s => !s.userData.in);
-    if (s) tightenScrew(s);
-  } else if (step === 'power') {
-    if (pick(e, [P.powerHit, P.power])) powerOn();
+  const j = J();
+  if (j.side === 'front') {
+    if (pick(e, [powerHit, K.power])) powerTest();
+    else if (pick(e, [device])) say('Переверни приставку, чтобы разобрать её.', 'thinking');
+    return;
   }
+  const s = nearestScrew(e);
+  if (s) { drag = { type: 'screw', slot: s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); setHint(null); return; }
+  const slot = partAt(e); if (!slot) return;
+  const b = blockers(slot);
+  if (b.length) { refuse(slot, 'Сначала ' + blockerText(b) + '.'); return; }
+  const o = objs.get(slot), at = pointerLocal(e, o.position.z); if (!at) return;
+  drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z };
+  canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
 });
 canvas.addEventListener('pointermove', e => {
   if (!drag) return;
   if (drag.type === 'screw') turnScrew(e);
-  else if (drag.type === 'drag') moveDrag(e);
-  else if (drag.type === 'scrub') {
-    moveBrush(e);
-    const d = Math.hypot(e.clientX - drag.x, e.clientY - drag.y); drag.x = e.clientX; drag.y = e.clientY;
-    scrubAt(e, d);
+  else if (drag.type === 'part') {
+    const d = drag, at = pointerLocal(e, d.z); if (!at) return;
+    d.obj.position.x = at.x - d.grab.x; d.obj.position.y = at.y - d.grab.y;
+    d.obj.position.z += ((d.z - .3) - d.obj.position.z) * .3;
+    d.obj.rotation.z = (d.obj.position.x - d.start.x) * -.06;
   }
 });
-const endPointer = e => {
+const endPointer = () => {
   if (!drag) return;
   const d = drag; drag = null;
-  if (d.type === 'drag') endDrag(d);
-  if (d.type === 'scrub') brushEl.style.display = 'none';
+  if (d.type === 'part') releasePart(d);
+  refreshHint();
 };
 canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
 
-/* unscrewing — fingers are fat, so grab the closest screw within reach */
-function nearestScrew(e, ok) {
-  let best = null, bd = 64;
-  parts.screws.filter(ok).forEach(s => { const p = toScreen(s), d = Math.hypot(p.x - e.clientX, p.y - e.clientY); if (d < bd) { bd = d; best = s; } });
-  return best;
+function refuse(slot, text) {
+  sfx.nope(); buzz(30); say(text, 'worried');
+  const o = objs.get(slot); if (!o) return;
+  const x0 = o.position.x;
+  tween(.35, k => { o.position.x = x0 + Math.sin(k * Math.PI * 6) * .05 * (1 - k); }, k => k).then(() => { o.position.x = x0; });
 }
+
 function turnScrew(e) {
-  const d = drag, s = d.s, c = toScreen(s);
-  const dx = e.clientX - c.x, dy = e.clientY - c.y;
+  const d = drag, j = J(), o = objs.get(d.slot); if (!o) { drag = null; return; }
+  const c = toScreen(o), dx = e.clientX - c.x, dy = e.clientY - c.y;
   if (Math.hypot(dx, dy) < 8) return;
   const a = Math.atan2(dy, dx);
   if (d.last !== null) {
     let da = a - d.last; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
-    const u = s.userData; u.progress += Math.abs(da); d.acc += Math.abs(da);
-    s.rotation.z -= da;
-    s.position.z = u.home.z - Math.min(1, u.progress / NEED) * .28;
+    const tight = j.tight[d.slot], lift = SCREW[kindOf(d.slot)].lift, home = K.pose[d.slot].z;
+    o.userData.progress = (o.userData.progress || 0) + Math.abs(da); d.acc += Math.abs(da);
+    const k = Math.min(1, o.userData.progress / NEED);
+    o.rotation.z += tight ? -Math.abs(da) : Math.abs(da);
+    o.position.z = tight ? home - k * lift : home - lift + k * lift;
     if (d.acc > Math.PI / 6) { d.acc = 0; sfx.tick(); buzz(4); }
-    if (u.progress >= NEED) { drag = null; popScrew(s); }
+    if (k >= 1) { drag = null; tight ? popScrew(d.slot) : screwHome(d.slot); }
   }
   d.last = a;
 }
-function popScrew(s) {
-  s.userData.out = true; sfx.pop(); buzz(20);
-  const sp = toScreen(s); sparkle(sp.x, sp.y, 6);
-  const from = s.position.clone(), to = new THREE.Vector3(from.x * 1.9, -4.6, -2.2);
-  tween(.55, k => { s.position.lerpVectors(from, to, k); s.position.z -= Math.sin(k * Math.PI) * 1.2; s.rotation.x = k * 3; s.scale.setScalar(1 - k * .7); }, ease.inOut)
-    .then(() => { s.visible = false; });
-  const done = parts.screws.filter(x => x.userData.out).length;
-  $('taskSub').textContent = `Крути пальцем по кругу вокруг винта · ${done}/4`;
-  if (done === 4) setTimeout(() => setStep('cover'), 450); else nextScrewHint();
+function popScrew(slot) {
+  const j = J(), o = objs.get(slot), kind = kindOf(slot);
+  objs.delete(slot); j.slots[slot] = null; delete j.tight[slot];
+  S.cup[kind]++; save(); renderCup(); sfx.pop(); buzz(20);
+  const sp = toScreen(o); sparkle(sp.x, sp.y, 6);
+  const from = o.position.clone(), to = new V3(from.x * .4 - 1, -5.6, -2.4);
+  tween(.5, k => { o.position.lerpVectors(from, to, k); o.position.z -= Math.sin(k * Math.PI) * 1.0; o.rotation.x = k * 2; o.scale.setScalar(1 - k * .6); }, ease.inOut)
+    .then(() => device.remove(o));
+  refreshHint();
 }
-function tightenScrew(s) {
-  s.userData.in = true; buzz(15);
-  const z0 = s.position.z, r0 = s.rotation.z; let ticks = 0;
-  tween(.4, k => { s.position.z = z0 + (s.userData.home.z - z0) * k; s.rotation.z = r0 + k * Math.PI * 4; const t = Math.floor(k * 6); if (t > ticks) { ticks = t; sfx.tick(); } }, ease.inOut)
-    .then(() => {
-      sfx.clunk();
-      const n = parts.screws.filter(x => x.userData.in).length;
-      $('taskSub').textContent = `Нажимай на каждый винт · ${n}/4`;
-      if (n === 4) setTimeout(() => setStep('flip'), 300); else nextScrewHint(true);
-    });
+function screwHome(slot) {
+  const j = J(), o = objs.get(slot);
+  j.tight[slot] = true; o.userData.progress = 0; o.position.z = K.pose[slot].z;
+  sfx.clunk(); buzz(25); save();
+  if (assembled()) say('Готово, всё собрано! Переверни и проверь кнопкой питания.', 'proud');
+  refreshHint();
 }
 
-/* dragging cover / batteries */
-function startDrag(e, obj, liftZ, flingDist) {
-  const at = pointerLocal(e, obj.position.z); if (!at) return;
-  drag = { type: 'drag', obj, start: obj.position.clone(), grab: at.sub(obj.position), liftZ, flingDist, z: obj.position.z };
-  canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
-}
-function moveDrag(e) {
-  const d = drag, at = pointerLocal(e, d.z); if (!at) return;
-  d.obj.position.x = at.x - d.grab.x; d.obj.position.y = at.y - d.grab.y;
-  d.obj.position.z += ((d.z + d.liftZ * .4) - d.obj.position.z) * .3;
-  d.obj.rotation.z = (d.obj.position.x - d.start.x) * -.08;
-}
-async function endDrag(d) {
+async function releasePart(d) {
   const o = d.obj, from = o.position.clone(), fromR = o.rotation.z;
-  const dx = from.x - d.start.x, dy = from.y - d.start.y, dist = Math.hypot(dx, dy);
-  if (d.flingDist && dist > d.flingDist) {
-    busy = true; sfx.whoosh(); buzz(25);
-    const dir = new THREE.Vector3(dx, dy, 0).normalize();
-    const to = d.start.clone().add(dir.multiplyScalar(9)); to.z = -3;
-    await tween(.5, k => { o.position.lerpVectors(from, to, k); o.rotation.z = fromR + k * 1.2 * Math.sign(dx || 1); }, ease.in);
-    o.visible = false; busy = false;
-    setStep(o === parts.cover ? 'battery_out' : 'clean');
-    return;
-  }
-  if (o === parts.newBattery && Math.hypot(from.x - SLOT.x, from.y - SLOT.y) < 1.0) {
-    busy = true;
-    await tween(.25, k => { o.position.lerpVectors(from, SLOT, k); o.rotation.z = fromR * (1 - k); }, ease.out);
-    sfx.clunk(); buzz(40); const sp = toScreen(device, SLOT.clone()); sparkle(sp.x, sp.y, 12); sfx.shine();
-    busy = false; setStep('close');
-    return;
-  }
+  const dist = Math.hypot(from.x - d.start.x, from.y - d.start.y);
+  if (dist > 1.0) return removePart(d.slot);
   busy = true;
-  await tween(.3, k => { o.position.lerpVectors(from, d.start, k); o.rotation.z = fromR * (1 - k); }, ease.back);
+  await tween(.28, k => { o.position.lerpVectors(from, d.start, k); o.rotation.z = fromR * (1 - k); }, ease.back);
   busy = false;
-  if (step === 'cover') setHint('drag', { obj: device, at: new THREE.Vector3(0, -.3, -.6) }, [0, -90]);
-  if (step === 'battery_out') setHint('drag', { obj: device, at: SLOT }, [-90, 30]);
-  if (step === 'battery_in') setHint('drag', { obj: device, at: d.start }, [0, -80]);
+}
+const DISCOVER = {
+  battery: { broken: ['Аккумулятор раздут — его только менять.', 'surprised'] },
+  pcb: { dirty: ['Плата в окислах. Её надо почистить.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'] },
+  pads: { dirty: ['Резинки липкие от сока. Почистить бы.', 'thinking'] },
+  lcd: { broken: ['Экран треснул. Нужен другой.', 'worried'] },
+  speaker: { broken: ['Динамик подгорел — нужен новый.', 'worried'] },
+};
+async function removePart(slot) {
+  const j = J(), o = objs.get(slot), it = j.slots[slot];
+  busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
+  S.tray.push(it); save();
+  sfx.whoosh(); buzz(20);
+  const from = o.position.clone(), to = new V3(from.x * .3, -6, -2.2), r0 = o.rotation.z;
+  await tween(.45, k => { o.position.lerpVectors(from, to, k); o.rotation.z = r0 + k * .5; o.scale.setScalar(1 - k * .5); }, ease.in);
+  device.remove(o);
+  renderTray(); busy = false;
+  const dsc = DISCOVER[it.type] && DISCOVER[it.type][it.cond];
+  if (dsc) say(dsc[0], dsc[1]); else say(PARTS[it.type].name + ' — на столе.', 'focused');
+  const el = document.querySelector(`.part[data-id="${it.id}"]`); if (el) el.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  refreshHint();
 }
 
-/* scrubbing */
-function moveBrush(e) { brushEl.style.left = e.clientX + 'px'; brushEl.style.top = e.clientY + 'px'; }
-function scrubAt(e, dist) {
-  // generous screen-space radius: the spots are small and fingers wander while rubbing
-  if (!dist) return;
-  let m = null, bd = 70;
-  parts.dirt.filter(x => x.userData.dirt > 0).forEach(x => { const p = toScreen(x), d = Math.hypot(p.x - e.clientX, p.y - e.clientY); if (d < bd) { bd = d; m = x; } });
-  if (!m) return;
-  m.userData.dirt -= dist * .0042;
-  drag.t += dist; if (drag.t > 40) { drag.t = 0; sfx.scrub(); buzz(3); }
-  if (m.userData.dirt <= 0) {
-    m.userData.dirt = 0; m.visible = false;
-    const sp = toScreen(m); sparkle(sp.x, sp.y, 14); sfx.shine(); buzz(30);
-    const left = parts.dirt.filter(x => x.userData.dirt > 0);
-    $('taskSub').textContent = `Три пальцем грязные места · ${3 - left.length}/3`;
-    if (left.length) setHint('tap', { obj: left[0] });
-    else { drag = null; brushEl.style.display = 'none'; setHint(null); setTimeout(() => setStep('battery_in'), 500); }
-  } else {
-    m.material.opacity = .25 + m.userData.dirt * .75;
-    setHint(null);
+async function installPart(it, slot) {
+  const j = J();
+  S.tray = S.tray.filter(x => x.id !== it.id);
+  j.slots[slot] = it; save(); renderTray();
+  const o = objFor(slot, it), pose = K.pose[slot];
+  device.add(o); objs.set(slot, o);
+  busy = true;
+  const from = pose.clone().add(new V3(0, -1.6, -1.6));
+  await tween(.45, k => { o.position.lerpVectors(from, pose, k); o.scale.setScalar(.6 + .4 * k); }, ease.out);
+  sfx.clunk(); buzz(30); busy = false;
+  const sp = toScreen(o); sparkle(sp.x, sp.y, 8);
+  say(PARTS[it.type].name + ' на месте.', 'happy');
+  refreshHint();
+}
+function installScrew(kind, slot) {
+  const j = J();
+  S.cup[kind]--; j.slots[slot] = { type: kind }; j.tight[slot] = false; save(); renderCup();
+  const o = place(slot); o.scale.setScalar(.01);
+  tween(.3, k => o.scale.setScalar(Math.max(.01, k)), ease.back);
+  sfx.tick(); say('Теперь закрути его — крути пальцем по кругу.', 'focused');
+  refreshHint();
+}
+
+/* dropping things from the bench onto the device */
+function dropOnDevice(x, y, what) {
+  const j = J();
+  if (!j) return say('Сначала возьми приставку: планшет → Заказы или Барахолка.', 'thinking');
+  const c = toScreen(device), over = Math.abs(x - c.x) < innerWidth * .42 && y < innerHeight - 110;
+  if (!over) return;
+  if (j.side === 'front') return say('Переверни приставку — детали ставят сзади.', 'thinking');
+  if (what.kind) {
+    let best = null, bd = 70;
+    SCREW_SLOTS.filter(s => kindOf(s) === what.kind && !filled(s)).forEach(s => {
+      const p = toScreen(device, K.pose[s]), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = s; }
+    });
+    if (!best) return say(what.kind === 'screw' ? 'Винт ставят в свободное отверстие на крышке.' : 'Винтик ставят в отверстие на плате.', 'thinking');
+    if (!canInstall(best)) return refuseDrop(best);
+    return installScrew(what.kind, best);
   }
+  const it = what.item, slot = it.type;
+  if (filled(slot)) return refuseNoShake('Здесь уже стоит ' + PARTS[slot].name.toLowerCase() + '.');
+  if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: нажми на деталь на столе.');
+  if (!canInstall(slot)) return refuseDrop(slot);
+  installPart(it, slot);
+}
+function refuseNoShake(text) { sfx.nope(); buzz(20); say(text, 'worried'); }
+function refuseDrop(slot) {
+  if (SCREW_SLOTS.includes(slot) && !filled(supportOf(slot))) return refuseNoShake(kindOf(slot) === 'screw' ? 'Винтам некуда вкручиваться — сначала крышка.' : 'Винтики держат плату — сначала поставь её.');
+  const b = blockers(slot);
+  if (b.length) return refuseNoShake('Мешает: ' + blockerText(b).replace(/^./, c => c.toUpperCase()) + '.');
+  refuseNoShake('Не встаёт — под неё нужна другая деталь.');
 }
 
-/* power + payout */
-async function powerOn() {
-  busy = true; setHint(null); setGlow([]);
-  const p = parts.power, z = p.position.z;
-  await tween(.12, k => p.position.z = z - .05 * k);
-  sfx.clunk(); buzz(30);
-  await tween(.12, k => p.position.z = z - .05 * (1 - k));
-  sfx.boot(); parts.led.material.color.setHex(0xff5a3c); parts.led.material.emissive.setHex(0xe0200c); face($('hero'), 'laughing');
-  await tween(1.6, k => drawScreen(k * 1.6), k => k);
-  const secs = Math.round((performance.now() - startTime) / 1000);
-  const tip = secs < 75 ? 20 : secs < 130 ? 10 : 0;
-  const stars = secs < 75 ? 3 : secs < 130 ? 2 : 1;
-  await wait(.4);
-  busy = false; step = 'done'; setRail('done'); $('task').hidden = true;
-  showDone(secs, tip, stars);
+/* bench drag: parts from the tray, screws from the cup */
+const ghost = $('ghost');
+let benchDrag = null;
+function benchDown(e, what, el) {
+  if (busy || uiOpen()) return;
+  initAudio();
+  benchDrag = { what, el, x0: e.clientX, y0: e.clientY, moving: false, id: e.pointerId };
+  try { el.setPointerCapture(e.pointerId); } catch (_) {}
+}
+function benchMove(e) {
+  const b = benchDrag; if (!b || e.pointerId !== b.id) return;
+  if (!b.moving && Math.hypot(e.clientX - b.x0, e.clientY - b.y0) > 10) {
+    b.moving = true;
+    ghost.className = b.what.kind ? 'screw' : '';
+    ghost.innerHTML = b.what.kind ? screwIcon(b.what.kind === 'screw') : `<img alt="" src="${thumb(b.what.item)}">`;
+    ghost.style.display = 'block'; sfx.tick();
+  }
+  if (b.moving) ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`;
+}
+function benchUp(e) {
+  const b = benchDrag; if (!b || e.pointerId !== b.id) return;
+  benchDrag = null; ghost.style.display = 'none';
+  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат в коробке.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
+  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат в коробке.', 'thinking');
+  dropOnDevice(e.clientX, e.clientY - 30, b.what);
+}
+$('trayItems').addEventListener('pointerdown', e => {
+  const el = e.target.closest('.part'); if (!el) return;
+  const it = S.tray.find(x => x.id === +el.dataset.id); if (it) benchDown(e, { item: it }, el);
+});
+['cupScrew', 'cupBscrew'].forEach(id => $(id).addEventListener('pointerdown', e => benchDown(e, { kind: $(id).dataset.kind }, $(id))));
+addEventListener('pointermove', benchMove);
+addEventListener('pointerup', benchUp);
+addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag = null; ghost.style.display = 'none'; } });
+$('boxBtn').addEventListener('click', () => { initAudio(); openTablet('box'); });
+
+/* ---------- a part on the bench: clean, store, bin ---------- */
+function openItem(it) {
+  const P = PARTS[it.type], sh = $('sheet');
+  const isCover = it.type === 'cover';
+  sh.innerHTML = `<div class="card" role="dialog" aria-label="${esc(P.name)}">
+    <div class="itemhead"><img alt="" src="${thumb(it, 192)}"><div><h3>${esc(P.name)}</h3>
+      <span class="state ${it.cond}">${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
+    ${isCover ? '<p>Это крышка этой приставки — её ставят обратно на корпус.</p>' : ''}
+    <div class="btns">
+      ${it.cond === 'dirty' ? '<button class="btn" data-a="clean">Почистить</button>' : ''}
+      ${isCover ? '' : '<button class="btn alt" data-a="box">Убрать в коробку</button>'}
+      ${isCover ? '' : '<button class="btn danger" data-a="bin">Выбросить</button>'}
+      <button class="btn alt" data-a="close">Закрыть</button>
+    </div></div>`;
+  sh.hidden = false;
+  sh.onclick = ev => {
+    const a = ev.target.closest('[data-a]'); if (!a && ev.target !== sh) return;
+    sh.hidden = true; sh.onclick = null;
+    if (!a) return;
+    if (a.dataset.a === 'clean') openClean(it);
+    if (a.dataset.a === 'box') { S.tray = S.tray.filter(x => x.id !== it.id); S.box.push(it); save(); renderTray(); say(P.name + ' — в коробке.', 'happy'); }
+    if (a.dataset.a === 'bin') { S.tray = S.tray.filter(x => x.id !== it.id); save(); renderTray(); sfx.whoosh(); say(P.name + ' — в мусорке.', 'determined'); }
+  };
+}
+
+/* cleaning station: the part alone, grime on top, rub it off */
+function openClean(it) {
+  const P = PARTS[it.type], ui = $('cleanUi');
+  ui.innerHTML = `<div class="card" role="dialog" aria-label="Чистка">
+    <div class="eyebrow">Чистка</div><h3>${esc(P.name)}</h3>
+    <p>Три пальцем, пока не сойдёт вся грязь.</p>
+    <div class="cleanArea"><img alt="" src="${thumb(it, 320, true)}"><canvas id="dirt" width="320" height="320"></canvas></div>
+    <div class="meter"><i id="cleanBar"></i></div>
+    <button class="btn alt" id="cleanLater">Отложить</button></div>`;
+  ui.hidden = false;
+  const cv = $('dirt'), g = cv.getContext('2d');
+  const kinds = it.type === 'pcb' ? ['crust', 'stain'] : ['juice'];
+  kinds.forEach(k => GRIME[k](g, 320, 320, 24));
+  const total = coverage(g); let rubbing = false, n = 0, lastX = 0, lastY = 0;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * 320 / r.width, (e.clientY - r.top) * 320 / r.height]; };
+  const rub = e => {
+    const [x, y] = pos(e);
+    g.globalCompositeOperation = 'destination-out'; g.lineCap = 'round'; g.lineWidth = 46;
+    g.beginPath(); g.moveTo(lastX, lastY); g.lineTo(x, y); g.stroke(); lastX = x; lastY = y;
+    if (++n % 6 === 0) {
+      sfx.scrub(); buzz(3);
+      const left = coverage(g) / total; $('cleanBar').style.width = Math.round((1 - left) * 100) + '%';
+      if (left < .06) done();
+    }
+  };
+  cv.onpointerdown = e => { rubbing = true; [lastX, lastY] = pos(e); cv.setPointerCapture(e.pointerId); initAudio(); };
+  cv.onpointermove = e => { if (rubbing) rub(e); };
+  cv.onpointerup = cv.onpointercancel = () => { rubbing = false; };
+  let finished = false;
+  function done() {
+    if (finished) return; finished = true; rubbing = false;
+    g.clearRect(0, 0, 320, 320); $('cleanBar').style.width = '100%';
+    it.cond = 'ok'; save(); sfx.shine(); buzz(40);
+    const r = cv.getBoundingClientRect(); sparkle(r.left + r.width / 2, r.top + r.height / 2, 18);
+    setTimeout(() => { ui.hidden = true; renderTray(); say(P.name + ' — как новая!', 'proud'); }, 700);
+  }
+  $('cleanLater').onclick = () => { ui.hidden = true; };
+}
+function coverage(g) {
+  const d = g.getImageData(0, 0, 320, 320).data; let n = 0;
+  for (let i = 3; i < d.length; i += 32) if (d[i] > 40) n++;
+  return Math.max(1, n);
+}
+
+/* ---------- power test ---------- */
+async function powerTest() {
+  const j = J(); busy = true;
+  const p = K.power, z = p.position.z;
+  await tween(.1, k => { p.position.z = z - .05 * k; }); sfx.clunk(); buzz(30);
+  await tween(.1, k => { p.position.z = z - .05 * (1 - k); });
+  if (!assembled()) { busy = false; return say('Сначала собери приставку полностью и закрути все винты.', 'thinking'); }
+  const issue = DIAG.find(d => j.slots[d.slot].cond === d.cond);
+  const led = K.led.material;
+  if (issue && !issue.boot) {
+    if (issue.blink) { for (let i = 0; i < 3; i++) { led.emissive.setHex(0xe0200c); await wait(.12); led.emissive.setHex(0); await wait(.16); } }
+    else { sfx.buzz(); await wait(.3); }
+    busy = false; return say(issue.text, 'worried');
+  }
+  led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c);
+  if (!(issue && issue.mute)) sfx.boot();
+  await tween(1.5, k => drawScreen(k * 1.6), k => k);
+  if (issue) {
+    await wait(.4); drawScreen(-1); led.emissive.setHex(0); led.color.setHex(0x5a1510);
+    busy = false; return say(issue.text, 'worried');
+  }
+  face($('hero'), 'laughing');
+  await wait(.5); busy = false;
+  if (j.kind === 'order') finishOrder(); else offerSale();
 }
 function star(on) {
   return `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" fill="${on ? '#e7b04a' : '#d9c7a3'}" stroke="${on ? '#a8701c' : '#c4ad84'}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 }
-function showDone(secs, tip, stars) {
-  const total = cust.pay + tip, card = $('card');
+function finishOrder() {
+  const j = J(), o = j.order, c = CUSTOMERS[o.cust];
+  const secs = Math.round((Date.now() - j.started) / 1000), par = 70 + 50 * o.faults.length;
+  const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1, tip = [0, 0, 10, 20][stars];
   const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  const total = o.pay + tip;
+  const card = $('card');
   card.innerHTML = `<div class="card" role="dialog" aria-label="Заказ выполнен">
-    <div class="eyebrow" style="text-align:center">Заказ №${orderNo} выполнен</div>
+    <div class="eyebrow" style="text-align:center">Заказ выполнен</div>
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>Починено!</h2>
     <div class="stars">${star(stars > 0)}${star(stars > 1)}${star(stars > 2)}</div>
-    <div class="who"><div class="ava" style="background-position-x:${-(cust.face + 1) * 56}px"></div><p class="quote">«${cust.thanks}» — ${cust.name}</p></div>
-    <div class="rows"><div><span>Время</span><span>${mm}</span></div><div><span>Оплата</span><span>${cust.pay}</span></div>
+    <div class="who"><div class="ava" style="background-position-x:${-(c.face + 1) * 48}px"></div><p class="quote">«${esc(c.thanks)}» — ${esc(c.name)}</p></div>
+    <div class="rows"><div><span>Время</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
       <div><span>Чаевые за скорость</span><span>+${tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
-    <button class="btn" id="next">Следующий заказ</button></div>`;
+    <button class="btn" id="next">К заказам</button></div>`;
   card.hidden = false;
   face($('heroBig'), ['relieved', 'happy', 'proud'][stars - 1]);
+  S.job = null; S.ordersDone++; ensureListings(); save();
   flyCoins(total);
-  $('next').onclick = () => { sfx.pop(); orderNo++; save(); card.hidden = true; showIntro(); };
+  $('next').onclick = () => { sfx.pop(); card.hidden = true; clearDevice(); refreshHint(true); openTablet('orders'); };
+}
+function offerSale() {
+  const card = $('card');
+  card.innerHTML = `<div class="card" role="dialog" aria-label="Приставка работает">
+    <div class="hero big" id="heroBig" aria-hidden="true"></div>
+    <h2>Работает!</h2>
+    <p>Ты собрал рабочую приставку из б/у. Её можно продать на барахолке или оставить на столе.</p>
+    <div class="btns"><button class="btn" id="sell">Продать за ${SELL_PRICE}</button><button class="btn alt" id="keep">Оставить</button></div></div>`;
+  card.hidden = false; face($('heroBig'), 'proud');
+  $('sell').onclick = () => { card.hidden = true; S.job = null; ensureListings(); save(); clearDevice(); flyCoins(SELL_PRICE); refreshHint(true); say('Продано! Можно брать следующую.', 'happy'); };
+  $('keep').onclick = () => { card.hidden = true; };
 }
 function flyCoins(total) {
   const target = document.querySelector('#hud .coin').getBoundingClientRect();
-  const tx = target.left + 9, ty = target.top + 9, n = 8, final = money + total, per = Math.floor(total / n);
+  const tx = target.left + 9, ty = target.top + 9, n = 8, final = S.money + total, per = Math.floor(total / n);
+  S.money = final; save();
+  let shown = final - total;
   for (let i = 0; i < n; i++) setTimeout(() => {
     const c = document.createElement('div'); c.className = 'flycoin coin';
-    const sx = innerWidth / 2 + (Math.random() - .5) * 80, sy = innerHeight * .62;
+    const sx = innerWidth / 2 + (Math.random() - .5) * 80, sy = innerHeight * .5;
     c.style.left = sx + 'px'; c.style.top = sy + 'px'; document.body.appendChild(c);
     c.animate([{ transform: 'translate(0,0) scale(1.4)' }, { transform: `translate(${tx - sx}px, ${ty - sy}px) scale(.8)` }],
       { duration: 650, easing: 'cubic-bezier(.5,0,.8,.4)' }).onfinish = () => {
-      c.remove(); money = i === n - 1 ? final : money + per; if (i === n - 1) save(); renderMoney(); sfx.coin();
+      c.remove(); shown = i === n - 1 ? final : shown + per; $('money').textContent = shown.toLocaleString('ru-RU'); sfx.coin();
+      if (i === n - 1) renderMoney();
     };
   }, 300 + i * 90);
 }
+
+/* ---------- jobs ---------- */
+function startJob(kind, src) {
+  const slots = {}, tight = {};
+  PART_SLOTS.forEach(t => { slots[t] = item(t); });
+  if (kind === 'order') src.faults.forEach(f => { const F = FAULTS[f]; if (F.slot) slots[F.slot].cond = F.cond; });
+  else Object.entries(src.conds).forEach(([t, c]) => { slots[t].cond = c; });
+  SCREW_SLOTS.forEach(s => { slots[s] = { type: kindOf(s) }; tight[s] = true; });
+  const missing = kind === 'order' ? (src.faults.includes('screws') ? 2 : 0) : src.missing;
+  ['screw_4', 'screw_3'].slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
+  S.job = { kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: Date.now(), variant: src.variant };
+  save(); buildJobScene();
+  holder.scale.setScalar(.01);
+  tween(.5, k => holder.scale.setScalar(Math.max(.01, k)), ease.back);
+  sfx.pop();
+  say(kind === 'order' ? 'Посмотрим, что с ней. Переверни, чтобы открыть.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
+  refreshHint();
+}
+function askFinishDonor() {
+  const sh = $('sheet');
+  const inside = PART_SLOTS.filter(s => s !== 'cover' && filled(s)).length;
+  sh.innerHTML = `<div class="card" role="dialog" aria-label="Убрать со стола">
+    <h3>Убрать приставку со стола?</h3>
+    <p>Снятые детали и винты из чашки уйдут в коробку, корпус — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
+    <div class="btns"><button class="btn" data-a="ok">Убрать</button><button class="btn alt" data-a="no">Отмена</button></div></div>`;
+  sh.hidden = false;
+  sh.onclick = ev => {
+    const a = ev.target.closest('[data-a]'); if (!a && ev.target !== sh) return;
+    sh.hidden = true; sh.onclick = null;
+    if (!a || a.dataset.a !== 'ok') return;
+    S.tray.filter(x => x.type !== 'cover').forEach(x => S.box.push(x));
+    S.tray = []; S.boxScrews.screw += S.cup.screw; S.boxScrews.bscrew += S.cup.bscrew; S.cup = { screw: 0, bscrew: 0 };
+    S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали в коробке. Стол свободен.', 'happy');
+  };
+}
+
+/* ---------- tablet ---------- */
+let tab = 'orders', toastTimer = 0;
+function openTablet(t) { tab = t || tab; $('tablet').hidden = false; renderTablet(); sfx.tick(); }
+$('tabletBtn').addEventListener('click', () => { initAudio(); openTablet(); });
+$('tabClose').addEventListener('click', () => { $('tablet').hidden = true; refreshHint(); });
+$('tablet').addEventListener('click', e => { if (e.target === $('tablet')) { $('tablet').hidden = true; refreshHint(); } });
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; renderTablet(); sfx.tick(); } });
+function toast(text) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = text;
+  $('tabBody').appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 1800);
+}
+const price = n => `<span class="price"><span class="coin"></span>${n}</span>`;
+function renderTablet() {
+  renderMoney();
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  const body = $('tabBody'), busyBench = !!J();
+  let h = '';
+  if (tab === 'orders') {
+    h += `<p class="note">${busyBench ? 'На столе уже есть приставка — закончи с ней, чтобы взять новый заказ.' : 'Клиенты ждут. Деталь, которой нет, купи в магазине или сними с б/у приставки.'}</p>`;
+    S.orders.forEach(o => {
+      const c = CUSTOMERS[o.cust];
+      h += `<div class="row"><div class="top"><div class="ava" style="background-position-x:${-c.face * 48}px"></div>
+        <div class="meta"><b>${esc(c.name)}</b><span>${esc(c.who)}</span></div>${price(o.pay)}</div>
+        <p class="quote">«${esc(c.story)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
+        <button class="btn" data-take="${o.id}" ${busyBench ? 'disabled' : ''}>Взять в работу</button></div>`;
+    });
+  } else if (tab === 'market') {
+    h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
+    S.offers.forEach(o => {
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: 'cover', cond: 'ok' })}">
+        <div class="meta"><b>Pocket Pal PP-90</b><span>Продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
+        <div class="tags"><span class="tag">${esc(o.desc)}</span>${o.missing ? '<span class="tag">не хватает винтов</span>' : ''}<span class="tag">остальное — как повезёт</span></div>
+        <button class="btn" data-buyoff="${o.id}" ${busyBench || S.money < o.price ? 'disabled' : ''}>${busyBench ? 'Стол занят' : 'Купить на разбор'}</button></div>`;
+    });
+  } else if (tab === 'shop') {
+    h += '<p class="note">Новые запчасти. Покупки приходят в коробку.</p>';
+    ['battery', 'lcd', 'speaker', 'pads', 'pcb'].forEach(t => {
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: t, cond: 'ok', fresh: true })}">
+        <div class="meta"><b>${esc(PARTS[t].name)}</b><span>новая, для Pocket Pal</span></div>${price(PARTS[t].price)}</div>
+        <button class="btn" data-buy="${t}" ${S.money < PARTS[t].price ? 'disabled' : ''}>Купить</button></div>`;
+    });
+    ['screw', 'bscrew'].forEach(k => {
+      h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
+        <div class="meta"><b>${SCREW[k].name}</b><span>набор, ${SCREW[k].pack} шт.</span></div>${price(SCREW[k].price)}</div>
+        <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Купить</button></div>`;
+    });
+  } else {
+    h += '<p class="note">Твои запчасти. Нажми «На стол», чтобы поставить деталь в приставку.</p>';
+    ['screw', 'bscrew'].forEach(k => {
+      h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
+        <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. в коробке · ${S.cup[k]} в чашке</span></div></div>
+        <button class="btn alt" data-cup="${k}" ${S.boxScrews[k] ? '' : 'disabled'}>Высыпать в чашку</button></div>`;
+    });
+    if (!S.box.length) h += '<p class="note">Деталей пока нет. Купи в магазине или разбери б/у приставку.</p>';
+    S.box.forEach(it => {
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
+        <div class="meta"><b>${esc(PARTS[it.type].name)}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
+        <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
+    });
+  }
+  body.innerHTML = h;
+}
+$('tabBody').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  initAudio();
+  if (b.dataset.take) {
+    const o = S.orders.find(x => x.id === +b.dataset.take); if (!o || J()) return;
+    S.orders = S.orders.filter(x => x !== o); $('tablet').hidden = true; startJob('order', o); ensureListings(); save();
+  } else if (b.dataset.buyoff) {
+    const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || J() || S.money < o.price) return;
+    S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings(); save(); renderMoney(); sfx.coin();
+    $('tablet').hidden = true; startJob('donor', o);
+  } else if (b.dataset.buy) {
+    const t = b.dataset.buy; if (S.money < PARTS[t].price) return;
+    S.money -= PARTS[t].price; S.box.push(item(t, 'ok', true)); save(); sfx.coin(); renderTablet(); toast(PARTS[t].name + ' — в коробке');
+  } else if (b.dataset.buys) {
+    const k = b.dataset.buys; if (S.money < SCREW[k].price) return;
+    S.money -= SCREW[k].price; S.boxScrews[k] += SCREW[k].pack; save(); sfx.coin(); renderTablet(); toast(SCREW[k].name + ' — в коробке');
+  } else if (b.dataset.cup) {
+    const k = b.dataset.cup; S.cup[k] += S.boxScrews[k]; S.boxScrews[k] = 0; save(); renderCup(); renderTablet(); sfx.tick(); toast('Винты в чашке на столе');
+  } else if (b.dataset.tray) {
+    const it = S.box.find(x => x.id === +b.dataset.tray); if (!it) return;
+    S.box = S.box.filter(x => x !== it); S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
+  }
+});
 
 /* ---------- loop ---------- */
 let last = performance.now(), clock = 0;
@@ -740,26 +1184,32 @@ function frame(now) {
     const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t / tw.dur); tw.fn(tw.e(k));
     if (k >= 1) { tweens.splice(i, 1); tw.res(); }
   }
-  holder.rotation.y = Math.sin(clock * .6) * .05;
+  holder.rotation.y = Math.sin(clock * .6) * .04;
   holder.position.y = Math.sin(clock * 1.1) * .03;
-  const pulse = .07 + .07 * Math.sin(clock * 5);
-  glow.forEach(m => m.emissive && m.emissive.setRGB(pulse, pulse * .55, pulse * .15));
-  if (parts.battery && parts.battery.visible && (step === 'battery_out' || step === 'unscrew' || step === 'cover') && !(drag && drag.obj === parts.battery))
-    parts.battery.scale.z = 1 + Math.sin(clock * 3) * .06;
+  const bat = objs.get('battery');
+  if (bat && J() && J().slots.battery && J().slots.battery.cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
+  shadow.visible = !!J();
   if (hintTarget && hintEl.classList.contains('on')) {
     const p = toScreen(hintTarget.obj, hintTarget.at);
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
   }
+  if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
+// automated playtests open the page with #test to read where parts are on screen
+if (location.hash === '#test') window.__retro = { at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(K.power), pt: (x, y, z) => toScreen(device, new V3(x, y, z)), state: () => S };
+
 /* ---------- boot ---------- */
 function start(data) {
-  if (data && data.money != null) { money = data.money; orderNo = data.orderNo || orderNo; }
-  try { window.claude?.hot?.snapshot?.(() => ({ money, orderNo })); } catch (e) {}
-  makeTextures(); buildShadow(); showIntro();
+  if (data && data.state && data.state.box) S = data.state;
+  try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
+  ensureListings(); save();
+  face($('hero'), 'happy');
+  buildJobScene(); renderTray(); renderMoney(); refreshHint(true);
   requestAnimationFrame(frame);
+  if (!S.seen) { S.seen = true; save(); say('Привет! Я мастер. Заказы приходят на планшет.', 'happy'); setTimeout(() => { if (!J() && !uiOpen()) openTablet('orders'); }, 1600); }
 }
 // labels on the model are painted once, so wait for the faces they use (but never block the game on them)
 const fontsReady = document.fonts && document.fonts.load

@@ -31,6 +31,7 @@ const PASSIVES = [ // x, y, rotated 90°
   [-0.45, -2.05, 1], [0.95, -1.95, 1],
 ];
 const STAIN = [0.22, 0.42];
+const BSCREWS = [[-1.12, -0.55], [1.12, 1.0]];
 
 /* ---------- small utilities ---------- */
 function rng(seed) {
@@ -270,6 +271,32 @@ function textures(font) {
   X.powerWord = word('POWER', 256, 64, '#4a3f35', 600);
   X.pwr = word('PWR', 128, 48, '#b9b9c0', 600);
 
+  X.crack = canvasTex(512, 384, (g, w, h) => {
+    const r = rng(21), cx = w * 0.62, cy = h * 0.38;
+    g.lineCap = 'round';
+    for (let i = 0; i < 11; i++) {
+      let x = cx, y = cy, a = i / 11 * Math.PI * 2 + r() * 0.4;
+      g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 7; k++) { a += (r() - 0.5) * 0.7; const len = 20 + r() * 50; x += Math.cos(a) * len; y += Math.sin(a) * len; g.lineTo(x, y); }
+      g.strokeStyle = 'rgba(20,24,18,.75)'; g.lineWidth = 3.5; g.stroke();
+      g.strokeStyle = 'rgba(240,250,235,.75)'; g.lineWidth = 1.4; g.stroke();
+    }
+    g.fillStyle = 'rgba(15,18,14,.55)'; g.beginPath(); g.arc(cx, cy, 16, 0, 7); g.fill();
+  });
+  X.scorch = canvasTex(256, 256, (g, w, h) => {
+    const r = rng(9);
+    for (let i = 0; i < 26; i++) {
+      const x = w / 2 + (r() - 0.5) * w * 0.5, y = h / 2 + (r() - 0.5) * h * 0.5, rad = 20 + r() * 50;
+      const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(18,12,8,.75)'); gr.addColorStop(1, 'rgba(60,35,15,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    }
+  });
+  X.lcdBack = canvasTex(256, 96, (g, w, h) => {
+    g.fillStyle = '#f2f0ea'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#2a2a2e'; fitText(g, 'LCD 160×144 · PP-90', 12, 40, w - 24, 22, 700, font);
+    fitText(g, 'LOT 9145', 12, 74, w - 24, 18, 600, font);
+  });
+
   X.pcbBack = canvasTex(1024, 1704, (g, w, h) => drawBoard(g, w, h, font, mono, true));
   X.pcbFront = canvasTex(1024, 1704, (g, w, h) => drawBoard(g, w, h, font, mono, false));
   [X.pcbBack, X.pcbFront].forEach(t => { t.repeat.set(1 / PCB.w, 1 / PCB.h); t.offset.set(0.5, 0.5); });
@@ -314,6 +341,7 @@ function drawBoard(g, w, h, font, mono, back) {
   };
 
   SCREWS.forEach(([x, y]) => { const [X, Y] = P(x, y); g.fillStyle = '#c9a85a'; g.beginPath(); g.arc(X, Y, 0.135 * S, 0, 7); g.fill(); g.fillStyle = '#113e24'; g.beginPath(); g.arc(X, Y, 0.1 * S, 0, 7); g.fill(); });
+  BSCREWS.forEach(([x, y]) => { const [X, Y] = P(x, y); g.fillStyle = '#c9a85a'; g.beginPath(); g.arc(X, Y, 0.09 * S, 0, 7); g.fill(); });
 
   if (back) {
     // address/data bus from the CPU to the RAM
@@ -403,6 +431,7 @@ function materials(o, X) {
     cross: decal(X.cross), cpu: decal(X.cpu, { transparent: false, depthWrite: true }), ram: decal(X.ram, { transparent: false, depthWrite: true }),
     snd: decal(X.snd, { transparent: false, depthWrite: true }), qc: decal(X.qc), brand: decal(X.brand), powerWord: decal(X.powerWord), pwr: decal(X.pwr),
     notch: S(0xf1e9d8, { roughness: 0.5 }),
+    crack: decal(X.crack, { roughness: 0.2 }), scorch: decal(X.scorch), lcdBack: decal(X.lcdBack, { transparent: false, depthWrite: true }),
   };
   const dull = { dark: 0.5, rubber: 0.35, black: 0.4, red: 0.6, powerRed: 0.6, pcbEdge: 0.4, chip: 0.5, holder: 0.45, pcbBack: 0.35, pcbFront: 0.35,
     silicone: 0.6, labelOld: 0.3, labelNew: 0.35, tape: 0.5, jst: 0.45, connector: 0.45, tantalum: 0.5, cap: 0.45, res: 0.45,
@@ -412,13 +441,14 @@ function materials(o, X) {
   return M;
 }
 
-/* ---------- the build ---------- */
-function build(opt) {
-  const o = Object.assign({ body: 0xc9b189, trim: 0xb39a74, swollen: true, font: '"Unbounded", "Arial Black", sans-serif', screen: null }, opt);
+/* ---------- the parts kit ---------- */
+// The shell (front half, bezel, dial, buttons) is fixed; every serviceable part has its own maker so the
+// game can take it out, keep it on the bench, and put a different copy of it back in the same place.
+function kit(opt) {
+  const o = Object.assign({ body: 0xc9b189, trim: 0xb39a74, font: '"Unbounded", "Arial Black", sans-serif', screen: null }, opt);
   const X = textures(o.font), M = materials(o, X);
-  const root = new T.Group(); root.name = 'pocket_pal';
   const group = (parent, name, x = 0, y = 0, z = 0, explode = 0) => {
-    const g = new T.Group(); g.name = name; g.position.set(x, y, z); if (explode) g.userData.explode = explode; parent.add(g); return g;
+    const g = new T.Group(); g.name = name; g.position.set(x, y, z); if (explode) g.userData.explode = explode; if (parent) parent.add(g); return g;
   };
   const mesh = (parent, name, geo, mat, x = 0, y = 0, z = 0) => {
     const m = new T.Mesh(geo, mat); m.name = name; m.position.set(x, y, z); parent.add(m); return m;
@@ -426,14 +456,16 @@ function build(opt) {
   const back = m => { m.rotation.y = Math.PI; return m; };
   const plane = (w, h) => new T.PlaneGeometry(w, h);
   const ringRim = (rin, rout, thick) => extrude((() => { const s = disc(rout, 0, 0, false); s.holes.push(disc(rin)); return s; })(), thick, 0.006, 2, 20);
+  const b = 0.03;
+  const wallRing = bv => ringShape(W - 2 * bv, H - 2 * bv, R - bv, W - 2 * WALL, H - 2 * WALL, R - WALL);
+  const shell = new T.Group(); shell.name = 'shell';
 
   /* front half of the shell */
-  const front = group(root, 'front_shell', 0, 0, 0, 1.7);
-  const b = 0.03, plate = rr(W - 2 * b, H - 2 * b, R - b);
+  const front = group(shell, 'front_shell', 0, 0, 0, 1.7);
+  const plate = rr(W - 2 * b, H - 2 * b, R - b);
   plate.holes.push(rr(SCREEN.w, SCREEN.h, 0.16, 0, SCREEN.y, true), disc(0.46, ...DIAL), disc(0.15, ...POWER), ...BUTTONS.map(([x, y]) => disc(0.225, x, y)));
   for (let i = 0; i < GRILL.n; i++) plate.holes.push(stadium(GRILL.len, GRILL.wid, GRILL.ang, GRILL.x + i * GRILL.step, GRILL.y));
   mesh(front, 'front_plate', extrude(plate, 0.14, b, 5), M.body, 0, 0, 0.24);
-  const wallRing = bv => ringShape(W - 2 * bv, H - 2 * bv, R - bv, W - 2 * WALL, H - 2 * WALL, R - WALL);
   mesh(front, 'front_walls', extrude(wallRing(0.015), 0.25, 0.015, 3), M.body, 0, 0, 0.125);
   mesh(front, 'dial_collar', ringRim(0.46, 0.53, 0.03), M.trim, ...DIAL, 0.318);
   BUTTONS.forEach(([x, y], i) => mesh(front, 'button_collar_' + (i + 1), ringRim(0.225, 0.27, 0.024), M.trim, x, y, 0.316));
@@ -451,12 +483,12 @@ function build(opt) {
   mesh(front, 'card_slot', roundedBox(0.42, 0.02, 0.045, 0.008), M.black, 0, 2.452, 0.1);
   mesh(front, 'usb_port', roundedBox(0.34, 0.03, 0.11, 0.05), M.black, 0, -2.452, 0.1);
   mesh(front, 'usb_tongue', roundedBox(0.2, 0.02, 0.024, 0.008), M.tin, 0, -2.456, 0.1);
-  const jack = mesh(front, 'audio_jack', new T.CylinderGeometry(0.055, 0.055, 0.03, 24), M.black, -0.82, -2.452, 0.1);
+  mesh(front, 'audio_jack', new T.CylinderGeometry(0.055, 0.055, 0.03, 24), M.black, -0.82, -2.452, 0.1);
   const jackRing = mesh(front, 'audio_jack_ring', new T.TorusGeometry(0.063, 0.009, 8, 28), M.tin, -0.82, -2.456, 0.1);
-  jackRing.rotation.x = Math.PI / 2; void jack;
+  jackRing.rotation.x = Math.PI / 2;
 
   /* screen bezel, glass and power LED */
-  const bezel = group(root, 'bezel', 0, SCREEN.y, 0.27, 2.3);
+  const bezel = group(shell, 'bezel', 0, SCREEN.y, 0.27, 2.3);
   const bz = ringShape(2.28 - 0.016, 1.78 - 0.016, 0.135, WINDOW.w, WINDOW.h, 0.06, WINDOW.y - SCREEN.y);
   mesh(bezel, 'bezel_frame', extrude(bz, 0.06, 0.008, 2), M.dark);
   const ledGeo = new T.SphereGeometry(0.034, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2); ledGeo.rotateX(Math.PI / 2);
@@ -464,14 +496,8 @@ function build(opt) {
   mesh(bezel, 'led_label', plane(0.15, 0.056), M.pwr, -1.015, 0.29, 0.0305);
   mesh(bezel, 'screen_glass', plane(WINDOW.w, WINDOW.h), M.glass, 0, WINDOW.y - SCREEN.y, 0.022);
 
-  /* LCD module */
-  const lcd = group(root, 'lcd', 0, WINDOW.y, 0.215, 1.25);
-  mesh(lcd, 'lcd_frame', roundedBox(1.98, 1.5, 0.05, 0.015), M.tin);
-  const screen = mesh(lcd, 'lcd_panel', plane(1.84, 1.36), M.lcd, 0, 0, 0.0255);
-  mesh(lcd, 'lcd_flex', new T.BoxGeometry(0.5, 0.006, 0.1), M.flex, 0, -0.752, -0.075);
-
   /* thumb dial */
-  const dial = group(root, 'thumb_dial', ...DIAL, 0.225, 1.25);
+  const dial = group(shell, 'thumb_dial', ...DIAL, 0.225, 1.25);
   const knob = [lathe([[0, 0], [0.45, 0], [0.45, 0], [0.45, 0.03], [0.45, 0.03], [0.37, 0.03], [0.37, 0.03], [0.37, 0.15], [0.362, 0.162], [0.338, 0.17], [0.26, 0.164], [0.14, 0.156], [0, 0.153]], 64)];
   for (let i = 0; i < 48; i++) { const k = new T.BoxGeometry(0.018, 0.1, 0.02); k.translate(0, 0.09, 0.372); k.rotateY(i / 48 * Math.PI * 2); knob.push(k); }
   const knobGeo = merge(knob); knobGeo.rotateX(Math.PI / 2);
@@ -482,141 +508,202 @@ function build(opt) {
   /* action buttons and power */
   const btnGeo = lathe([[0, 0], [0.235, 0], [0.235, 0], [0.235, 0.03], [0.235, 0.03], [0.19, 0.03], [0.19, 0.03], [0.19, 0.17], [0.186, 0.195], [0.17, 0.216], [0.135, 0.234], [0.075, 0.246], [0, 0.25]]);
   btnGeo.rotateX(Math.PI / 2);
-  BUTTONS.forEach(([x, y], i) => { const g = group(root, 'button_' + 'abc'[i], x, y, 0.13, 1.25); mesh(g, 'button_' + 'abc'[i] + '_cap', btnGeo, M.red); });
+  BUTTONS.forEach(([x, y], i) => { const g = group(shell, 'button_' + 'abc'[i], x, y, 0.13, 1.25); mesh(g, 'button_' + 'abc'[i] + '_cap', btnGeo, M.red); });
   const pwrGeo = lathe([[0, 0], [0.14, 0], [0.14, 0], [0.14, 0.02], [0.14, 0.02], [0.11, 0.02], [0.11, 0.02], [0.11, 0.1], [0.104, 0.118], [0.088, 0.13], [0.05, 0.138], [0, 0.14]]);
   pwrGeo.rotateX(Math.PI / 2);
-  const powerGroup = group(root, 'power_button', ...POWER, 0.2, 1.25);
+  const powerGroup = group(shell, 'power_button', ...POWER, 0.2, 1.25);
   const power = mesh(powerGroup, 'power_button_cap', pwrGeo, M.powerRed);
 
-  /* rubber pads under the controls */
-  const pads = group(root, 'button_pads', 0, 0, 0, 0.75);
-  const dome = (r, hgt) => { const g = lathe([[0, 0], [r, 0], [r, 0], [r, 0.012], [r * 0.9, 0.02], [r * 0.72, hgt * 0.9], [0, hgt]], 32); g.rotateX(Math.PI / 2); return g; };
-  mesh(pads, 'dial_pad', dome(0.42, 0.035), M.silicone, ...DIAL, 0.1);
-  BUTTONS.forEach(([x, y], i) => mesh(pads, 'button_pad_' + (i + 1), dome(0.2, 0.05), M.silicone, x, y, 0.1));
-  for (let i = 0; i < 3; i++) {
-    const [ax, ay] = BUTTONS[i], [bx, by] = BUTTONS[(i + 1) % 3], len = Math.hypot(bx - ax, by - ay);
-    const web = mesh(pads, 'button_web_' + (i + 1), roundedBox(len, 0.1, 0.012, 0.005), M.silicone, (ax + bx) / 2, (ay + by) / 2, 0.106);
-    web.rotation.z = Math.atan2(by - ay, bx - ax);
-  }
-  mesh(pads, 'power_pad', dome(0.14, 0.04), M.silicone, ...POWER, 0.1);
+  /* ---------- serviceable parts ---------- */
+  const make = {}, pose = {};
 
-  /* speaker behind the grill */
-  const spk = group(root, 'speaker', ...SPEAKER, 0.1325, 0.45);
-  const spkBody = mesh(spk, 'speaker_body', new T.CylinderGeometry(0.27, 0.25, 0.065, 40), M.black); spkBody.rotation.x = Math.PI / 2;
-  mesh(spk, 'speaker_face', new T.CircleGeometry(0.262, 40), M.speaker, 0, 0, 0.0328);
-
-  /* main board and everything soldered to it */
-  const pcb = group(root, 'pcb');
-  const holes = s => { SCREWS.forEach(([x, y]) => s.holes.push(disc(0.1, x, y))); return s; };
-  mesh(pcb, 'pcb_board', extrude(holes(rr(PCB.w - 0.008, PCB.h - 0.008, PCB.r - 0.004)), 0.04, 0.004, 1), M.pcbEdge, 0, 0, 0.08);
-  const face = holes(rr(PCB.w - 0.01, PCB.h - 0.01, PCB.r));
-  back(mesh(pcb, 'pcb_back_print', new T.ShapeGeometry(face, 14), M.pcbBack, 0, 0, PCB.back - 0.0008));
-  mesh(pcb, 'pcb_front_print', new T.ShapeGeometry(face, 14), M.pcbFront, 0, 0, PCB.front + 0.0008);
-
-  const zOn = hgt => PCB.back - hgt / 2; // centre of a part of this height resting on the back of the board
-  const chip = (name, [x, y, w, h], hgt, topMat, pinsX, pinsY, pitch) => {
-    mesh(pcb, name, roundedBox(w, h, hgt, 0.008), M.chip, x, y, zOn(hgt) - 0.006);
-    back(mesh(pcb, name + '_marking', plane(w - 0.04, h - 0.04), topMat, x, y, zOn(hgt) - 0.006 - hgt / 2 - 0.0008));
-    const pins = [];
-    for (let k = 0; k < pinsX; k++) { const ox = (k - (pinsX - 1) / 2) * pitch; [1, -1].forEach(s => pins.push(at(new T.BoxGeometry(0.022, 0.08, 0.012), x + ox, y + s * (h / 2 + 0.035), 0.052))); }
-    for (let k = 0; k < pinsY; k++) { const oy = (k - (pinsY - 1) / 2) * pitch; [1, -1].forEach(s => pins.push(at(new T.BoxGeometry(0.08, 0.022, 0.012), x + s * (w / 2 + 0.035), y + oy, 0.052))); }
-    if (pins.length) mesh(pcb, name + '_pins', merge(pins), M.tin);
+  make.lcd = ({ cracked } = {}) => {
+    const g = group(null, 'lcd', 0, WINDOW.y, 0.215, 1.25);
+    mesh(g, 'lcd_frame', roundedBox(1.98, 1.5, 0.05, 0.015), M.tin);
+    g.userData.panel = mesh(g, 'lcd_panel', plane(1.84, 1.36), M.lcd, 0, 0, 0.0255);
+    if (cracked) mesh(g, 'lcd_crack', plane(1.84, 1.36), M.crack, 0, 0, 0.0262);
+    mesh(g, 'lcd_flex', new T.BoxGeometry(0.5, 0.006, 0.1), M.flex, 0, -0.752, -0.075);
+    back(mesh(g, 'lcd_sticker', plane(0.6, 0.22), M.lcdBack, 0.4, 0.3, -0.0255));
+    return g;
   };
-  chip('cpu', CPU, 0.05, M.cpu, 14, 14, 0.042);
-  chip('ram', RAM, 0.04, M.ram, 8, 0, 0.06);
-  chip('sound_chip', SND, 0.03, M.snd, 0, 0, 0);
-  mesh(pcb, 'crystal', roundedBox(XTAL[2], XTAL[3], 0.05, 0.05), M.steel, XTAL[0], XTAL[1], zOn(0.05));
-  const tBody = [], tBand = [];
-  TANTALUM.forEach(([x, y]) => { tBody.push(at(roundedBox(0.15, 0.08, 0.06, 0.008), x, y, zOn(0.06))); tBand.push(at(new T.BoxGeometry(0.026, 0.082, 0.062), x + 0.052, y, zOn(0.06))); });
-  mesh(pcb, 'tantalum_caps', merge(tBody), M.tantalum); mesh(pcb, 'tantalum_bands', merge(tBand), M.band);
-  const caps = [], res = [], ends = [];
-  PASSIVES.forEach(([x, y, rot], i) => {
-    const bw = rot ? 0.045 : 0.08, bh = rot ? 0.08 : 0.045;
-    (i % 2 ? res : caps).push(at(new T.BoxGeometry(bw, bh, 0.026), x, y, zOn(0.026)));
-    [-1, 1].forEach(s => ends.push(at(new T.BoxGeometry(rot ? 0.047 : 0.016, rot ? 0.016 : 0.047, 0.028), x + (rot ? 0 : s * 0.036), y + (rot ? s * 0.036 : 0), zOn(0.028))));
-  });
-  mesh(pcb, 'capacitors', merge(caps), M.cap); mesh(pcb, 'resistors', merge(res), M.res); mesh(pcb, 'passive_ends', merge(ends), M.tin);
-  mesh(pcb, 'lcd_connector', roundedBox(FLEX[2], FLEX[3], 0.055, 0.01), M.connector, FLEX[0], FLEX[1], zOn(0.055));
-  mesh(pcb, 'lcd_connector_latch', roundedBox(FLEX[2] - 0.04, 0.04, 0.02, 0.006), M.dark, FLEX[0], FLEX[1] + 0.04, zOn(0.055) - 0.03);
-  mesh(pcb, 'lcd_flex_back', new T.BoxGeometry(0.8, 0.2, 0.006), M.flex, 0, 2.18, PCB.back - 0.004);
-  const bend = new T.CylinderGeometry(0.024, 0.024, 0.8, 16, 1, true, 0, Math.PI); bend.rotateZ(Math.PI / 2);
-  mesh(pcb, 'lcd_flex_bend', bend, M.flex, 0, PCB.h / 2, 0.08);
-  mesh(pcb, 'battery_connector', roundedBox(JST[2], JST[3], 0.1, 0.012), M.jst, JST[0], JST[1], zOn(0.1));
-  mesh(pcb, 'usb_receptacle', roundedBox(USB[2], USB[3], 0.12, 0.04), M.steel, USB[0], USB[1], 0);
-  mesh(pcb, 'jack_module', roundedBox(JACK[2], JACK[3], 0.12, 0.02), M.chip, JACK[0], JACK[1], 0);
-  back(mesh(pcb, 'qc_sticker', new T.CircleGeometry(0.07, 24), M.qc, 0.62, -0.62, PCB.back - 0.0015));
 
-  const holder = ringShape(HOLDER[2] - 0.012, HOLDER[3] - 0.012, 0.07, 1.58, 0.88, 0.04);
-  mesh(pcb, 'battery_holder', extrude(holder, 0.12, 0.006, 2), M.holder, HOLDER[0], HOLDER[1], 0);
-  const contacts = [-1, 1].map(s => {
-    const c = group(pcb, 'contact_' + (s < 0 ? 'left' : 'right'), s * 0.69, BAY[1], 0.052);
-    mesh(c, 'plate', roundedBox(0.17, 0.36, 0.012, 0.004), M.brass);
-    mesh(c, 'finger', roundedBox(0.012, 0.3, 0.09, 0.004), M.brass, s * 0.095, 0, -0.045);
-    const tab = mesh(c, 'spring', roundedBox(0.012, 0.2, 0.07, 0.004), M.brass, s * 0.07, 0, -0.055); tab.rotation.y = s * 0.5;
-    mesh(c, 'tail', roundedBox(0.09, 0.06, 0.012, 0.004), M.brass, s * 0.22, 0, 0);
-    return c;
-  });
-  const wire = (name, pts, mat) => mesh(pcb, name, new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p))), 80, 0.016, 6), mat);
-  wire('wire_red', [[0.94, -0.49, 0.03], [1.0, -0.62, 0.034], [1.03, -0.9, 0.036], [0.98, -1.12, 0.04], [0.92, -1.2, 0.044]], M.wireRed);
-  wire('wire_black', [[1.02, -0.49, 0.03], [0.9, -0.6, 0.03], [0.4, -0.64, 0.032], [-0.4, -0.64, 0.032], [-0.88, -0.67, 0.032], [-1.02, -0.9, 0.036], [-0.98, -1.12, 0.04], [-0.92, -1.2, 0.044]], M.wireBlack);
+  make.pads = () => {
+    const g = group(null, 'button_pads', 0, 0, 0, 0.75);
+    const dome = (r, hgt) => { const d = lathe([[0, 0], [r, 0], [r, 0], [r, 0.012], [r * 0.9, 0.02], [r * 0.72, hgt * 0.9], [0, hgt]], 32); d.rotateX(Math.PI / 2); return d; };
+    mesh(g, 'dial_pad', dome(0.42, 0.035), M.silicone, ...DIAL, 0.1);
+    BUTTONS.forEach(([x, y], i) => mesh(g, 'button_pad_' + (i + 1), dome(0.2, 0.05), M.silicone, x, y, 0.1));
+    for (let i = 0; i < 3; i++) {
+      const [ax, ay] = BUTTONS[i], [bx, by] = BUTTONS[(i + 1) % 3], len = Math.hypot(bx - ax, by - ay);
+      const web = mesh(g, 'button_web_' + (i + 1), roundedBox(len, 0.1, 0.012, 0.005), M.silicone, (ax + bx) / 2, (ay + by) / 2, 0.106);
+      web.rotation.z = Math.atan2(by - ay, bx - ax);
+    }
+    mesh(g, 'power_pad', dome(0.14, 0.04), M.silicone, ...POWER, 0.1);
+    return g;
+  };
 
-  /* battery: a lithium pouch, swollen in the broken unit */
-  const pouch = (name, swell, pouchMat, labelMat) => {
-    const g = group(root, name, BAY[0], BAY[1], 0, -0.75);
-    const hw = 0.75, hh = 0.42, bb = swell ? 0.06 : 0, bf = swell ? 0.015 : 0;
+  make.speaker = ({ burnt } = {}) => {
+    const g = group(null, 'speaker', ...SPEAKER, 0.1325, 0.45);
+    const body = mesh(g, 'speaker_body', new T.CylinderGeometry(0.27, 0.25, 0.065, 40), M.black); body.rotation.x = Math.PI / 2;
+    mesh(g, 'speaker_face', new T.CircleGeometry(0.262, 40), M.speaker, 0, 0, 0.0328);
+    back(mesh(g, 'speaker_magnet', new T.CircleGeometry(0.16, 32), M.tin, 0, 0, -0.0332));
+    if (burnt) back(mesh(g, 'speaker_scorch', plane(0.5, 0.5), M.scorch, 0.02, -0.02, -0.0336));
+    return g;
+  };
+
+  const boardShape = (pad = 0) => {
+    const s = rr(PCB.w - 0.008 - pad, PCB.h - 0.008 - pad, PCB.r - 0.004);
+    SCREWS.forEach(([x, y]) => s.holes.push(disc(0.1, x, y)));
+    BSCREWS.forEach(([x, y]) => s.holes.push(disc(0.032, x, y)));
+    return s;
+  };
+  const boardGeo = extrude(boardShape(), 0.04, 0.004, 1), faceGeo = new T.ShapeGeometry(boardShape(0.002), 14);
+  make.pcb = ({ burnt } = {}) => {
+    const pcb = group(null, 'pcb');
+    mesh(pcb, 'pcb_board', boardGeo, M.pcbEdge, 0, 0, 0.08);
+    back(mesh(pcb, 'pcb_back_print', faceGeo, M.pcbBack, 0, 0, PCB.back - 0.0008));
+    mesh(pcb, 'pcb_front_print', faceGeo, M.pcbFront, 0, 0, PCB.front + 0.0008);
+    const zOn = hgt => PCB.back - hgt / 2;
+    const chip = (name, [x, y, w, h], hgt, topMat, pinsX, pinsY, pitch) => {
+      mesh(pcb, name, roundedBox(w, h, hgt, 0.008), M.chip, x, y, zOn(hgt) - 0.006);
+      back(mesh(pcb, name + '_marking', plane(w - 0.04, h - 0.04), topMat, x, y, zOn(hgt) - 0.006 - hgt / 2 - 0.0008));
+      const pins = [];
+      for (let k = 0; k < pinsX; k++) { const ox = (k - (pinsX - 1) / 2) * pitch; [1, -1].forEach(s => pins.push(at(new T.BoxGeometry(0.022, 0.08, 0.012), x + ox, y + s * (h / 2 + 0.035), 0.052))); }
+      for (let k = 0; k < pinsY; k++) { const oy = (k - (pinsY - 1) / 2) * pitch; [1, -1].forEach(s => pins.push(at(new T.BoxGeometry(0.08, 0.022, 0.012), x + s * (w / 2 + 0.035), y + oy, 0.052))); }
+      if (pins.length) mesh(pcb, name + '_pins', merge(pins), M.tin);
+    };
+    chip('cpu', CPU, 0.05, M.cpu, 14, 14, 0.042);
+    chip('ram', RAM, 0.04, M.ram, 8, 0, 0.06);
+    chip('sound_chip', SND, 0.03, M.snd, 0, 0, 0);
+    mesh(pcb, 'crystal', roundedBox(XTAL[2], XTAL[3], 0.05, 0.05), M.steel, XTAL[0], XTAL[1], zOn(0.05));
+    const tBody = [], tBand = [];
+    TANTALUM.forEach(([x, y]) => { tBody.push(at(roundedBox(0.15, 0.08, 0.06, 0.008), x, y, zOn(0.06))); tBand.push(at(new T.BoxGeometry(0.026, 0.082, 0.062), x + 0.052, y, zOn(0.06))); });
+    mesh(pcb, 'tantalum_caps', merge(tBody), M.tantalum); mesh(pcb, 'tantalum_bands', merge(tBand), M.band);
+    const caps = [], res = [], ends = [];
+    PASSIVES.forEach(([x, y, rot], i) => {
+      const bw = rot ? 0.045 : 0.08, bh = rot ? 0.08 : 0.045;
+      (i % 2 ? res : caps).push(at(new T.BoxGeometry(bw, bh, 0.026), x, y, zOn(0.026)));
+      [-1, 1].forEach(s => ends.push(at(new T.BoxGeometry(rot ? 0.047 : 0.016, rot ? 0.016 : 0.047, 0.028), x + (rot ? 0 : s * 0.036), y + (rot ? s * 0.036 : 0), zOn(0.028))));
+    });
+    mesh(pcb, 'capacitors', merge(caps), M.cap); mesh(pcb, 'resistors', merge(res), M.res); mesh(pcb, 'passive_ends', merge(ends), M.tin);
+    mesh(pcb, 'lcd_connector', roundedBox(FLEX[2], FLEX[3], 0.055, 0.01), M.connector, FLEX[0], FLEX[1], zOn(0.055));
+    mesh(pcb, 'lcd_connector_latch', roundedBox(FLEX[2] - 0.04, 0.04, 0.02, 0.006), M.dark, FLEX[0], FLEX[1] + 0.04, zOn(0.055) - 0.03);
+    mesh(pcb, 'lcd_flex_back', new T.BoxGeometry(0.8, 0.2, 0.006), M.flex, 0, 2.18, PCB.back - 0.004);
+    const bend = new T.CylinderGeometry(0.024, 0.024, 0.8, 16, 1, true, 0, Math.PI); bend.rotateZ(Math.PI / 2);
+    mesh(pcb, 'lcd_flex_bend', bend, M.flex, 0, PCB.h / 2, 0.08);
+    mesh(pcb, 'battery_connector', roundedBox(JST[2], JST[3], 0.1, 0.012), M.jst, JST[0], JST[1], zOn(0.1));
+    mesh(pcb, 'usb_receptacle', roundedBox(USB[2], USB[3], 0.12, 0.04), M.steel, USB[0], USB[1], 0);
+    mesh(pcb, 'jack_module', roundedBox(JACK[2], JACK[3], 0.12, 0.02), M.chip, JACK[0], JACK[1], 0);
+    back(mesh(pcb, 'qc_sticker', new T.CircleGeometry(0.07, 24), M.qc, 0.62, -0.62, PCB.back - 0.0015));
+    if (burnt) back(mesh(pcb, 'pcb_scorch', plane(0.7, 0.7), M.scorch, CPU[0] + 0.35, CPU[1] - 0.42, PCB.back - 0.002));
+    const holder = ringShape(HOLDER[2] - 0.012, HOLDER[3] - 0.012, 0.07, 1.58, 0.88, 0.04);
+    mesh(pcb, 'battery_holder', extrude(holder, 0.12, 0.006, 2), M.holder, HOLDER[0], HOLDER[1], 0);
+    [-1, 1].forEach(s => {
+      const c = group(pcb, 'contact_' + (s < 0 ? 'left' : 'right'), s * 0.69, BAY[1], 0.052);
+      mesh(c, 'plate', roundedBox(0.17, 0.36, 0.012, 0.004), M.brass);
+      mesh(c, 'finger', roundedBox(0.012, 0.3, 0.09, 0.004), M.brass, s * 0.095, 0, -0.045);
+      const tab = mesh(c, 'spring', roundedBox(0.012, 0.2, 0.07, 0.004), M.brass, s * 0.07, 0, -0.055); tab.rotation.y = s * 0.5;
+      mesh(c, 'tail', roundedBox(0.09, 0.06, 0.012, 0.004), M.brass, s * 0.22, 0, 0);
+    });
+    const wire = (name, pts, mat) => mesh(pcb, name, new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p))), 80, 0.016, 6), mat);
+    wire('wire_red', [[0.94, -0.49, 0.03], [1.0, -0.62, 0.034], [1.03, -0.9, 0.036], [0.98, -1.12, 0.04], [0.92, -1.2, 0.044]], M.wireRed);
+    wire('wire_black', [[1.02, -0.49, 0.03], [0.9, -0.6, 0.03], [0.4, -0.64, 0.032], [-0.4, -0.64, 0.032], [-0.88, -0.67, 0.032], [-1.02, -0.9, 0.036], [-0.98, -1.12, 0.04], [-0.92, -1.2, 0.044]], M.wireBlack);
+    return pcb;
+  };
+
+  // lithium pouch: swollen when broken, blue label when bought new
+  make.battery = ({ swollen, fresh } = {}) => {
+    const g = group(null, 'battery', BAY[0], BAY[1], 0, -0.75);
+    const pouchMat = fresh ? M.pouchNew : M.pouch, labelMat = fresh ? M.labelNew : M.labelOld;
+    const hw = 0.75, hh = 0.42, bb = swollen ? 0.06 : 0, bf = swollen ? 0.015 : 0;
     const f = (x, y) => Math.max(0, 1 - (x / hw) ** 2) * Math.max(0, 1 - (y / hh) ** 2);
     const puff = ox => v => { const k = f(v.x + ox, v.y); if (v.z < 0) v.z -= bb * k; else v.z += bf * k; };
-    mesh(g, name + '_pouch', roundedBox(1.5, 0.84, 0.11, 0.035, [18, 12, 2], puff(0)), pouchMat);
+    mesh(g, 'battery_pouch', roundedBox(1.5, 0.84, 0.11, 0.035, [18, 12, 2], puff(0)), pouchMat);
     const lg = new T.PlaneGeometry(1.26, 0.63, 24, 12); lg.rotateY(Math.PI);
     const lp = lg.attributes.position, lx = -0.04;
     for (let i = 0; i < lp.count; i++) lp.setZ(i, -0.0572 - bb * f(lp.getX(i) + lx, lp.getY(i)));
     lg.computeVertexNormals();
-    mesh(g, name + '_label', lg, labelMat, lx, 0, 0);
-    mesh(g, name + '_tape', roundedBox(0.12, 0.862, 0.118, 0.02, [4, 12, 2], puff(0.69)), M.tape, 0.69, 0, 0);
-    [-1, 1].forEach(s => mesh(g, name + '_tab_' + (s < 0 ? 'neg' : 'pos'), roundedBox(0.05, 0.14, 0.012, 0.004), M.tin, s * 0.77, 0, 0.03));
+    mesh(g, 'battery_label', lg, labelMat, lx, 0, 0);
+    mesh(g, 'battery_tape', roundedBox(0.12, 0.862, 0.118, 0.02, [4, 12, 2], puff(0.69)), M.tape, 0.69, 0, 0);
+    [-1, 1].forEach(s => mesh(g, 'battery_tab_' + (s < 0 ? 'neg' : 'pos'), roundedBox(0.05, 0.14, 0.012, 0.004), M.tin, s * 0.77, 0, 0.03));
     return g;
   };
-  const battery = pouch('battery', o.swollen, M.pouch, M.labelOld);
-  const newBattery = pouch('battery_new', false, M.pouchNew, M.labelNew); newBattery.visible = false;
 
-  /* back cover: plate, walls, label, grip and battery door move as one piece */
-  const cover = group(root, 'back_cover', 0, 0, 0, -1.7);
-  const bplate = rr(W - 2 * b, H - 2 * b, R - b); SCREWS.forEach(([x, y]) => bplate.holes.push(disc(0.125, x, y)));
-  mesh(cover, 'back_plate', extrude(bplate, 0.14, b, 5), M.coverBody, 0, 0, -0.24);
-  mesh(cover, 'back_walls', extrude(wallRing(0.015), 0.25, 0.015, 3), M.coverBody, 0, 0, -0.125);
-  SCREWS.forEach(([x, y], i) => {
-    const boss = mesh(cover, 'back_boss_' + (i + 1), new T.CylinderGeometry(0.12, 0.12, 0.165, 24), M.coverTrim, x, y, -0.0875); boss.rotation.x = Math.PI / 2;
-    back(mesh(cover, 'screw_channel_' + (i + 1), new T.CircleGeometry(0.06, 16), M.black, x, y, -0.1712));
-  });
-  mesh(cover, 'label_frame', extrude(ringShape(1.62, 0.9, 0.06, 1.5, 0.78, 0.04), 0.01, 0.002, 1), M.coverTrim, 0, 1.3, -0.315);
-  back(mesh(cover, 'label', plane(1.5, 0.78), M.sticker, 0, 1.3, -0.3106));
-  for (let i = 0; i < 7; i++) mesh(cover, 'grip_ridge_' + (i + 1), roundedBox(2.2, 0.04, 0.03, 0.012), M.coverBody, 0, -0.2 - i * 0.1, -0.31);
-  mesh(cover, 'battery_door_seam', extrude(ringShape(1.9, 1.16, 0.06, 1.82, 1.08, 0.045), 0.004, 0, 1), M.groove, 0, -1.6, -0.3105);
-  mesh(cover, 'battery_door', roundedBox(1.82, 1.08, 0.03, 0.012), M.coverBody, 0, -1.6, -0.301);
-  for (let i = 0; i < 5; i++) mesh(cover, 'door_ridge_' + (i + 1), roundedBox(1.3, 0.025, 0.012, 0.005), M.coverBody, 0, -1.78 - i * 0.07, -0.318);
-  mesh(cover, 'door_latch', roundedBox(0.36, 0.1, 0.03, 0.012), M.coverTrim, 0, -1.14, -0.318);
-  for (let i = 0; i < 3; i++) mesh(cover, 'latch_grip_' + (i + 1), new T.BoxGeometry(0.26, 0.012, 0.01), M.coverBody, 0, -1.115 - i * 0.025, -0.334);
-
-  /* four Phillips screws: head outward (-Z), thread into the shell (+Z) */
-  const head = lathe([[0, 0], [0.105, 0], [0.105, 0], [0.105, 0.014], [0.098, 0.024], [0.085, 0.03], [0.07, 0.032], [0, 0.032]], 32);
-  const shank = new T.CylinderGeometry(0.04, 0.03, 0.34, 16); shank.translate(0, -0.17, 0);
-  const helix = []; for (let t = 0; t <= 10 * Math.PI * 2; t += 0.25) helix.push(new T.Vector3(Math.cos(t) * 0.044, -0.02 - t / (Math.PI * 2) * 0.03, Math.sin(t) * 0.044));
-  const thread = new T.TubeGeometry(new T.CatmullRomCurve3(helix), 160, 0.009, 4);
-  const screwGeo = merge([head, shank, thread]); screwGeo.rotateX(-Math.PI / 2);
-  const screws = SCREWS.map(([x, y], i) => {
-    const g = group(root, 'screw_' + (i + 1), x, y, -0.302, -2.5);
-    mesh(g, 'screw_' + (i + 1) + '_body', screwGeo, M.screw);
-    back(mesh(g, 'screw_' + (i + 1) + '_slot', plane(0.13, 0.13), M.cross, 0, 0, -0.0326));
-    return g;
-  });
-
-  return {
-    root, cover, screws, battery, newBattery, power, led, screen, contacts,
-    slot: battery.position.clone(),
-    spots: { contacts: contacts.map(c => new T.Vector3(c.position.x, c.position.y, 0.044)), stain: new T.Vector3(STAIN[0], STAIN[1], PCB.back - 0.0015) },
-    glow: { screws: [M.screw], cover: [M.coverBody, M.coverTrim], battery: [M.pouch, M.labelOld], newBattery: [M.pouchNew, M.labelNew], power: [M.powerRed] },
-    materials: M,
+  // back cover: plate, walls, label, grip and battery door move as one piece
+  make.cover = () => {
+    const cover = group(null, 'back_cover', 0, 0, 0, -1.7);
+    const bplate = rr(W - 2 * b, H - 2 * b, R - b); SCREWS.forEach(([x, y]) => bplate.holes.push(disc(0.125, x, y)));
+    mesh(cover, 'back_plate', extrude(bplate, 0.14, b, 5), M.coverBody, 0, 0, -0.24);
+    mesh(cover, 'back_walls', extrude(wallRing(0.015), 0.25, 0.015, 3), M.coverBody, 0, 0, -0.125);
+    SCREWS.forEach(([x, y], i) => {
+      const boss = mesh(cover, 'back_boss_' + (i + 1), new T.CylinderGeometry(0.12, 0.12, 0.165, 24), M.coverTrim, x, y, -0.0875); boss.rotation.x = Math.PI / 2;
+      back(mesh(cover, 'screw_channel_' + (i + 1), new T.CircleGeometry(0.06, 16), M.black, x, y, -0.1712));
+    });
+    mesh(cover, 'label_frame', extrude(ringShape(1.62, 0.9, 0.06, 1.5, 0.78, 0.04), 0.01, 0.002, 1), M.coverTrim, 0, 1.3, -0.315);
+    back(mesh(cover, 'label', plane(1.5, 0.78), M.sticker, 0, 1.3, -0.3106));
+    for (let i = 0; i < 7; i++) mesh(cover, 'grip_ridge_' + (i + 1), roundedBox(2.2, 0.04, 0.03, 0.012), M.coverBody, 0, -0.2 - i * 0.1, -0.31);
+    mesh(cover, 'battery_door_seam', extrude(ringShape(1.9, 1.16, 0.06, 1.82, 1.08, 0.045), 0.004, 0, 1), M.groove, 0, -1.6, -0.3105);
+    mesh(cover, 'battery_door', roundedBox(1.82, 1.08, 0.03, 0.012), M.coverBody, 0, -1.6, -0.301);
+    for (let i = 0; i < 5; i++) mesh(cover, 'door_ridge_' + (i + 1), roundedBox(1.3, 0.025, 0.012, 0.005), M.coverBody, 0, -1.78 - i * 0.07, -0.318);
+    mesh(cover, 'door_latch', roundedBox(0.36, 0.1, 0.03, 0.012), M.coverTrim, 0, -1.14, -0.318);
+    for (let i = 0; i < 3; i++) mesh(cover, 'latch_grip_' + (i + 1), new T.BoxGeometry(0.26, 0.012, 0.01), M.coverBody, 0, -1.115 - i * 0.025, -0.334);
+    return cover;
   };
+
+  // Phillips screws: head outward (-Z), thread into the shell (+Z)
+  const screwGeo = (hr, hh, sr, len, turns) => {
+    const head = lathe([[0, 0], [hr, 0], [hr, 0], [hr, hh * 0.44], [hr * 0.93, hh * 0.75], [hr * 0.81, hh * 0.94], [hr * 0.67, hh], [0, hh]], 32);
+    const shank = new T.CylinderGeometry(sr, sr * 0.75, len, 16); shank.translate(0, -len / 2, 0);
+    const helix = []; for (let t = 0; t <= turns * Math.PI * 2; t += 0.25) helix.push(new T.Vector3(Math.cos(t) * sr * 1.1, -0.02 - t / (Math.PI * 2) * (len - 0.04) / turns, Math.sin(t) * sr * 1.1));
+    const thread = new T.TubeGeometry(new T.CatmullRomCurve3(helix), turns * 16, sr * 0.22, 4);
+    const g = merge([head, shank, thread]); g.rotateX(-Math.PI / 2);
+    return g;
+  };
+  const caseScrew = screwGeo(0.105, 0.032, 0.04, 0.34, 10), boardScrew = screwGeo(0.072, 0.024, 0.026, 0.13, 5);
+  make.screw = i => {
+    const [x, y] = SCREWS[i - 1], g = group(null, 'screw_' + i, x, y, -0.302, -2.5);
+    mesh(g, 'screw_' + i + '_body', caseScrew, M.screw);
+    back(mesh(g, 'screw_' + i + '_slot', plane(0.13, 0.13), M.cross, 0, 0, -0.0326));
+    return g;
+  };
+  make.bscrew = i => {
+    const [x, y] = BSCREWS[i - 1], g = group(null, 'bscrew_' + i, x, y, PCB.back, -1.1);
+    mesh(g, 'bscrew_' + i + '_body', boardScrew, M.screw);
+    back(mesh(g, 'bscrew_' + i + '_slot', plane(0.09, 0.09), M.cross, 0, 0, -0.0246));
+    return g;
+  };
+
+  // where each part sits when installed (device coordinates)
+  pose.lcd = new T.Vector3(0, WINDOW.y, 0.215); pose.pads = new T.Vector3(); pose.speaker = new T.Vector3(SPEAKER[0], SPEAKER[1], 0.1325);
+  pose.pcb = new T.Vector3(); pose.battery = new T.Vector3(BAY[0], BAY[1], 0); pose.cover = new T.Vector3();
+  SCREWS.forEach(([x, y], i) => { pose['screw_' + (i + 1)] = new T.Vector3(x, y, -0.302); });
+  BSCREWS.forEach(([x, y], i) => { pose['bscrew_' + (i + 1)] = new T.Vector3(x, y, PCB.back); });
+
+  // where grime sits on a dirty part, in that part's own coordinates (all facing -Z)
+  const spots = {
+    pcb: [
+      { x: -0.69, y: BAY[1], z: 0.044, w: 0.3, h: 0.5, kind: 'crust' },
+      { x: 0.69, y: BAY[1], z: 0.044, w: 0.3, h: 0.5, kind: 'crust' },
+      { x: STAIN[0], y: STAIN[1], z: PCB.back - 0.0015, w: 0.9, h: 0.7, kind: 'stain' },
+    ],
+    pads: [
+      { x: DIAL[0], y: DIAL[1], z: 0.098, w: 0.8, h: 0.8, kind: 'juice' },
+      { x: 0.8, y: -0.75, z: 0.098, w: 0.9, h: 0.8, kind: 'juice' },
+    ],
+  };
+  return { shell, power, led, make, pose, spots, materials: M, size: { w: W, h: H, d: 0.62 } };
+}
+
+/* ---------- the whole device, assembled (reference sheet and .glb export) ---------- */
+function build(opt) {
+  const o = Object.assign({ swollen: true }, opt);
+  const k = kit(o);
+  const root = new T.Group(); root.name = 'pocket_pal';
+  [...k.shell.children].forEach(c => root.add(c));
+  const lcd = k.make.lcd(), pads = k.make.pads(), speaker = k.make.speaker(), pcb = k.make.pcb();
+  const battery = k.make.battery({ swollen: o.swollen }), cover = k.make.cover();
+  const screws = [1, 2, 3, 4].map(i => k.make.screw(i)), bscrews = [1, 2].map(i => k.make.bscrew(i));
+  [lcd, pads, speaker, pcb, battery, cover, ...screws, ...bscrews].forEach(p => root.add(p));
+  return { root, cover, screws, bscrews, battery, power: k.power, led: k.led, materials: k.materials };
 }
 
 // Soft studio reflections so metal, plastic and the LiPo pouch read as real materials.
@@ -635,5 +722,5 @@ function environment(renderer) {
   return tex;
 }
 
-window.PocketPal = { build, environment, size: { w: W, h: H, d: 0.62 } };
+window.PocketPal = { kit, build, environment, size: { w: W, h: H, d: 0.62 } };
 })();
