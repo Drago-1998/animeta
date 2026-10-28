@@ -4,8 +4,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@600;800&display=swap">
 <style>
-/* Layout: one portrait screen — painted workshop behind, the gadget on the bench in 3D, the mechanic's
-   speech panel on top, the bench (removed parts, screw cup, parts box) along the bottom, the tablet as an overlay. */
+/* Layout: one portrait screen — painted workshop behind, the gadget (or one part on the mat) in 3D, the mechanic's
+   speech panel on top, tools down the right edge, the bench (removed parts, screw cup, store) along the bottom,
+   the tablet as an overlay. */
 :root {
   --cream: #f7ead0;
   --paper: #f3ead9;
@@ -34,6 +35,7 @@ button:focus-visible { outline: 2px solid var(--mustard); outline-offset: 2px; }
 #bg::after { content: ""; position: absolute; inset: 0;
   background: radial-gradient(ellipse 80% 55% at 50% 52%, rgba(20,10,4,0) 35%, rgba(20,10,4,.6) 100%),
               linear-gradient(rgba(20,10,4,.35), rgba(20,10,4,0) 30%); }
+body.mat #bg::after { background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(20,10,4,.35) 20%, rgba(20,10,4,.85) 100%); }
 #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 /* HUD */
@@ -44,18 +46,23 @@ button:focus-visible { outline: 2px solid var(--mustard); outline-offset: 2px; }
   display: flex; align-items: center; gap: 8px;
 }
 .chip {
-  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 14px; border-radius: 19px;
+  display: inline-flex; align-items: center; gap: 7px; height: 38px; padding-inline: 12px; border-radius: 19px;
   background: var(--panel); border: 1px solid var(--line); color: var(--cream);
-  font: 700 14px/1 var(--display); font-variant-numeric: tabular-nums; backdrop-filter: blur(6px);
+  font: 700 14px/1 var(--display); font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); white-space: nowrap;
 }
 button.chip { cursor: pointer; }
 .coin { width: 18px; height: 18px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 35% 35%, #ffe08a, var(--mustard) 55%, #a8701c); box-shadow: inset 0 0 0 2px rgba(120,70,10,.35); }
-#tabletBtn { font: 800 14px/1 var(--body); }
-#tabletBtn svg { width: 18px; height: 18px; }
-#tabletBtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-left: -4px; }
+#tabletBtn, #courier { font: 800 14px/1 var(--body); }
+#tabletBtn svg, #courier svg { width: 18px; height: 18px; flex: none; }
+#tabletBtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-left: -3px; }
+#courier { color: var(--mustard); }
 #snd { margin-left: auto; width: 38px; padding: 0; justify-content: center; }
 #snd svg { width: 18px; height: 18px; }
+#notice { position: fixed; z-index: 35; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 58px); transform: translate(-50%, -20px);
+  max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 14px; background: var(--mustard); color: var(--ink);
+  font: 800 14px/1.3 var(--body); box-shadow: 0 10px 30px rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; text-align: center; }
+#notice.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* the mechanic's speech panel */
 #task {
@@ -76,26 +83,39 @@ button.chip { cursor: pointer; }
 @keyframes react { 0% { transform: scale(.82) rotate(-4deg); } 100% { transform: none; } }
 .hero.big { width: 88px; height: 110px; border-radius: 18px; background-size: 880px 110px; margin: 0 auto -4px; }
 
+/* tools down the right edge */
+#tools { position: fixed; z-index: 4; right: max(10px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 8px; padding: 6px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+#tools button { appearance: none; border: 0; width: 54px; height: 58px; border-radius: 12px; background: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--muted); font: 800 10px/1 var(--body); }
+#tools button svg { width: 28px; height: 28px; }
+#tools button[aria-pressed="true"] { background: var(--mustard); color: var(--ink); }
+#cursor { position: fixed; z-index: 6; left: 0; top: 0; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none; display: none;
+  border: 2px dashed rgba(247,234,208,.85); background: rgba(247,234,208,.08); }
+#cursor.iron { width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 0; background: radial-gradient(circle, #fff3c0 0 25%, #ff9a3c 45%, rgba(255,120,40,0) 70%); }
+
 /* the bench */
-#bench {
+#bench, #matBar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
   display: flex; flex-direction: column; gap: 8px; pointer-events: none;
 }
-#bench > * { pointer-events: auto; }
+#bench > *, #matBar > * { pointer-events: auto; }
+#matBar { align-items: center; }
 #benchActions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 #benchActions:empty { display: none; }
-.pill { appearance: none; border: 1px solid var(--line); cursor: pointer; height: 38px; padding: 0 16px; border-radius: 19px;
+.pill { appearance: none; border: 1px solid var(--line); cursor: pointer; height: 38px; padding: 0 14px; border-radius: 19px;
   background: var(--panel); color: var(--cream); font: 800 14px/1 var(--body); backdrop-filter: blur(6px);
-  display: inline-flex; align-items: center; gap: 8px; }
+  display: inline-flex; align-items: center; gap: 7px; }
 .pill svg { width: 18px; height: 18px; }
+.pill.main { background: var(--mustard); color: var(--ink); border: 0; height: 46px; padding: 0 26px; font: 700 15px/1 var(--display); }
 #tray {
   display: flex; gap: 8px; align-items: stretch; padding: 8px; border-radius: 18px;
   background: rgba(58, 38, 24, .9); border: 1px solid var(--line);
   box-shadow: inset 0 2px 0 rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.35);
 }
-.slotbtn { appearance: none; flex: none; width: 64px; height: 76px; border-radius: 12px; border: 1px solid var(--line); cursor: grab;
+.slotbtn { appearance: none; flex: none; width: 60px; height: 76px; border-radius: 12px; border: 1px solid var(--line); cursor: grab;
   background: rgba(255,255,255,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   touch-action: none; position: relative; padding: 0; }
 .slotbtn b { font: 700 15px/1 var(--display); font-variant-numeric: tabular-nums; }
@@ -110,7 +130,7 @@ button.chip { cursor: pointer; }
 .part img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block; }
 .badge { position: absolute; left: 4px; right: 4px; bottom: 4px; border-radius: 6px; padding: 2px 4px;
   font: 800 10px/1.2 var(--body); color: #fff; text-align: center; letter-spacing: .02em; }
-.badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.fresh { background: var(--green); }
+.badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.loose { background: #8b5bb0; } .badge.fresh { background: var(--green); }
 #boxBtn svg { width: 28px; height: 28px; }
 
 #ghost { position: fixed; z-index: 40; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; pointer-events: none;
@@ -128,6 +148,7 @@ button.chip { cursor: pointer; }
 @keyframes dragHint { 0% { transform: translate(0,0); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(var(--dx,0px), var(--dy,-70px)); opacity: 0; } }
 .spark { position: fixed; z-index: 45; width: 10px; height: 10px; margin: -5px 0 0 -5px; pointer-events: none;
   background: #fff6cf; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: spark .7s ease-out forwards; }
+.spark.hot { background: #ffb347; }
 @keyframes spark { to { transform: translate(var(--x), var(--y)) scale(.2) rotate(120deg); opacity: 0; } }
 .flycoin { position: fixed; z-index: 50; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; }
 
@@ -167,14 +188,7 @@ button.chip { cursor: pointer; }
 .itemhead { display: flex; gap: 14px; align-items: center; }
 .itemhead img { width: 96px; height: 96px; border-radius: 14px; background: #eadcc3; object-fit: contain; flex: none; }
 .state { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 8px; font: 800 12px/1.2 var(--body); color: #fff; background: #7d8a5c; }
-.state.dirty { background: #8a5a2b; } .state.broken { background: var(--red); }
-
-/* cleaning station */
-.cleanArea { position: relative; width: 100%; aspect-ratio: 1; max-width: 320px; margin: 0 auto; border-radius: 18px; overflow: hidden;
-  background: repeating-linear-gradient(45deg, #2f6d63 0 14px, #2a6259 14px 28px); touch-action: none; }
-.cleanArea img, .cleanArea canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.meter { height: 10px; border-radius: 5px; background: #e1cfaf; overflow: hidden; }
-.meter i { display: block; height: 100%; width: 0; background: var(--teal); transition: width .2s; }
+.state.dirty { background: #8a5a2b; } .state.broken { background: var(--red); } .state.loose { background: #8b5bb0; }
 
 /* tablet */
 #tablet { z-index: 30; background: rgba(15,8,3,.6); }
@@ -191,6 +205,7 @@ button.chip { cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 #tabBody { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .note { font-weight: 700; color: #7a6040; font-size: 13px; line-height: 1.4; }
+.sec { font: 700 13px/1 var(--display); color: #6b5238; margin-top: 4px; }
 .row { background: #fffaf0; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
 .row .top { display: flex; gap: 12px; align-items: center; }
 .row .meta { flex: 1; min-width: 0; }
@@ -199,6 +214,7 @@ button.chip { cursor: pointer; }
 .row .price { font: 700 15px/1 var(--display); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .row img.th { width: 56px; height: 56px; border-radius: 12px; background: #eadcc3; object-fit: contain; flex: none; }
 .row .btn { padding: 12px 16px; font-size: 14px; }
+.row .eta { font: 700 14px/1 var(--display); color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font: 800 12px/1 var(--body); padding: 5px 8px; border-radius: 8px; background: #efe2c8; color: #6b5238; }
 .toast { position: sticky; bottom: 0; align-self: center; background: var(--ink); color: var(--cream); font-weight: 800; padding: 10px 14px; border-radius: 12px; }
@@ -214,13 +230,25 @@ button.chip { cursor: pointer; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10 18.5h4" stroke-linecap="round"/></svg>
     Планшет<span class="dot" id="tabletDot" hidden></span>
   </button>
+  <button class="chip" id="courier" hidden aria-label="Доставки в пути">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l3 3v4h-7z"/><circle cx="6" cy="17.5" r="1.8" fill="currentColor"/><circle cx="17" cy="17.5" r="1.8" fill="currentColor"/></svg>
+    <span id="courierEta"></span>
+  </button>
   <button class="chip" id="snd" aria-label="Выключить звук">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path id="sndWave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   </button>
 </div>
+<div id="notice" role="status"></div>
 
 <div id="task"><div class="hero" id="hero" aria-hidden="true"></div><div class="txt"><div id="taskTitle"></div><div id="taskSub" aria-live="polite"></div></div></div>
 <div id="hint"><svg viewBox="0 0 96 96"></svg></div>
+<div id="cursor"></div>
+
+<div id="tools" role="toolbar" aria-label="Инструменты">
+  <button data-tool="hand" aria-pressed="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15V7a2 2 0 0 1 4 0v7M15 13V5a2 2 0 0 1 4 0v9M19 13V7a2 2 0 0 1 4 0v10a9 9 0 0 1-9 9h-1a8 8 0 0 1-6.6-3.5L4 18a2 2 0 0 1 3-2.6l4 3.6"/></svg>Рука</button>
+  <button data-tool="brush" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4l6 6-9 9-6-6z"/><path d="M13 13l6 6-2 2c-1 4-5 7-11 7 1-6 4-10 7-11z"/><path d="M8 24l3-3"/></svg>Кисть</button>
+  <button data-tool="iron" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 28l7-7"/><path d="M10 22l3 3"/><path d="M12 20l10-10 4 4-10 10z"/><path d="M22 10l4-6 2 2-6 4"/></svg>Паяльник</button>
+</div>
 
 <div id="bench">
   <div id="benchActions"></div>
@@ -228,22 +256,22 @@ button.chip { cursor: pointer; }
     <button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
     <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button>
     <div id="trayItems"></div>
-    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями">
+    <button class="slotbtn" id="boxBtn" aria-label="Склад">
       <svg viewBox="0 0 32 32" fill="none" stroke="#e7b04a" stroke-width="2" stroke-linejoin="round"><path d="M4 11l12-6 12 6v12l-12 6-12-6z"/><path d="M4 11l12 6 12-6M16 17v12"/></svg>
-      <span>Коробка</span>
+      <span>Склад</span>
     </button>
   </div>
 </div>
+<div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
 <div id="ghost"></div>
 
 <div class="overlay sheet" id="sheet" hidden></div>
-<div class="overlay" id="cleanUi" hidden></div>
 <div class="overlay" id="tablet" hidden>
   <div class="tablet" role="dialog" aria-label="Планшет"><div class="screen">
     <header><b>Мастерская</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Закрыть планшет">×</button></header>
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="orders">Заказы</button><button role="tab" data-tab="market">Барахолка</button>
-      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="box">Коробка</button>
+      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="store">Склад</button>
     </div>
     <div id="tabBody"></div>
   </div></div>
@@ -287,9 +315,11 @@ const sfx = {
   whoosh: () => noise(.35, .25, 700, .6),
   clunk: () => { tone(140, .14, 'square', .12); noise(.06, .3, 1200, 2); },
   scrub: () => noise(.07, .14, 5200, 1.5),
+  sizzle: () => noise(.12, .12, 7000, .8),
   shine: () => [1320, 1760, 2640].forEach((f, i) => tone(f, .2, 'sine', .08, i * .06)),
   boot: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? .5 : .14, 'square', .06, i * .11)),
   coin: () => { tone(1320, .07, 'square', .05); tone(1980, .16, 'square', .05, .06); },
+  bell: () => { tone(1568, .5, 'sine', .12); tone(1175, .7, 'sine', .12, .22); },
   buzz: () => tone(90, .25, 'sawtooth', .07),
   nope: () => { tone(220, .09, 'square', .06); tone(165, .14, 'square', .06, .09); },
 };
@@ -314,12 +344,13 @@ const fill = new THREE.DirectionalLight(0x9fb7ff, .3); fill.position.set(6, -2, 
 const holder = new THREE.Group(); scene.add(holder);
 holder.rotation.x = -0.3;
 const device = new THREE.Group(); holder.add(device);
+const mat = new THREE.Group(); scene.add(mat); // the cleaning mat: one part, alone, turnable
 
 function resize() {
   const w = innerWidth, h = innerHeight, a = w / h;
   renderer.setSize(w, h, false);
   camera.aspect = a;
-  const needH = Math.max(4.9 / 0.5, (3.6 / 0.9) / a);
+  const needH = Math.max(4.9 / 0.5, (3.6 / 0.8) / a);
   camera.position.set(0, 0, needH / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))));
   camera.lookAt(0, 0, 0);
   camera.setViewOffset(w, h, 0, 0.03 * h, w, h);
@@ -341,6 +372,7 @@ const ease = { out: k => 1 - Math.pow(1 - k, 3), inOut: k => k < .5 ? 4 * k * k 
 function tween(dur, fn, e = ease.out) { return new Promise(res => tweens.push({ t: 0, dur, fn, e, res })); }
 const wait = s => tween(s, () => {});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 /* ---------- textures ---------- */
 const FONT = '"Unbounded", "Arial Black", sans-serif';
@@ -362,14 +394,13 @@ function drawScreen(phase) {
   }
   screenTex.needsUpdate = true;
 }
-// grime painters, shared by the 3D overlays and the cleaning station
 const GRIME = {
   crust: (g, w, h, n = 70) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .75, r = (10 + Math.random() * 26) * w / 256;
     g.fillStyle = ['rgba(150,210,175,.92)', 'rgba(230,240,225,.92)', 'rgba(90,160,130,.88)', 'rgba(200,230,200,.92)'][i % 4]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
   stain: (g, w, h, n = 40) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .6, r = (14 + Math.random() * 34) * w / 256;
     g.fillStyle = i % 3 ? 'rgba(92,52,24,.6)' : 'rgba(60,32,14,.65)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
   juice: (g, w, h, n = 46) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .75, y = h / 2 + (Math.random() - .5) * h * .7, r = (10 + Math.random() * 30) * w / 256;
-    g.fillStyle = i % 3 ? 'rgba(150,62,90,.55)' : 'rgba(205,140,40,.55)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+    g.fillStyle = i % 3 ? 'rgba(150,62,90,.6)' : 'rgba(205,140,40,.6)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
 };
 const grimeTex = {};
 const shadowTex = canvasTex(128, 128, (g) => {
@@ -378,31 +409,46 @@ const shadowTex = canvasTex(128, 128, (g) => {
 });
 
 /* ---------- catalogue ---------- */
-const VARIANTS = [{ body: 0xc6b291, trim: 0xb29e7f }, { body: 0x4f9a90, trim: 0x3f8178 }, { body: 0xc4963f, trim: 0xa97f31 }];
-// serviceable slots: what sits on top of each part (must come off first) and what it mounts on
+const VARIANTS = [
+  { body: 0xc6b291, trim: 0xb29e7f, name: 'кремовый' },
+  { body: 0x4f9a90, trim: 0x3f8178, name: 'бирюзовый' },
+  { body: 0xc4963f, trim: 0xa97f31, name: 'горчичный' },
+];
+// serviceable slots: what sits over each part (must come off first) and what it mounts on
+const INSIDE = ['bezel', 'dial', 'buttons', 'power', 'lcd', 'pads', 'speaker', 'pcb', 'cover'];
 const PARTS = {
-  cover: { name: 'Задняя крышка', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4'], view: 'back' },
+  shell: { name: 'Корпус', over: INSIDE, price: 35, view: 'front', drop: 'разбери всё, что держится на корпусе' },
+  bezel: { name: 'Рамка экрана', over: ['lcd', 'pcb'], support: 'shell', price: 12, view: 'front', drop: 'сними рамку экрана' },
+  dial: { name: 'Колёсико', over: ['pads', 'pcb'], support: 'shell', price: 8, view: 'front', drop: 'сними колёсико' },
+  buttons: { name: 'Кнопки', over: ['pads', 'pcb'], support: 'shell', price: 6, view: 'front', drop: 'сними кнопки' },
+  power: { name: 'Кнопка питания', over: ['pads', 'pcb'], support: 'shell', price: 4, view: 'front', drop: 'сними кнопку питания' },
+  lcd: { name: 'Экран', over: ['pcb'], support: 'shell', price: 25, view: 'front', drop: 'сними экран' },
+  pads: { name: 'Резинки кнопок', over: ['pcb'], support: 'shell', price: 8, view: 'back', drop: 'сними резинки' },
+  speaker: { name: 'Динамик', over: ['pcb'], support: 'shell', price: 10, view: 'back', drop: 'сними динамик' },
+  pcb: { name: 'Плата', over: ['cover', 'battery', 'bscrew_1', 'bscrew_2'], support: 'shell', price: 40, view: 'back', drop: 'сними плату' },
   battery: { name: 'Аккумулятор', over: ['cover'], support: 'pcb', price: 15, view: 'back', drop: 'вытащи аккумулятор' },
-  pcb: { name: 'Плата', over: ['cover', 'battery', 'bscrew_1', 'bscrew_2'], price: 40, view: 'back', drop: 'сними плату' },
-  pads: { name: 'Резинки кнопок', over: ['pcb'], price: 8, view: 'back', drop: 'сними резинки' },
-  lcd: { name: 'Экран', over: ['pcb'], price: 25, view: 'front', drop: 'сними экран' },
-  speaker: { name: 'Динамик', over: ['pcb'], price: 10, view: 'back', drop: 'сними динамик' },
+  cover: { name: 'Задняя крышка', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4'], support: 'shell', view: 'back', drop: 'сними крышку' },
 };
-PARTS.cover.drop = 'сними крышку';
-const PART_SLOTS = ['lcd', 'pads', 'speaker', 'pcb', 'battery', 'cover'];
+const PART_SLOTS = ['shell', 'bezel', 'dial', 'buttons', 'power', 'lcd', 'pads', 'speaker', 'pcb', 'battery', 'cover'];
 const SCREW_SLOTS = ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1', 'bscrew_2'];
 const SCREW = {
   screw: { name: 'Винты корпуса', short: 'винты', support: 'cover', over: [], lift: .28, pack: 4, price: 4 },
   bscrew: { name: 'Винтики платы', short: 'винтики', support: 'pcb', over: ['cover'], lift: .12, pack: 2, price: 3 },
 };
 const kindOf = slot => slot.startsWith('b') ? 'bscrew' : 'screw';
-const COND = { ok: 'исправна', dirty: 'грязная', broken: 'сломана' };
+const COLORED = t => t === 'shell' || t === 'cover';
+const COND = { ok: 'исправна', dirty: 'грязная', broken: 'сломана', loose: 'отошёл провод' };
 const FAULTS = {
   battery: { slot: 'battery', cond: 'broken', pay: 25, hint: 'Сзади выпирает крышка, не включается.' },
   board: { slot: 'pcb', cond: 'dirty', pay: 30, hint: 'Её залило водой — включается через раз.' },
+  wire: { slot: 'pcb', cond: 'loose', pay: 30, hint: 'Выключается, если её тряхнуть.' },
   pads: { slot: 'pads', cond: 'dirty', pay: 20, hint: 'Пролили сок, кнопки залипают.' },
   lcd: { slot: 'lcd', cond: 'broken', pay: 40, hint: 'Уронили — экран в трещинах.' },
   speaker: { slot: 'speaker', cond: 'broken', pay: 20, hint: 'Звука нет совсем.' },
+  shell: { slot: 'shell', cond: 'broken', pay: 35, hint: 'Треснул корпус спереди.' },
+  bezel: { slot: 'bezel', cond: 'broken', pay: 25, hint: 'Стекло экрана всё в царапинах.' },
+  buttons: { slot: 'buttons', cond: 'broken', pay: 25, hint: 'Кнопки стёрлись, одна запала.' },
+  dial: { slot: 'dial', cond: 'broken', pay: 20, hint: 'Колёсико болтается.' },
   screws: { pay: 8, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
 };
 // what the power test shows, worst problem first
@@ -410,10 +456,27 @@ const DIAG = [
   { slot: 'battery', cond: 'broken', boot: false, text: 'Не включается совсем. Похоже, дело в питании.' },
   { slot: 'pcb', cond: 'broken', boot: false, text: 'Не включается, пахнет горелым. Что-то с платой.' },
   { slot: 'pcb', cond: 'dirty', boot: false, blink: true, text: 'Мигает и гаснет. Внутри что-то окислилось.' },
+  { slot: 'pcb', cond: 'loose', boot: false, blink: true, text: 'Включается и сразу гаснет. Где-то отошёл провод.' },
   { slot: 'lcd', cond: 'broken', boot: true, text: 'Звук есть, а сквозь трещины ничего не видно.' },
   { slot: 'speaker', cond: 'broken', boot: true, mute: true, text: 'Картинка есть, а звука нет.' },
   { slot: 'pads', cond: 'dirty', boot: true, text: 'Включилась, но кнопки залипают.' },
+  { slot: 'buttons', cond: 'broken', boot: true, text: 'Включилась, но кнопка запала и не нажимается.' },
+  { slot: 'dial', cond: 'broken', boot: true, text: 'Включилась, но колёсико болтается.' },
+  { slot: 'bezel', cond: 'broken', boot: true, text: 'Работает, но стекло экрана в царапинах.' },
+  { slot: 'shell', cond: 'broken', boot: true, text: 'Работает, но корпус треснул — так отдавать нельзя.' },
 ];
+const DISCOVER = {
+  battery: { broken: ['Аккумулятор раздут — его только менять.', 'surprised'] },
+  pcb: { dirty: ['Плата в окислах. Почисти её кисточкой на коврике.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'],
+    loose: ['Красный провод отпаялся. Нужен паяльник.', 'surprised'] },
+  pads: { dirty: ['Резинки липкие от сока. Почистить бы.', 'thinking'] },
+  lcd: { broken: ['Экран треснул. Нужен другой.', 'worried'] },
+  speaker: { broken: ['Динамик подгорел — нужен новый.', 'worried'] },
+  shell: { broken: ['Корпус треснул. Нужен новый корпус.', 'worried'] },
+  bezel: { broken: ['Стекло исцарапано — рамку лучше заменить.', 'thinking'] },
+  buttons: { broken: ['Кнопки стёрты, одна запала. Нужны новые.', 'thinking'] },
+  dial: { broken: ['Колёсико разболтано — только замена.', 'thinking'] },
+};
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
   { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, story: 'Дарил её внуку в девяносто первом.', thanks: 'Как новенькая! Внук будет счастлив.' },
@@ -425,45 +488,78 @@ const CUSTOMERS = [
 ];
 const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
 const SELL_PRICE = 70;
+// courier: how long a delivery takes, in seconds
+const DELIVERY = { part: 20, device: 25 };
 
 /* ---------- save ---------- */
 const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
-    orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, seen: false };
+    orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
 if (!S || !Array.isArray(S.box)) S = newGame();
+function migrate() {
+  S.shelf = S.shelf || []; S.deliveries = S.deliveries || [];
+  [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
+    if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
+  }));
+}
+migrate();
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
-const item = (type, cond = 'ok', fresh = false) => ({ id: S.uid++, type, cond, fresh });
+const item = (type, cond = 'ok', fresh = false, variant = 0) => ({ id: S.uid++, type, cond, fresh, variant });
 const pick1 = a => a[Math.floor(Math.random() * a.length)];
 
 function makeOrder() {
-  const first = S.ordersDone === 0 && !S.orders.length && !S.job;
+  const first = S.ordersDone === 0 && !S.orders.length && !S.job && !S.shelf.length;
   const cust = S.nextCustomer++ % CUSTOMERS.length;
-  let faults;
+  let faults = [];
   if (first) faults = ['battery'];
   else {
-    const pool = Object.keys(FAULTS).sort(() => Math.random() - .5);
-    faults = pool.slice(0, 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 2 && Math.random() < .35 ? 1 : 0));
+    const n = 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 2 && Math.random() < .35 ? 1 : 0), used = new Set();
+    Object.keys(FAULTS).sort(() => Math.random() - .5).forEach(f => {
+      const slot = FAULTS[f].slot || f;
+      if (faults.length < n && !used.has(slot)) { faults.push(f); used.add(slot); }
+    });
   }
   return { id: S.uid++, cust, faults, pay: 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0), variant: Math.floor(Math.random() * VARIANTS.length) };
 }
 function makeOffer() {
-  const roll = (ok, dirty) => { const r = Math.random(); return r < ok ? 'ok' : r < ok + dirty ? 'dirty' : 'broken'; };
-  const conds = { battery: roll(.6, 0), pcb: roll(.55, .25), lcd: roll(.6, 0), speaker: roll(.65, 0), pads: Math.random() < .6 ? 'ok' : 'dirty' };
+  const roll = (...p) => { let r = Math.random(); for (const [c, w] of p) { if ((r -= w) < 0) return c; } return 'ok'; };
+  const conds = {
+    battery: roll(['ok', .6], ['broken', .4]), pcb: roll(['ok', .5], ['dirty', .2], ['loose', .15], ['broken', .15]),
+    lcd: roll(['ok', .6], ['broken', .4]), speaker: roll(['ok', .65], ['broken', .35]), pads: roll(['ok', .6], ['dirty', .4]),
+    shell: roll(['ok', .75], ['broken', .25]), bezel: roll(['ok', .7], ['broken', .3]), dial: roll(['ok', .8], ['broken', .2]),
+    buttons: roll(['ok', .75], ['broken', .25]),
+  };
   if (Object.values(conds).every(c => c === 'ok')) conds[pick1(['battery', 'lcd', 'speaker'])] = 'broken';
-  const desc = conds.lcd === 'broken' ? 'Разбит экран' : conds.battery === 'broken' ? 'Раздулась батарейка' : conds.pcb === 'dirty' ? 'Побывала в воде'
-    : conds.speaker === 'broken' ? 'Нет звука' : conds.pcb === 'broken' ? 'Не включается' : 'Залипают кнопки';
+  const desc = conds.shell === 'broken' ? 'Треснул корпус' : conds.lcd === 'broken' ? 'Разбит экран' : conds.battery === 'broken' ? 'Раздулась батарейка'
+    : conds.pcb === 'dirty' ? 'Побывала в воде' : conds.speaker === 'broken' ? 'Нет звука' : conds.pcb !== 'ok' ? 'Не включается' : 'Потёртая';
   const okCount = Object.values(conds).filter(c => c === 'ok').length;
   return { id: S.uid++, conds, desc, missing: Math.random() < .3 ? 1 + (Math.random() < .5 ? 1 : 0) : 0,
-    price: 10 + okCount * 4 + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * VARIANTS.length) };
+    price: 6 + okCount * 3 + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * VARIANTS.length) };
 }
 function ensureListings() {
   while (S.orders.length < 3) S.orders.push(makeOrder());
   while (S.offers.length < 3) S.offers.push(makeOffer());
 }
+function makeJob(kind, src) {
+  const slots = {}, tight = {};
+  PART_SLOTS.forEach(t => { slots[t] = item(t, 'ok', false, src.variant); });
+  if (kind === 'order') src.faults.forEach(f => { const F = FAULTS[f]; if (F.slot) slots[F.slot].cond = F.cond; });
+  else Object.entries(src.conds).forEach(([t, c]) => { slots[t].cond = c; });
+  SCREW_SLOTS.forEach(s => { slots[s] = { type: kindOf(s) }; tight[s] = true; });
+  const missing = kind === 'order' ? (src.faults.includes('screws') ? 2 : 0) : src.missing;
+  ['screw_4', 'screw_3'].slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
+  return { id: S.uid++, kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: 0, variant: src.variant };
+}
+const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + CUSTOMERS[j.order.cust].name : 'Б/у Pocket Pal, ' + VARIANTS[j.variant].name;
+
+/* ---------- kits: one per body colour, shared by everything built in that colour ---------- */
+const kits = {}, thumbKits = {};
+const kitFor = v => kits[v] || (kits[v] = PocketPal.kit({ body: VARIANTS[v].body, trim: VARIANTS[v].trim, screen: screenTex, font: FONT }));
+const thumbKitFor = v => thumbKits[v] || (thumbKits[v] = PocketPal.kit({ body: VARIANTS[v].body, trim: VARIANTS[v].trim, font: FONT }));
 
 /* ---------- the device on the bench ---------- */
 let K = null, powerHit = null;
@@ -474,17 +570,26 @@ function grime(kind) {
   if (!grimeTex[kind]) grimeTex[kind] = canvasTex(256, 256, (g, w, h) => GRIME[kind](g, w, h));
   return grimeTex[kind];
 }
-function makePart(kit, type, cond, fresh) {
-  const o = kit.make[type]({ swollen: type === 'battery' && cond === 'broken', fresh, cracked: type === 'lcd' && cond === 'broken',
-    burnt: (type === 'speaker' || type === 'pcb') && cond === 'broken' });
-  if (cond === 'dirty') (kit.spots[type] || []).forEach(sp => {
+// a part in its condition; colour-dependent parts (housing, cover) come from their own colour's kit
+function makePart(kitOf, it) {
+  const kit = kitOf(COLORED(it.type) ? (it.variant || 0) : (J() ? J().variant : 0));
+  const c = it.cond;
+  const o = kit.make[it.type]({ swollen: it.type === 'battery' && c === 'broken', fresh: it.fresh, cracked: (it.type === 'lcd' || it.type === 'shell') && c === 'broken',
+    burnt: (it.type === 'speaker' || it.type === 'pcb') && c === 'broken', loose: it.type === 'pcb' && c === 'loose',
+    scratched: it.type === 'bezel' && c === 'broken', worn: it.type === 'buttons' && c === 'broken', broken: it.type === 'dial' && c === 'broken' });
+  if (c === 'dirty') (kit.spots[it.type] || []).forEach(sp => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(sp.w, sp.h), new THREE.MeshBasicMaterial({ map: grime(sp.kind), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-    m.rotation.y = Math.PI; m.position.set(sp.x, sp.y, sp.z); m.name = 'grime'; o.add(m);
+    if (!sp.front) m.rotation.y = Math.PI;
+    m.position.set(sp.x, sp.y, sp.z); m.name = 'grime'; m.userData.dirt = 1; o.add(m);
   });
+  if (c === 'loose') {
+    const j = new THREE.Mesh(new THREE.SphereGeometry(.05, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff7a1a, emissiveIntensity: .6 }));
+    j.position.copy(kit.joint); j.name = 'joint'; o.add(j);
+  }
   return o;
 }
 function objFor(slot, v) {
-  const o = SCREW_SLOTS.includes(slot) ? K.make[kindOf(slot)](+slot.slice(-1)) : makePart(K, v.type, v.cond, v.fresh);
+  const o = SCREW_SLOTS.includes(slot) ? K.make[kindOf(slot)](+slot.slice(-1)) : makePart(kitFor, v);
   o.userData.slot = slot;
   return o;
 }
@@ -497,18 +602,16 @@ function place(slot) {
   return o;
 }
 function clearDevice() {
-  device.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) [].concat(o.material).forEach(m => { if (m !== hitMat) m.dispose(); }); });
   while (device.children.length) device.remove(device.children[0]);
   objs.clear(); K = null; powerHit = null;
 }
 function buildJobScene() {
   clearDevice();
   if (!J()) return;
-  const v = VARIANTS[J().variant % VARIANTS.length];
   drawScreen(-1);
-  K = PocketPal.kit({ body: v.body, trim: v.trim, screen: screenTex, font: FONT });
-  device.add(K.shell);
-  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.power.parent.position); device.add(powerHit);
+  K = kitFor(J().variant);
+  K.materials.led.color.setHex(0x5a1510); K.materials.led.emissive.setHex(0);
+  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.pose.power); device.add(powerHit);
   [...PART_SLOTS, ...SCREW_SLOTS].forEach(place);
   device.rotation.set(0, J().side === 'back' ? Math.PI : 0, 0);
 }
@@ -526,7 +629,7 @@ function blockerText(list) {
   if (list.some(s => s.startsWith('screw'))) out.push('открути винты');
   if (list.some(s => s.startsWith('bscrew'))) out.push('открути винтики платы');
   list.filter(s => PARTS[s]).forEach(s => out.push(PARTS[s].drop));
-  return out.join(', ');
+  return out.slice(0, 3).join(', ') + (out.length > 3 ? '…' : '');
 }
 const assembled = () => [...PART_SLOTS, ...SCREW_SLOTS].every(filled) && SCREW_SLOTS.every(s => J().tight[s]);
 
@@ -539,12 +642,10 @@ thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x3a3530, .55));
 const tKey = new THREE.DirectionalLight(0xfff4e6, .8); tKey.position.set(-3, 4, 6); thumbScene.add(tKey);
 const thumbCam = new THREE.PerspectiveCamera(26, 1, .1, 100);
 const thumbCache = new Map();
-let thumbKit = null;
-function thumb(it, size = 152, clean = false) {
-  const cond = clean ? 'ok' : it.cond, k = [it.type, cond, !!it.fresh, size].join('|');
+function thumb(it, size = 152) {
+  const k = [it.type, it.cond, !!it.fresh, COLORED(it.type) ? it.variant || 0 : 0, size].join('|');
   if (thumbCache.has(k)) return thumbCache.get(k);
-  if (!thumbKit) thumbKit = PocketPal.kit({ font: FONT });
-  const o = makePart(thumbKit, it.type, cond, it.fresh);
+  const o = makePart(thumbKitFor, it);
   const g = new THREE.Group(); g.add(o); thumbScene.add(g);
   g.rotation.set(-.38, PARTS[it.type].view === 'back' ? Math.PI + .3 : .3, 0);
   g.updateMatrixWorld(true);
@@ -558,6 +659,7 @@ function thumb(it, size = 152, clean = false) {
   thumbCache.set(k, url);
   return url;
 }
+const jobThumb = j => thumb({ type: 'shell', cond: j.slots.shell ? j.slots.shell.cond : 'ok', variant: j.variant });
 
 /* ---------- picking ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -592,11 +694,20 @@ function say(text, mood) {
   if (mood) face($('hero'), mood);
   const t = $('task'); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
 }
+let noticeTimer = 0;
+function notice(text) {
+  const n = $('notice'); n.textContent = text; n.classList.add('on');
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(() => n.classList.remove('on'), 3200);
+}
 function situation() {
   const j = J();
-  if (!j) return ['Мастерская', S.orders.length ? 'Открой планшет и возьми заказ.' : 'Новых заказов пока нет.'];
-  const c = j.kind === 'order' ? CUSTOMERS[j.order.cust] : null;
-  const title = c ? 'Заказ: ' + c.name : 'Разбор: б/у Pocket Pal';
+  if (onMat) return ['Коврик: ' + PARTS[onMat.it.type].name, matHint()];
+  if (!j) {
+    if (S.shelf.length) return ['Мастерская', 'На полке ждут приставки — открой Склад в планшете.'];
+    if (S.deliveries.length) return ['Мастерская', 'Курьер уже едет. Пока можно посмотреть заказы.'];
+    return ['Мастерская', S.orders.length ? 'Открой планшет и возьми заказ.' : 'Новых заказов пока нет.'];
+  }
+  const title = jobTitle(j);
   if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Переверни приставку, чтобы её разобрать.'];
   const tight = SCREW_SLOTS.filter(s => filled(s) && j.tight[s]), loose = SCREW_SLOTS.filter(s => filled(s) && !j.tight[s]);
   if (loose.length) return [title, 'Закрути винт — крути пальцем по кругу.'];
@@ -627,12 +738,23 @@ function setHint(kind, obj, at, dir) {
 }
 function tutorial() {
   const j = J();
-  if (!j || S.ordersDone > 0 || j.opened || j.side !== 'back' || drag) return setHint(null);
+  if (!j || onMat || S.ordersDone > 0 || j.opened || j.side !== 'back' || drag) return setHint(null);
   const tight = ['screw_1', 'screw_2', 'screw_3', 'screw_4'].find(s => filled(s) && j.tight[s]);
   if (filled('cover') && tight) return setHint('spin', objs.get(tight));
   if (filled('cover') && !SCREW_SLOTS.slice(0, 4).some(filled)) return setHint('drag', device, new V3(0, -.3, -.4), [0, -90]);
   setHint(null);
 }
+
+/* ---------- tools ---------- */
+let tool = 'hand';
+$('tools').addEventListener('click', e => {
+  const b = e.target.closest('[data-tool]'); if (!b) return;
+  initAudio(); tool = b.dataset.tool; sfx.tick();
+  document.querySelectorAll('#tools [data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  if (onMat) say(matHint(), 'focused');
+  else if (tool !== 'hand') say('Кисть и паяльник — для работы на коврике. Нажми на деталь на столе → «На коврик».', 'thinking');
+});
+function setTool(t) { tool = t; document.querySelectorAll('#tools [data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.tool === t))); }
 
 /* ---------- bench UI ---------- */
 const screwIcon = (big) => `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="${big ? 12 : 9}" fill="#c9ccd1" stroke="#7d828a" stroke-width="2"/><path d="M${big ? 10 : 12} 16h${big ? 12 : 8}M16 ${big ? 10 : 12}v${big ? 12 : 8}" stroke="#3a3d44" stroke-width="3" stroke-linecap="round"/></svg>`;
@@ -644,8 +766,7 @@ function renderCup() {
   });
 }
 function badge(it) {
-  if (it.cond === 'dirty') return '<span class="badge dirty">грязная</span>';
-  if (it.cond === 'broken') return '<span class="badge broken">сломана</span>';
+  if (it.cond !== 'ok') return `<span class="badge ${it.cond}">${it.cond === 'loose' ? 'отпаян' : COND[it.cond]}</span>`;
   if (it.fresh) return '<span class="badge fresh">новая</span>';
   return '';
 }
@@ -656,24 +777,28 @@ function renderTray() {
 function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'); $('tabMoney').textContent = S.money.toLocaleString('ru-RU'); }
 function renderActions() {
   const j = J(), el = $('benchActions'), html = [];
-  if (j) html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
-  if (j && j.kind === 'donor') html.push('<button class="pill" id="finishBtn">Убрать со стола</button>');
+  if (j) {
+    html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
+    html.push('<button class="pill" id="shelfBtn">На полку</button>');
+    if (j.kind === 'donor') html.push('<button class="pill" id="finishBtn">Разобрать до конца</button>');
+  }
   const sig = html.join('');
   if (el.dataset.sig !== sig) { el.innerHTML = sig; el.dataset.sig = sig; }
-  $('tabletDot').hidden = !(!j && S.orders.length);
+  $('tabletDot').hidden = !(!j && (S.orders.length || S.shelf.length));
 }
 $('benchActions').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || busy) return;
   initAudio();
   if (b.id === 'flipBtn') flip();
+  if (b.id === 'shelfBtn') shelve();
   if (b.id === 'finishBtn') askFinishDonor();
 });
 
-const uiOpen = () => !$('sheet').hidden || !$('cleanUi').hidden || !$('tablet').hidden || !$('card').hidden;
-function sparkle(x, y, n = 10) {
+const uiOpen = () => !$('sheet').hidden || !$('tablet').hidden || !$('card').hidden;
+function sparkle(x, y, n = 10, hot) {
   for (let i = 0; i < n; i++) {
-    const s = document.createElement('div'); s.className = 'spark';
-    const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 50;
+    const s = document.createElement('div'); s.className = 'spark' + (hot ? ' hot' : '');
+    const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * (hot ? 30 : 50);
     s.style.left = x + 'px'; s.style.top = y + 'px';
     s.style.setProperty('--x', Math.cos(a) * d + 'px'); s.style.setProperty('--y', Math.sin(a) * d + 'px');
     document.body.appendChild(s); setTimeout(() => s.remove(), 750);
@@ -695,7 +820,7 @@ async function flip() {
 }
 
 function nearestScrew(e) {
-  const j = J(); let best = null, bd = 56;
+  let best = null, bd = 56;
   SCREW_SLOTS.forEach(s => {
     const o = objs.get(s); if (!o || blockers(s).length) return;
     const p = toScreen(o), d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
@@ -711,11 +836,13 @@ function partAt(e) {
 }
 
 canvas.addEventListener('pointerdown', e => {
-  if (busy || !J() || uiOpen() || drag) return;
+  if (busy || uiOpen() || drag) return;
   initAudio();
-  const j = J();
+  if (onMat) return matDown(e);
+  const j = J(); if (!j) return;
+  if (tool !== 'hand') return say('Кисть и паяльник — для работы на коврике. Возьми «Руку», чтобы разбирать.', 'thinking');
   if (j.side === 'front') {
-    if (pick(e, [powerHit, K.power])) powerTest();
+    if (objs.get('power') && pick(e, [powerHit, objs.get('power')])) powerTest();
     else if (pick(e, [device])) say('Переверни приставку, чтобы разобрать её.', 'thinking');
     return;
   }
@@ -723,12 +850,13 @@ canvas.addEventListener('pointerdown', e => {
   if (s) { drag = { type: 'screw', slot: s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); setHint(null); return; }
   const slot = partAt(e); if (!slot) return;
   const b = blockers(slot);
-  if (b.length) { refuse(slot, 'Сначала ' + blockerText(b) + '.'); return; }
+  if (b.length) { refuse(slot, slot === 'shell' ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'); return; }
   const o = objs.get(slot), at = pointerLocal(e, o.position.z); if (!at) return;
   drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z };
   canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
 });
 canvas.addEventListener('pointermove', e => {
+  if (onMat) return matMove(e);
   if (!drag) return;
   if (drag.type === 'screw') turnScrew(e);
   else if (drag.type === 'part') {
@@ -739,6 +867,7 @@ canvas.addEventListener('pointermove', e => {
   }
 });
 const endPointer = () => {
+  if (onMat) return matUp();
   if (!drag) return;
   const d = drag; drag = null;
   if (d.type === 'part') releasePart(d);
@@ -797,13 +926,6 @@ async function releasePart(d) {
   await tween(.28, k => { o.position.lerpVectors(from, d.start, k); o.rotation.z = fromR * (1 - k); }, ease.back);
   busy = false;
 }
-const DISCOVER = {
-  battery: { broken: ['Аккумулятор раздут — его только менять.', 'surprised'] },
-  pcb: { dirty: ['Плата в окислах. Её надо почистить.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'] },
-  pads: { dirty: ['Резинки липкие от сока. Почистить бы.', 'thinking'] },
-  lcd: { broken: ['Экран треснул. Нужен другой.', 'worried'] },
-  speaker: { broken: ['Динамик подгорел — нужен новый.', 'worried'] },
-};
 async function removePart(slot) {
   const j = J(), o = objs.get(slot), it = j.slots[slot];
   busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
@@ -845,7 +967,7 @@ function installScrew(kind, slot) {
 /* dropping things from the bench onto the device */
 function dropOnDevice(x, y, what) {
   const j = J();
-  if (!j) return say('Сначала возьми приставку: планшет → Заказы или Барахолка.', 'thinking');
+  if (!j) return say('На столе нет приставки. Возьми её с полки: планшет → Склад.', 'thinking');
   const c = toScreen(device), over = Math.abs(x - c.x) < innerWidth * .42 && y < innerHeight - 110;
   if (!over) return;
   if (j.side === 'front') return say('Переверни приставку — детали ставят сзади.', 'thinking');
@@ -860,7 +982,8 @@ function dropOnDevice(x, y, what) {
   }
   const it = what.item, slot = it.type;
   if (filled(slot)) return refuseNoShake('Здесь уже стоит ' + PARTS[slot].name.toLowerCase() + '.');
-  if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: нажми на деталь на столе.');
+  if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: нажми на деталь → «На коврик».');
+  if (it.cond === 'loose') return refuseNoShake('Сначала припаяй провод: нажми на плату → «На коврик».');
   if (!canInstall(slot)) return refuseDrop(slot);
   installPart(it, slot);
 }
@@ -869,6 +992,7 @@ function refuseDrop(slot) {
   if (SCREW_SLOTS.includes(slot) && !filled(supportOf(slot))) return refuseNoShake(kindOf(slot) === 'screw' ? 'Винтам некуда вкручиваться — сначала крышка.' : 'Винтики держат плату — сначала поставь её.');
   const b = blockers(slot);
   if (b.length) return refuseNoShake('Мешает: ' + blockerText(b).replace(/^./, c => c.toUpperCase()) + '.');
+  if (!filled('shell')) return refuseNoShake('Сначала нужен корпус — на него крепится всё остальное.');
   refuseNoShake('Не встаёт — под неё нужна другая деталь.');
 }
 
@@ -876,7 +1000,7 @@ function refuseDrop(slot) {
 const ghost = $('ghost');
 let benchDrag = null;
 function benchDown(e, what, el) {
-  if (busy || uiOpen()) return;
+  if (busy || uiOpen() || onMat) return;
   initAudio();
   benchDrag = { what, el, x0: e.clientX, y0: e.clientY, moving: false, id: e.pointerId };
   try { el.setPointerCapture(e.pointerId); } catch (_) {}
@@ -894,8 +1018,8 @@ function benchMove(e) {
 function benchUp(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
   benchDrag = null; ghost.style.display = 'none';
-  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат в коробке.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
-  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат в коробке.', 'thinking');
+  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат на складе.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
+  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат на складе.', 'thinking');
   dropOnDevice(e.clientX, e.clientY - 30, b.what);
 }
 $('trayItems').addEventListener('pointerdown', e => {
@@ -906,20 +1030,21 @@ $('trayItems').addEventListener('pointerdown', e => {
 addEventListener('pointermove', benchMove);
 addEventListener('pointerup', benchUp);
 addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag = null; ghost.style.display = 'none'; } });
-$('boxBtn').addEventListener('click', () => { initAudio(); openTablet('box'); });
+$('boxBtn').addEventListener('click', () => { initAudio(); openTablet('store'); });
 
-/* ---------- a part on the bench: clean, store, bin ---------- */
+/* ---------- a part on the bench: mat, store, bin ---------- */
 function openItem(it) {
   const P = PARTS[it.type], sh = $('sheet');
-  const isCover = it.type === 'cover';
+  const unique = it.type === 'cover';
+  const work = it.cond === 'dirty' ? 'Почистить кисточкой' : it.cond === 'loose' ? 'Припаять провод' : 'Рассмотреть';
   sh.innerHTML = `<div class="card" role="dialog" aria-label="${esc(P.name)}">
     <div class="itemhead"><img alt="" src="${thumb(it, 192)}"><div><h3>${esc(P.name)}</h3>
       <span class="state ${it.cond}">${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
-    ${isCover ? '<p>Это крышка этой приставки — её ставят обратно на корпус.</p>' : ''}
+    ${unique ? '<p>Это крышка приставки с этой наклейкой — её ставят обратно на корпус.</p>' : ''}
     <div class="btns">
-      ${it.cond === 'dirty' ? '<button class="btn" data-a="clean">Почистить</button>' : ''}
-      ${isCover ? '' : '<button class="btn alt" data-a="box">Убрать в коробку</button>'}
-      ${isCover ? '' : '<button class="btn danger" data-a="bin">Выбросить</button>'}
+      <button class="btn${it.cond === 'ok' || it.cond === 'broken' ? ' alt' : ''}" data-a="mat">На коврик: ${work.toLowerCase()}</button>
+      ${unique ? '' : '<button class="btn alt" data-a="box">Убрать на склад</button>'}
+      ${unique ? '' : '<button class="btn danger" data-a="bin">Выбросить</button>'}
       <button class="btn alt" data-a="close">Закрыть</button>
     </div></div>`;
   sh.hidden = false;
@@ -927,65 +1052,118 @@ function openItem(it) {
     const a = ev.target.closest('[data-a]'); if (!a && ev.target !== sh) return;
     sh.hidden = true; sh.onclick = null;
     if (!a) return;
-    if (a.dataset.a === 'clean') openClean(it);
-    if (a.dataset.a === 'box') { S.tray = S.tray.filter(x => x.id !== it.id); S.box.push(it); save(); renderTray(); say(P.name + ' — в коробке.', 'happy'); }
+    if (a.dataset.a === 'mat') openMat(it);
+    if (a.dataset.a === 'box') { S.tray = S.tray.filter(x => x.id !== it.id); S.box.push(it); save(); renderTray(); say(P.name + ' — на складе.', 'happy'); }
     if (a.dataset.a === 'bin') { S.tray = S.tray.filter(x => x.id !== it.id); save(); renderTray(); sfx.whoosh(); say(P.name + ' — в мусорке.', 'determined'); }
   };
 }
 
-/* cleaning station: the part alone, grime on top, rub it off */
-function openClean(it) {
-  const P = PARTS[it.type], ui = $('cleanUi');
-  ui.innerHTML = `<div class="card" role="dialog" aria-label="Чистка">
-    <div class="eyebrow">Чистка</div><h3>${esc(P.name)}</h3>
-    <p>Три пальцем, пока не сойдёт вся грязь.</p>
-    <div class="cleanArea"><img alt="" src="${thumb(it, 320, true)}"><canvas id="dirt" width="320" height="320"></canvas></div>
-    <div class="meter"><i id="cleanBar"></i></div>
-    <button class="btn alt" id="cleanLater">Отложить</button></div>`;
-  ui.hidden = false;
-  const cv = $('dirt'), g = cv.getContext('2d');
-  const kinds = it.type === 'pcb' ? ['crust', 'stain'] : ['juice'];
-  kinds.forEach(k => GRIME[k](g, 320, 320, 24));
-  const total = coverage(g); let rubbing = false, n = 0, lastX = 0, lastY = 0;
-  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * 320 / r.width, (e.clientY - r.top) * 320 / r.height]; };
-  const rub = e => {
-    const [x, y] = pos(e);
-    g.globalCompositeOperation = 'destination-out'; g.lineCap = 'round'; g.lineWidth = 46;
-    g.beginPath(); g.moveTo(lastX, lastY); g.lineTo(x, y); g.stroke(); lastX = x; lastY = y;
-    if (++n % 6 === 0) {
-      sfx.scrub(); buzz(3);
-      const left = coverage(g) / total; $('cleanBar').style.width = Math.round((1 - left) * 100) + '%';
-      if (left < .06) done();
-    }
-  };
-  cv.onpointerdown = e => { rubbing = true; [lastX, lastY] = pos(e); cv.setPointerCapture(e.pointerId); initAudio(); };
-  cv.onpointermove = e => { if (rubbing) rub(e); };
-  cv.onpointerup = cv.onpointercancel = () => { rubbing = false; };
-  let finished = false;
-  function done() {
-    if (finished) return; finished = true; rubbing = false;
-    g.clearRect(0, 0, 320, 320); $('cleanBar').style.width = '100%';
-    it.cond = 'ok'; save(); sfx.shine(); buzz(40);
-    const r = cv.getBoundingClientRect(); sparkle(r.left + r.width / 2, r.top + r.height / 2, 18);
-    setTimeout(() => { ui.hidden = true; renderTray(); say(P.name + ' — как новая!', 'proud'); }, 700);
-  }
-  $('cleanLater').onclick = () => { ui.hidden = true; };
+/* ---------- the mat: one part in 3D — turn it with the hand, scrub with the brush, solder with the iron ---------- */
+let onMat = null;
+function matHint() {
+  const it = onMat.it;
+  if (it.cond === 'dirty') return tool === 'brush' ? 'Три грязь кисточкой. Рукой поверни деталь — грязь есть и с другой стороны.' : 'Возьми кисточку справа и три грязь.';
+  if (it.cond === 'loose') return tool === 'iron' ? 'Прижми паяльник к светящейся точке и подержи.' : 'Возьми паяльник справа и припаяй провод к контакту.';
+  return 'Покрути деталь рукой и рассмотри со всех сторон.';
 }
-function coverage(g) {
-  const d = g.getImageData(0, 0, 320, 320).data; let n = 0;
-  for (let i = 3; i < d.length; i += 32) if (d[i] > 40) n++;
-  return Math.max(1, n);
+function openMat(it) {
+  onMat = { it, pivot: new THREE.Group(), spin: null };
+  const o = makePart(kitFor, it);
+  onMat.obj = o; onMat.pivot.add(o); mat.add(onMat.pivot);
+  o.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(o), c = box.getCenter(new V3()), size = box.getSize(new V3());
+  o.position.sub(c);
+  // fit the narrow phone screen: about 3.3 units across and 5 units tall are visible around the tools
+  onMat.pivot.scale.setScalar(Math.min(3.3 / Math.max(size.x, size.z), 5 / size.y, 2.6));
+  onMat.pivot.rotation.set(-.25, PARTS[it.type].view === 'back' ? Math.PI : 0, 0);
+  holder.visible = false; document.body.classList.add('mat');
+  $('bench').hidden = true; $('matBar').hidden = false; setHint(null);
+  if (it.cond === 'dirty') setTool('brush'); else if (it.cond === 'loose') setTool('iron'); else setTool('hand');
+  onMat.pivot.scale.multiplyScalar(.01); const s1 = onMat.pivot.scale.x * 100;
+  tween(.35, k => onMat && onMat.pivot.scale.setScalar(Math.max(.01, s1 * k)), ease.back);
+  sfx.pop(); say(matHint(), 'focused'); refreshHint(true);
+}
+function closeMat() {
+  if (!onMat) return;
+  mat.remove(onMat.pivot); onMat = null;
+  holder.visible = true; document.body.classList.remove('mat');
+  $('bench').hidden = false; $('matBar').hidden = true; $('cursor').style.display = 'none';
+  setTool('hand'); renderTray(); refreshHint(true);
+}
+$('matDone').addEventListener('click', () => { initAudio(); sfx.tick(); closeMat(); });
+const cursor = $('cursor');
+function matDown(e) {
+  const m = onMat; m.down = { x: e.clientX, y: e.clientY, rx: m.pivot.rotation.x, ry: m.pivot.rotation.y };
+  canvas.setPointerCapture(e.pointerId);
+  if (tool !== 'hand') { cursor.className = tool === 'iron' ? 'iron' : ''; cursor.style.display = 'block'; moveCursor(e); }
+  if (tool === 'brush' && m.it.cond !== 'dirty') say(m.it.cond === 'loose' ? 'Грязи нет — тут нужен паяльник.' : 'Она и так чистая.', 'thinking');
+  if (tool === 'iron') {
+    const j = m.obj.getObjectByName('joint');
+    if (!j) return say(m.it.cond === 'dirty' ? 'Паять нечего — сначала почисти кисточкой.' : 'Тут паять нечего.', 'thinking');
+    const p = toScreen(j);
+    if (Math.hypot(p.x - e.clientX, p.y - e.clientY) < 60) m.solder = { t: 0, x: e.clientX, y: e.clientY, tick: 0 };
+    else say('Прижми паяльник к светящейся точке на контакте.', 'focused');
+  }
+}
+function moveCursor(e) { cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`; }
+function matMove(e) {
+  const m = onMat; if (!m.down) return;
+  if (tool !== 'hand') moveCursor(e);
+  if (tool === 'hand') {
+    m.pivot.rotation.y = m.down.ry + (e.clientX - m.down.x) * .012;
+    m.pivot.rotation.x = Math.max(-1.4, Math.min(1.4, m.down.rx + (e.clientY - m.down.y) * .012));
+  } else if (tool === 'brush' && m.it.cond === 'dirty') {
+    const d = Math.hypot(e.clientX - (m.lx ?? e.clientX), e.clientY - (m.ly ?? e.clientY)); m.lx = e.clientX; m.ly = e.clientY;
+    const h = pick(e, [m.pivot]);
+    if (h && h.object.name === 'grime' && h.object.userData.dirt > 0 && d) {
+      const g = h.object; g.userData.dirt -= d * .006; g.material.opacity = Math.max(0, g.userData.dirt) * .85 + .15;
+      m.scrub = (m.scrub || 0) + d; if (m.scrub > 40) { m.scrub = 0; sfx.scrub(); buzz(3); }
+      if (g.userData.dirt <= 0) { g.visible = false; const p = toScreen(g); sparkle(p.x, p.y, 10); sfx.shine(); matCheck(); }
+    }
+  } else if (tool === 'iron' && m.solder) {
+    const j = m.obj.getObjectByName('joint'), p = toScreen(j);
+    if (Math.hypot(p.x - e.clientX, p.y - e.clientY) > 70) m.solder = null;
+  }
+}
+function matUp() { const m = onMat; m.down = null; m.lx = m.ly = undefined; m.solder = null; cursor.style.display = 'none'; }
+function matCheck() {
+  const m = onMat; if (!m) return;
+  let left = 0; m.obj.traverse(o => { if (o.name === 'grime' && o.visible) left++; });
+  if (m.it.cond === 'dirty' && !left) matFixed('Чисто! Как новая.');
+  else if (m.it.cond === 'dirty') say(`Ещё ${left} ${left === 1 ? 'пятно' : left < 5 ? 'пятна' : 'пятен'}. Поверни деталь рукой — посмотри с другой стороны.`, 'focused');
+}
+function matFixed(text) {
+  const m = onMat; m.it.cond = 'ok'; save(); sfx.shine(); buzz(40);
+  say(text, 'proud'); face($('hero'), 'proud');
+  setTimeout(() => { if (onMat === m) closeMat(); }, 1300);
+}
+function solderStep(dt) {
+  const m = onMat; if (!m || !m.solder) return;
+  m.solder.t += dt; m.solder.tick += dt;
+  const j = m.obj.getObjectByName('joint'); if (!j) return;
+  const p = toScreen(j);
+  if (m.solder.tick > .15) { m.solder.tick = 0; sfx.sizzle(); sparkle(p.x, p.y, 3, true); buzz(5); }
+  j.material.emissiveIntensity = .6 + m.solder.t;
+  if (m.solder.t > 1.4) {
+    m.solder = null;
+    // rebuild the board with the wire back on its contact
+    const rot = m.pivot.rotation.clone(), sc = m.pivot.scale.clone(), off = m.obj.position.clone();
+    m.pivot.remove(m.obj); m.it.cond = 'ok';
+    m.obj = makePart(kitFor, m.it); m.obj.position.copy(off); m.pivot.add(m.obj); m.pivot.rotation.copy(rot); m.pivot.scale.copy(sc);
+    sparkle(p.x, p.y, 16, true);
+    matFixed('Провод на месте. Пайка держит!');
+  }
 }
 
 /* ---------- power test ---------- */
 async function powerTest() {
   const j = J(); busy = true;
-  const p = K.power, z = p.position.z;
+  const p = objs.get('power').children[0], z = p.position.z;
   await tween(.1, k => { p.position.z = z - .05 * k; }); sfx.clunk(); buzz(30);
   await tween(.1, k => { p.position.z = z - .05 * (1 - k); });
   if (!assembled()) { busy = false; return say('Сначала собери приставку полностью и закрути все винты.', 'thinking'); }
   const issue = DIAG.find(d => j.slots[d.slot].cond === d.cond);
-  const led = K.led.material;
+  const led = K.materials.led;
   if (issue && !issue.boot) {
     if (issue.blink) { for (let i = 0; i < 3; i++) { led.emissive.setHex(0xe0200c); await wait(.12); led.emissive.setHex(0); await wait(.16); } }
     else { sfx.buzz(); await wait(.3); }
@@ -1007,7 +1185,7 @@ function star(on) {
 }
 function finishOrder() {
   const j = J(), o = j.order, c = CUSTOMERS[o.cust];
-  const secs = Math.round((Date.now() - j.started) / 1000), par = 70 + 50 * o.faults.length;
+  const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 90 + 60 * o.faults.length;
   const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1, tip = [0, 0, 10, 20][stars];
   const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
   const total = o.pay + tip;
@@ -1018,21 +1196,21 @@ function finishOrder() {
     <h2>Починено!</h2>
     <div class="stars">${star(stars > 0)}${star(stars > 1)}${star(stars > 2)}</div>
     <div class="who"><div class="ava" style="background-position-x:${-(c.face + 1) * 48}px"></div><p class="quote">«${esc(c.thanks)}» — ${esc(c.name)}</p></div>
-    <div class="rows"><div><span>Время</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
+    <div class="rows"><div><span>Время работы</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
       <div><span>Чаевые за скорость</span><span>+${tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
     <button class="btn" id="next">К заказам</button></div>`;
   card.hidden = false;
   face($('heroBig'), ['relieved', 'happy', 'proud'][stars - 1]);
   S.job = null; S.ordersDone++; ensureListings(); save();
   flyCoins(total);
-  $('next').onclick = () => { sfx.pop(); card.hidden = true; clearDevice(); refreshHint(true); openTablet('orders'); };
+  $('next').onclick = () => { sfx.pop(); card.hidden = true; clearDevice(); refreshHint(true); openTablet(S.shelf.length ? 'store' : 'orders'); };
 }
 function offerSale() {
   const card = $('card');
   card.innerHTML = `<div class="card" role="dialog" aria-label="Приставка работает">
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>Работает!</h2>
-    <p>Ты собрал рабочую приставку из б/у. Её можно продать на барахолке или оставить на столе.</p>
+    <p>Ты собрал рабочую приставку из б/у. Её можно продать на барахолке или оставить у себя.</p>
     <div class="btns"><button class="btn" id="sell">Продать за ${SELL_PRICE}</button><button class="btn alt" id="keep">Оставить</button></div></div>`;
   card.hidden = false; face($('heroBig'), 'proud');
   $('sell').onclick = () => { card.hidden = true; S.job = null; ensureListings(); save(); clearDevice(); flyCoins(SELL_PRICE); refreshHint(true); say('Продано! Можно брать следующую.', 'happy'); };
@@ -1055,38 +1233,69 @@ function flyCoins(total) {
   }, 300 + i * 90);
 }
 
-/* ---------- jobs ---------- */
-function startJob(kind, src) {
-  const slots = {}, tight = {};
-  PART_SLOTS.forEach(t => { slots[t] = item(t); });
-  if (kind === 'order') src.faults.forEach(f => { const F = FAULTS[f]; if (F.slot) slots[F.slot].cond = F.cond; });
-  else Object.entries(src.conds).forEach(([t, c]) => { slots[t].cond = c; });
-  SCREW_SLOTS.forEach(s => { slots[s] = { type: kindOf(s) }; tight[s] = true; });
-  const missing = kind === 'order' ? (src.faults.includes('screws') ? 2 : 0) : src.missing;
-  ['screw_4', 'screw_3'].slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
-  S.job = { kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: Date.now(), variant: src.variant };
-  save(); buildJobScene();
+/* ---------- bench, shelf and courier ---------- */
+function putOnBench(job) {
+  S.shelf = S.shelf.filter(x => x !== job);
+  S.job = job; job.started = Date.now(); save(); buildJobScene();
   holder.scale.setScalar(.01);
   tween(.5, k => holder.scale.setScalar(Math.max(.01, k)), ease.back);
   sfx.pop();
-  say(kind === 'order' ? 'Посмотрим, что с ней. Переверни, чтобы открыть.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
+  say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. Нажми кнопку питания или переверни, чтобы открыть.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
   refreshHint();
 }
+async function shelve() {
+  const j = J(); if (!j || busy) return;
+  busy = true; sfx.whoosh();
+  await tween(.35, k => holder.scale.setScalar(Math.max(.01, 1 - k)), ease.in);
+  j.worked = (j.worked || 0) + (Date.now() - j.started);
+  S.shelf.push(j); S.job = null; save(); clearDevice(); holder.scale.setScalar(1);
+  busy = false; refreshHint(true); say('Отложил на полку. Вернуть — планшет → Склад.', 'happy');
+}
+function deliver(what, secs, label) {
+  S.deliveries.push({ id: S.uid++, eta: Date.now() + secs * 1000, what, label }); save(); renderCourier();
+}
+function arrive(d) {
+  const w = d.what;
+  if (w.kind === 'part') S.box.push(w.item);
+  if (w.kind === 'screws') S.boxScrews[w.k] += w.n;
+  if (w.kind === 'job') S.shelf.push(w.job);
+  save(); sfx.bell(); buzz(60);
+  notice('Курьер привёз: ' + d.label + (w.kind === 'job' ? ' — на полке' : ' — на складе'));
+  if (!$('tablet').hidden) renderTablet();
+  refreshHint();
+}
+let lastCourierSig = '';
+function renderCourier() {
+  const now = Date.now(), list = S.deliveries;
+  $('courier').hidden = !list.length;
+  if (!list.length) return;
+  const next = Math.min(...list.map(d => d.eta));
+  const sig = mmss(next - now) + (list.length > 1 ? ' · ' + list.length : '');
+  if (sig !== lastCourierSig) { $('courierEta').textContent = sig; lastCourierSig = sig; }
+}
+function checkDeliveries() {
+  const now = Date.now(), due = S.deliveries.filter(d => d.eta <= now);
+  if (due.length) { S.deliveries = S.deliveries.filter(d => d.eta > now); due.forEach(arrive); }
+  renderCourier();
+  if (!$('tablet').hidden && tab === 'store' && S.deliveries.length) document.querySelectorAll('[data-eta]').forEach(el => { el.textContent = mmss(+el.dataset.eta - now); });
+}
+$('courier').addEventListener('click', () => { initAudio(); openTablet('store'); });
 function askFinishDonor() {
   const sh = $('sheet');
-  const inside = PART_SLOTS.filter(s => s !== 'cover' && filled(s)).length;
-  sh.innerHTML = `<div class="card" role="dialog" aria-label="Убрать со стола">
-    <h3>Убрать приставку со стола?</h3>
-    <p>Снятые детали и винты из чашки уйдут в коробку, корпус — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
-    <div class="btns"><button class="btn" data-a="ok">Убрать</button><button class="btn alt" data-a="no">Отмена</button></div></div>`;
+  const inside = PART_SLOTS.filter(s => s !== 'cover' && s !== 'shell' && filled(s)).length;
+  sh.innerHTML = `<div class="card" role="dialog" aria-label="Разобрать до конца">
+    <h3>Закончить разбор?</h3>
+    <p>Снятые детали и винты из чашки уйдут на склад, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
+    <div class="btns"><button class="btn" data-a="ok">Закончить</button><button class="btn alt" data-a="no">Отмена</button></div></div>`;
   sh.hidden = false;
   sh.onclick = ev => {
     const a = ev.target.closest('[data-a]'); if (!a && ev.target !== sh) return;
     sh.hidden = true; sh.onclick = null;
     if (!a || a.dataset.a !== 'ok') return;
     S.tray.filter(x => x.type !== 'cover').forEach(x => S.box.push(x));
-    S.tray = []; S.boxScrews.screw += S.cup.screw; S.boxScrews.bscrew += S.cup.bscrew; S.cup = { screw: 0, bscrew: 0 };
-    S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали в коробке. Стол свободен.', 'happy');
+    S.tray = [];
+    S.boxScrews.screw += S.cup.screw; S.boxScrews.bscrew += S.cup.bscrew; S.cup = { screw: 0, bscrew: 0 };
+    S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали на складе. Стол свободен.', 'happy');
   };
 }
 
@@ -1102,51 +1311,71 @@ function toast(text) {
   $('tabBody').appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 1800);
 }
 const price = n => `<span class="price"><span class="coin"></span>${n}</span>`;
+const SHOP = [
+  ...['battery', 'lcd', 'speaker', 'pads', 'pcb', 'bezel', 'dial', 'buttons', 'power'].map(t => ({ type: t })),
+  ...VARIANTS.map((v, i) => ({ type: 'shell', variant: i })),
+];
 function renderTablet() {
   renderMoney();
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
-  const body = $('tabBody'), busyBench = !!J();
+  const body = $('tabBody'), now = Date.now();
   let h = '';
   if (tab === 'orders') {
-    h += `<p class="note">${busyBench ? 'На столе уже есть приставка — закончи с ней, чтобы взять новый заказ.' : 'Клиенты ждут. Деталь, которой нет, купи в магазине или сними с б/у приставки.'}</p>`;
+    h += '<p class="note">Клиенты пришлют приставку курьером — она приедет на полку. Деталь, которой нет, купи в магазине или сними с б/у.</p>';
     S.orders.forEach(o => {
       const c = CUSTOMERS[o.cust];
       h += `<div class="row"><div class="top"><div class="ava" style="background-position-x:${-c.face * 48}px"></div>
         <div class="meta"><b>${esc(c.name)}</b><span>${esc(c.who)}</span></div>${price(o.pay)}</div>
         <p class="quote">«${esc(c.story)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
-        <button class="btn" data-take="${o.id}" ${busyBench ? 'disabled' : ''}>Взять в работу</button></div>`;
+        <button class="btn" data-take="${o.id}">Взять — курьер привезёт за ${DELIVERY.device} с</button></div>`;
     });
   } else if (tab === 'market') {
     h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
     S.offers.forEach(o => {
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: 'cover', cond: 'ok' })}">
-        <div class="meta"><b>Pocket Pal PP-90</b><span>Продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: 'shell', cond: o.conds.shell, variant: o.variant })}">
+        <div class="meta"><b>Pocket Pal PP-90</b><span>${VARIANTS[o.variant].name} · продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
         <div class="tags"><span class="tag">${esc(o.desc)}</span>${o.missing ? '<span class="tag">не хватает винтов</span>' : ''}<span class="tag">остальное — как повезёт</span></div>
-        <button class="btn" data-buyoff="${o.id}" ${busyBench || S.money < o.price ? 'disabled' : ''}>${busyBench ? 'Стол занят' : 'Купить на разбор'}</button></div>`;
+        <button class="btn" data-buyoff="${o.id}" ${S.money < o.price ? 'disabled' : ''}>Купить на разбор</button></div>`;
     });
   } else if (tab === 'shop') {
-    h += '<p class="note">Новые запчасти. Покупки приходят в коробку.</p>';
-    ['battery', 'lcd', 'speaker', 'pads', 'pcb'].forEach(t => {
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: t, cond: 'ok', fresh: true })}">
-        <div class="meta"><b>${esc(PARTS[t].name)}</b><span>новая, для Pocket Pal</span></div>${price(PARTS[t].price)}</div>
-        <button class="btn" data-buy="${t}" ${S.money < PARTS[t].price ? 'disabled' : ''}>Купить</button></div>`;
+    h += `<p class="note">Новые запчасти. Курьер привезёт их на склад за ${DELIVERY.part} с.</p>`;
+    SHOP.forEach(s => {
+      const P = PARTS[s.type], cost = P.price, label = s.type === 'shell' ? `${P.name}, ${VARIANTS[s.variant].name}` : P.name;
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
+        <div class="meta"><b>${esc(label)}</b><span>новая, для Pocket Pal</span></div>${price(cost)}</div>
+        <button class="btn" data-buy="${s.type}" data-variant="${s.variant || 0}" ${S.money < cost ? 'disabled' : ''}>Заказать</button></div>`;
     });
     ['screw', 'bscrew'].forEach(k => {
       h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
         <div class="meta"><b>${SCREW[k].name}</b><span>набор, ${SCREW[k].pack} шт.</span></div>${price(SCREW[k].price)}</div>
-        <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Купить</button></div>`;
+        <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Заказать</button></div>`;
     });
   } else {
-    h += '<p class="note">Твои запчасти. Нажми «На стол», чтобы поставить деталь в приставку.</p>';
+    if (S.deliveries.length) {
+      h += '<div class="sec">В пути</div>';
+      [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
+        h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : 'приедет на склад'}</span></div>
+          <span class="eta" data-eta="${d.eta}">${mmss(d.eta - now)}</span></div></div>`;
+      });
+    }
+    h += '<div class="sec">Полка</div>';
+    if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные приставки и привезённые заказы ждут здесь.</p>';
+    S.shelf.forEach(j => {
+      const removed = PART_SLOTS.filter(s => !j.slots[s]).length;
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
+        <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}` : 'собрана'}</span></div></div>
+        <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
+    });
+    h += '<div class="sec">Склад</div>';
     ['screw', 'bscrew'].forEach(k => {
       h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
-        <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. в коробке · ${S.cup[k]} в чашке</span></div></div>
+        <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. на складе · ${S.cup[k]} в чашке</span></div></div>
         <button class="btn alt" data-cup="${k}" ${S.boxScrews[k] ? '' : 'disabled'}>Высыпать в чашку</button></div>`;
     });
-    if (!S.box.length) h += '<p class="note">Деталей пока нет. Купи в магазине или разбери б/у приставку.</p>';
+    if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине или разбери б/у приставку.</p>';
     S.box.forEach(it => {
       h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
-        <div class="meta"><b>${esc(PARTS[it.type].name)}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
+        <div class="meta"><b>${esc(PARTS[it.type].name)}${it.type === 'shell' ? ', ' + VARIANTS[it.variant || 0].name : ''}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
         <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
     });
   }
@@ -1156,28 +1385,38 @@ $('tabBody').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   initAudio();
   if (b.dataset.take) {
-    const o = S.orders.find(x => x.id === +b.dataset.take); if (!o || J()) return;
-    S.orders = S.orders.filter(x => x !== o); $('tablet').hidden = true; startJob('order', o); ensureListings(); save();
+    const o = S.orders.find(x => x.id === +b.dataset.take); if (!o) return;
+    S.orders = S.orders.filter(x => x !== o); ensureListings();
+    const first = !S.ordersDone && !S.shelf.length && !J() && !S.deliveries.length;
+    deliver({ kind: 'job', job: makeJob('order', o) }, first ? 8 : DELIVERY.device, 'приставка от ' + CUSTOMERS[o.cust].name);
+    sfx.coin(); renderTablet(); toast('Курьер уже едет за приставкой');
   } else if (b.dataset.buyoff) {
-    const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || J() || S.money < o.price) return;
-    S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings(); save(); renderMoney(); sfx.coin();
-    $('tablet').hidden = true; startJob('donor', o);
+    const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || S.money < o.price) return;
+    S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings();
+    deliver({ kind: 'job', job: makeJob('donor', o) }, DELIVERY.device, 'б/у Pocket Pal');
+    renderMoney(); sfx.coin(); renderTablet(); toast('Куплено. Курьер привезёт на полку');
   } else if (b.dataset.buy) {
-    const t = b.dataset.buy; if (S.money < PARTS[t].price) return;
-    S.money -= PARTS[t].price; S.box.push(item(t, 'ok', true)); save(); sfx.coin(); renderTablet(); toast(PARTS[t].name + ' — в коробке');
+    const t = b.dataset.buy, v = +b.dataset.variant, P = PARTS[t]; if (S.money < P.price) return;
+    S.money -= P.price; deliver({ kind: 'part', item: item(t, 'ok', true, v) }, DELIVERY.part, P.name.toLowerCase());
+    sfx.coin(); renderTablet(); toast(P.name + ' — заказано, курьер в пути');
   } else if (b.dataset.buys) {
     const k = b.dataset.buys; if (S.money < SCREW[k].price) return;
-    S.money -= SCREW[k].price; S.boxScrews[k] += SCREW[k].pack; save(); sfx.coin(); renderTablet(); toast(SCREW[k].name + ' — в коробке');
+    S.money -= SCREW[k].price; deliver({ kind: 'screws', k, n: SCREW[k].pack }, DELIVERY.part, SCREW[k].name.toLowerCase());
+    sfx.coin(); renderTablet(); toast(SCREW[k].name + ' — заказано');
   } else if (b.dataset.cup) {
     const k = b.dataset.cup; S.cup[k] += S.boxScrews[k]; S.boxScrews[k] = 0; save(); renderCup(); renderTablet(); sfx.tick(); toast('Винты в чашке на столе');
   } else if (b.dataset.tray) {
     const it = S.box.find(x => x.id === +b.dataset.tray); if (!it) return;
     S.box = S.box.filter(x => x !== it); S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
+  } else if (b.dataset.bench) {
+    const j = S.shelf.find(x => x.id === +b.dataset.bench); if (!j || J()) return;
+    $('tablet').hidden = true; putOnBench(j);
   }
+  save(); renderMoney();
 });
 
 /* ---------- loop ---------- */
-let last = performance.now(), clock = 0;
+let last = performance.now(), clock = 0, slow = 0;
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now; clock += dt;
   for (let i = tweens.length - 1; i >= 0; i--) {
@@ -1188,26 +1427,31 @@ function frame(now) {
   holder.position.y = Math.sin(clock * 1.1) * .03;
   const bat = objs.get('battery');
   if (bat && J() && J().slots.battery && J().slots.battery.cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
+  if (onMat) { const j = onMat.obj.getObjectByName('joint'); if (j && !onMat.solder) j.material.emissiveIntensity = .4 + .4 * Math.sin(clock * 5); solderStep(dt); }
   shadow.visible = !!J();
   if (hintTarget && hintEl.classList.contains('on')) {
     const p = toScreen(hintTarget.obj, hintTarget.at);
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
+  if ((slow += dt) > .5) { slow = 0; checkDeliveries(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 // automated playtests open the page with #test to read where parts are on screen
-if (location.hash === '#test') window.__retro = { at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(K.power), pt: (x, y, z) => toScreen(device, new V3(x, y, z)), state: () => S };
+if (location.hash === '#test') window.__retro = { at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(objs.get('power')),
+  pt: (x, y, z) => toScreen(device, new V3(x, y, z)), joint: () => toScreen(onMat.obj.getObjectByName('joint')), state: () => S,
+  rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
+  grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o)); }); return out; } };
 
 /* ---------- boot ---------- */
 function start(data) {
-  if (data && data.state && data.state.box) S = data.state;
+  if (data && data.state && data.state.box) { S = data.state; migrate(); }
   try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
   ensureListings(); save();
   face($('hero'), 'happy');
-  buildJobScene(); renderTray(); renderMoney(); refreshHint(true);
+  buildJobScene(); renderTray(); renderMoney(); renderCourier(); refreshHint(true);
   requestAnimationFrame(frame);
   if (!S.seen) { S.seen = true; save(); say('Привет! Я мастер. Заказы приходят на планшет.', 'happy'); setTimeout(() => { if (!J() && !uiOpen()) openTablet('orders'); }, 1600); }
 }

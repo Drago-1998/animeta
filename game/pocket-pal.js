@@ -283,6 +283,15 @@ function textures(font) {
     }
     g.fillStyle = 'rgba(15,18,14,.55)'; g.beginPath(); g.arc(cx, cy, 16, 0, 7); g.fill();
   });
+  X.scratch = canvasTex(512, 384, (g, w, h) => {
+    const r = rng(33);
+    g.lineCap = 'round';
+    for (let i = 0; i < 70; i++) {
+      const x = r() * w, y = r() * h, a = r() * Math.PI, len = 20 + r() * 140;
+      g.strokeStyle = `rgba(235,240,230,${0.25 + r() * 0.4})`; g.lineWidth = 0.8 + r() * 1.6;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke();
+    }
+  });
   X.scorch = canvasTex(256, 256, (g, w, h) => {
     const r = rng(9);
     for (let i = 0; i < 26; i++) {
@@ -424,14 +433,14 @@ function materials(o, X) {
     jst: S(0xf0ece2, { roughness: 0.5 }), connector: S(0xe6dcc3, { roughness: 0.55 }),
     tantalum: S(0xdaa524, { roughness: 0.45 }), band: S(0x5a3a14, { roughness: 0.5 }), cap: S(0xb08a5c, { roughness: 0.55 }), res: S(0x202023, { roughness: 0.5 }),
     wireRed: S(0xc42a20, { roughness: 0.45 }), wireBlack: S(0x1d1d1f, { roughness: 0.45 }),
-    glass: S(0xffffff, { roughness: 0.05, transparent: true, opacity: 0.14, depthWrite: false }),
+    glass: S(0xffffff, { roughness: 0.05, transparent: true, opacity: 0.14, depthWrite: false, side: T.DoubleSide }),
     lcd: new T.MeshBasicMaterial({ map: o.screen || X.lcd }), led: S(0x5a1510, { roughness: 0.3 }),
     groove: S(0x4f4134, { roughness: 0.8 }),
     sticker: decal(X.sticker, { transparent: false, depthWrite: true, roughness: 0.75 }), speaker: S(0xffffff, { map: X.speaker, roughness: 0.7 }),
     cross: decal(X.cross), cpu: decal(X.cpu, { transparent: false, depthWrite: true }), ram: decal(X.ram, { transparent: false, depthWrite: true }),
     snd: decal(X.snd, { transparent: false, depthWrite: true }), qc: decal(X.qc), brand: decal(X.brand), powerWord: decal(X.powerWord), pwr: decal(X.pwr),
     notch: S(0xf1e9d8, { roughness: 0.5 }),
-    crack: decal(X.crack, { roughness: 0.2 }), scorch: decal(X.scorch), lcdBack: decal(X.lcdBack, { transparent: false, depthWrite: true }),
+    crack: decal(X.crack, { roughness: 0.2 }), scratch: decal(X.scratch, { roughness: 0.2 }), redWorn: S(0x9a5f52, { roughness: 0.8 }), scorch: decal(X.scorch), lcdBack: decal(X.lcdBack, { transparent: false, depthWrite: true }),
   };
   const dull = { dark: 0.5, rubber: 0.35, black: 0.4, red: 0.6, powerRed: 0.6, pcbEdge: 0.4, chip: 0.5, holder: 0.45, pcbBack: 0.35, pcbFront: 0.35,
     silicone: 0.6, labelOld: 0.3, labelNew: 0.35, tape: 0.5, jst: 0.45, connector: 0.45, tantalum: 0.5, cap: 0.45, res: 0.45,
@@ -458,64 +467,82 @@ function kit(opt) {
   const ringRim = (rin, rout, thick) => extrude((() => { const s = disc(rout, 0, 0, false); s.holes.push(disc(rin)); return s; })(), thick, 0.006, 2, 20);
   const b = 0.03;
   const wallRing = bv => ringShape(W - 2 * bv, H - 2 * bv, R - bv, W - 2 * WALL, H - 2 * WALL, R - WALL);
-  const shell = new T.Group(); shell.name = 'shell';
+  const make = {}, pose = {};
 
-  /* front half of the shell */
-  const front = group(shell, 'front_shell', 0, 0, 0, 1.7);
-  const plate = rr(W - 2 * b, H - 2 * b, R - b);
-  plate.holes.push(rr(SCREEN.w, SCREEN.h, 0.16, 0, SCREEN.y, true), disc(0.46, ...DIAL), disc(0.15, ...POWER), ...BUTTONS.map(([x, y]) => disc(0.225, x, y)));
-  for (let i = 0; i < GRILL.n; i++) plate.holes.push(stadium(GRILL.len, GRILL.wid, GRILL.ang, GRILL.x + i * GRILL.step, GRILL.y));
-  mesh(front, 'front_plate', extrude(plate, 0.14, b, 5), M.body, 0, 0, 0.24);
-  mesh(front, 'front_walls', extrude(wallRing(0.015), 0.25, 0.015, 3), M.body, 0, 0, 0.125);
-  mesh(front, 'dial_collar', ringRim(0.46, 0.53, 0.03), M.trim, ...DIAL, 0.318);
-  BUTTONS.forEach(([x, y], i) => mesh(front, 'button_collar_' + (i + 1), ringRim(0.225, 0.27, 0.024), M.trim, x, y, 0.316));
-  mesh(front, 'power_collar', ringRim(0.15, 0.19, 0.02), M.trim, ...POWER, 0.314);
-  mesh(front, 'screen_gasket', extrude(ringShape(2.42, 1.92, 0.18, 1.99, 1.51, 0.02, WINDOW.y - SCREEN.y), 0.012, 0, 1), M.black, 0, SCREEN.y, 0.186);
-  mesh(front, 'grill_felt', extrude(rr(1.12, 0.62, 0.08), 0.008, 0, 1), M.black, 0.84, GRILL.y, 0.166);
-  mesh(front, 'brand', plane(1.3, 0.16), M.brand, 0, 0.05, 0.3112);
-  mesh(front, 'power_label', plane(0.4, 0.1), M.powerWord, POWER[0], POWER[1] - 0.27, 0.3112);
-  SCREWS.forEach(([x, y], i) => {
-    const boss = mesh(front, 'front_boss_' + (i + 1), new T.CylinderGeometry(0.085, 0.085, 0.165, 24), M.trim, x, y, 0.0875);
-    boss.rotation.x = Math.PI / 2;
-    back(mesh(front, 'front_boss_hole_' + (i + 1), new T.CircleGeometry(0.035, 16), M.black, x, y, 0.0045));
-  });
-  [-0.8, 0.8].forEach((x, i) => mesh(front, 'shoulder_' + (i ? 'right' : 'left'), roundedBox(0.46, 0.09, 0.15, 0.03), M.dark, x, 2.47, 0.1));
-  mesh(front, 'card_slot', roundedBox(0.42, 0.02, 0.045, 0.008), M.black, 0, 2.452, 0.1);
-  mesh(front, 'usb_port', roundedBox(0.34, 0.03, 0.11, 0.05), M.black, 0, -2.452, 0.1);
-  mesh(front, 'usb_tongue', roundedBox(0.2, 0.02, 0.024, 0.008), M.tin, 0, -2.456, 0.1);
-  mesh(front, 'audio_jack', new T.CylinderGeometry(0.055, 0.055, 0.03, 24), M.black, -0.82, -2.452, 0.1);
-  const jackRing = mesh(front, 'audio_jack_ring', new T.TorusGeometry(0.063, 0.009, 8, 28), M.tin, -0.82, -2.456, 0.1);
-  jackRing.rotation.x = Math.PI / 2;
+  /* front housing: plate with its holes, walls, collars, ports and the screw bosses */
+  make.shell = ({ cracked } = {}) => {
+    const front = group(null, 'front_shell', 0, 0, 0, 1.7);
+    const plate = rr(W - 2 * b, H - 2 * b, R - b);
+    plate.holes.push(rr(SCREEN.w, SCREEN.h, 0.16, 0, SCREEN.y, true), disc(0.46, ...DIAL), disc(0.15, ...POWER), ...BUTTONS.map(([x, y]) => disc(0.225, x, y)));
+    for (let i = 0; i < GRILL.n; i++) plate.holes.push(stadium(GRILL.len, GRILL.wid, GRILL.ang, GRILL.x + i * GRILL.step, GRILL.y));
+    mesh(front, 'front_plate', extrude(plate, 0.14, b, 5), M.body, 0, 0, 0.24);
+    mesh(front, 'front_walls', extrude(wallRing(0.015), 0.25, 0.015, 3), M.body, 0, 0, 0.125);
+    mesh(front, 'dial_collar', ringRim(0.46, 0.53, 0.03), M.trim, ...DIAL, 0.318);
+    BUTTONS.forEach(([x, y], i) => mesh(front, 'button_collar_' + (i + 1), ringRim(0.225, 0.27, 0.024), M.trim, x, y, 0.316));
+    mesh(front, 'power_collar', ringRim(0.15, 0.19, 0.02), M.trim, ...POWER, 0.314);
+    mesh(front, 'screen_gasket', extrude(ringShape(2.42, 1.92, 0.18, 1.99, 1.51, 0.02, WINDOW.y - SCREEN.y), 0.012, 0, 1), M.black, 0, SCREEN.y, 0.186);
+    mesh(front, 'grill_felt', extrude(rr(1.12, 0.62, 0.08), 0.008, 0, 1), M.black, 0.84, GRILL.y, 0.166);
+    mesh(front, 'brand', plane(1.3, 0.16), M.brand, 0, 0.05, 0.3112);
+    mesh(front, 'power_label', plane(0.4, 0.1), M.powerWord, POWER[0], POWER[1] - 0.27, 0.3112);
+    if (cracked) mesh(front, 'shell_crack', plane(1.7, 1.3), M.crack, 0.45, -1.35, 0.3118);
+    SCREWS.forEach(([x, y], i) => {
+      const boss = mesh(front, 'front_boss_' + (i + 1), new T.CylinderGeometry(0.085, 0.085, 0.165, 24), M.trim, x, y, 0.0875);
+      boss.rotation.x = Math.PI / 2;
+      back(mesh(front, 'front_boss_hole_' + (i + 1), new T.CircleGeometry(0.035, 16), M.black, x, y, 0.0045));
+    });
+    [-0.8, 0.8].forEach((x, i) => mesh(front, 'shoulder_' + (i ? 'right' : 'left'), roundedBox(0.46, 0.09, 0.15, 0.03), M.dark, x, 2.47, 0.1));
+    mesh(front, 'card_slot', roundedBox(0.42, 0.02, 0.045, 0.008), M.black, 0, 2.452, 0.1);
+    mesh(front, 'usb_port', roundedBox(0.34, 0.03, 0.11, 0.05), M.black, 0, -2.452, 0.1);
+    mesh(front, 'usb_tongue', roundedBox(0.2, 0.02, 0.024, 0.008), M.tin, 0, -2.456, 0.1);
+    mesh(front, 'audio_jack', new T.CylinderGeometry(0.055, 0.055, 0.03, 24), M.black, -0.82, -2.452, 0.1);
+    const jackRing = mesh(front, 'audio_jack_ring', new T.TorusGeometry(0.063, 0.009, 8, 28), M.tin, -0.82, -2.456, 0.1);
+    jackRing.rotation.x = Math.PI / 2;
+    return front;
+  };
 
-  /* screen bezel, glass and power LED */
-  const bezel = group(shell, 'bezel', 0, SCREEN.y, 0.27, 2.3);
+  /* screen bezel with glass and the power LED */
   const bz = ringShape(2.28 - 0.016, 1.78 - 0.016, 0.135, WINDOW.w, WINDOW.h, 0.06, WINDOW.y - SCREEN.y);
-  mesh(bezel, 'bezel_frame', extrude(bz, 0.06, 0.008, 2), M.dark);
+  const bezelGeo = extrude(bz, 0.06, 0.008, 2);
   const ledGeo = new T.SphereGeometry(0.034, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2); ledGeo.rotateX(Math.PI / 2);
-  const led = mesh(bezel, 'power_led', ledGeo, M.led, -1.015, 0.4, 0.03);
-  mesh(bezel, 'led_label', plane(0.15, 0.056), M.pwr, -1.015, 0.29, 0.0305);
-  mesh(bezel, 'screen_glass', plane(WINDOW.w, WINDOW.h), M.glass, 0, WINDOW.y - SCREEN.y, 0.022);
+  make.bezel = ({ scratched } = {}) => {
+    const g = group(null, 'bezel', 0, SCREEN.y, 0.27, 2.3);
+    mesh(g, 'bezel_frame', bezelGeo, M.dark);
+    mesh(g, 'power_led', ledGeo, M.led, -1.015, 0.4, 0.03);
+    mesh(g, 'led_label', plane(0.15, 0.056), M.pwr, -1.015, 0.29, 0.0305);
+    mesh(g, 'screen_glass', plane(WINDOW.w, WINDOW.h), M.glass, 0, WINDOW.y - SCREEN.y, 0.022);
+    if (scratched) mesh(g, 'glass_scratches', plane(WINDOW.w, WINDOW.h), M.scratch, 0, WINDOW.y - SCREEN.y, 0.0225);
+    return g;
+  };
 
   /* thumb dial */
-  const dial = group(shell, 'thumb_dial', ...DIAL, 0.225, 1.25);
   const knob = [lathe([[0, 0], [0.45, 0], [0.45, 0], [0.45, 0.03], [0.45, 0.03], [0.37, 0.03], [0.37, 0.03], [0.37, 0.15], [0.362, 0.162], [0.338, 0.17], [0.26, 0.164], [0.14, 0.156], [0, 0.153]], 64)];
   for (let i = 0; i < 48; i++) { const k = new T.BoxGeometry(0.018, 0.1, 0.02); k.translate(0, 0.09, 0.372); k.rotateY(i / 48 * Math.PI * 2); knob.push(k); }
   const knobGeo = merge(knob); knobGeo.rotateX(Math.PI / 2);
-  mesh(dial, 'dial_knob', knobGeo, M.rubber);
-  const notch = roundedBox(0.04, 0.012, 0.13, 0.005); notch.translate(0, 0.165, -0.25); notch.rotateX(Math.PI / 2);
-  mesh(dial, 'dial_notch', notch, M.notch);
+  const notchGeo = roundedBox(0.04, 0.012, 0.13, 0.005); notchGeo.translate(0, 0.165, -0.25); notchGeo.rotateX(Math.PI / 2);
+  make.dial = ({ broken } = {}) => {
+    const g = group(null, 'thumb_dial', ...DIAL, 0.225, 1.25);
+    const k = mesh(g, 'dial_knob', knobGeo, M.rubber);
+    if (broken) { k.rotation.set(0.2, 0.14, 0); k.position.z = -0.03; } else mesh(g, 'dial_notch', notchGeo, M.notch);
+    return g;
+  };
 
   /* action buttons and power */
   const btnGeo = lathe([[0, 0], [0.235, 0], [0.235, 0], [0.235, 0.03], [0.235, 0.03], [0.19, 0.03], [0.19, 0.03], [0.19, 0.17], [0.186, 0.195], [0.17, 0.216], [0.135, 0.234], [0.075, 0.246], [0, 0.25]]);
   btnGeo.rotateX(Math.PI / 2);
-  BUTTONS.forEach(([x, y], i) => { const g = group(shell, 'button_' + 'abc'[i], x, y, 0.13, 1.25); mesh(g, 'button_' + 'abc'[i] + '_cap', btnGeo, M.red); });
+  make.buttons = ({ worn } = {}) => {
+    const g = group(null, 'buttons', 0, 0, 0, 1.25);
+    BUTTONS.forEach(([x, y], i) => mesh(g, 'button_' + 'abc'[i], btnGeo, worn ? M.redWorn : M.red, x, y, 0.13 - (worn && i === 0 ? 0.07 : 0)));
+    return g;
+  };
   const pwrGeo = lathe([[0, 0], [0.14, 0], [0.14, 0], [0.14, 0.02], [0.14, 0.02], [0.11, 0.02], [0.11, 0.02], [0.11, 0.1], [0.104, 0.118], [0.088, 0.13], [0.05, 0.138], [0, 0.14]]);
   pwrGeo.rotateX(Math.PI / 2);
-  const powerGroup = group(shell, 'power_button', ...POWER, 0.2, 1.25);
-  const power = mesh(powerGroup, 'power_button_cap', pwrGeo, M.powerRed);
+  make.power = () => {
+    const g = group(null, 'power_button', ...POWER, 0.2, 1.25);
+    mesh(g, 'power_button_cap', pwrGeo, M.powerRed);
+    return g;
+  };
 
-  /* ---------- serviceable parts ---------- */
-  const make = {}, pose = {};
+  /* ---------- the inside ---------- */
 
   make.lcd = ({ cracked } = {}) => {
     const g = group(null, 'lcd', 0, WINDOW.y, 0.215, 1.25);
@@ -557,7 +584,7 @@ function kit(opt) {
     return s;
   };
   const boardGeo = extrude(boardShape(), 0.04, 0.004, 1), faceGeo = new T.ShapeGeometry(boardShape(0.002), 14);
-  make.pcb = ({ burnt } = {}) => {
+  make.pcb = ({ burnt, loose } = {}) => {
     const pcb = group(null, 'pcb');
     mesh(pcb, 'pcb_board', boardGeo, M.pcbEdge, 0, 0, 0.08);
     back(mesh(pcb, 'pcb_back_print', faceGeo, M.pcbBack, 0, 0, PCB.back - 0.0008));
@@ -605,7 +632,8 @@ function kit(opt) {
       mesh(c, 'tail', roundedBox(0.09, 0.06, 0.012, 0.004), M.brass, s * 0.22, 0, 0);
     });
     const wire = (name, pts, mat) => mesh(pcb, name, new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p))), 80, 0.016, 6), mat);
-    wire('wire_red', [[0.94, -0.49, 0.03], [1.0, -0.62, 0.034], [1.03, -0.9, 0.036], [0.98, -1.12, 0.04], [0.92, -1.2, 0.044]], M.wireRed);
+    wire('wire_red', loose ? [[0.94, -0.49, 0.03], [1.0, -0.62, 0.034], [1.04, -0.88, 0.02], [1.1, -1.05, -0.06], [1.16, -1.14, -0.14]]
+      : [[0.94, -0.49, 0.03], [1.0, -0.62, 0.034], [1.03, -0.9, 0.036], [0.98, -1.12, 0.04], [0.92, -1.2, 0.044]], M.wireRed);
     wire('wire_black', [[1.02, -0.49, 0.03], [0.9, -0.6, 0.03], [0.4, -0.64, 0.032], [-0.4, -0.64, 0.032], [-0.88, -0.67, 0.032], [-1.02, -0.9, 0.036], [-0.98, -1.12, 0.04], [-0.92, -1.2, 0.044]], M.wireBlack);
     return pcb;
   };
@@ -673,24 +701,32 @@ function kit(opt) {
   };
 
   // where each part sits when installed (device coordinates)
+  pose.shell = new T.Vector3(); pose.bezel = new T.Vector3(0, SCREEN.y, 0.27); pose.dial = new T.Vector3(DIAL[0], DIAL[1], 0.225);
+  pose.buttons = new T.Vector3(); pose.power = new T.Vector3(POWER[0], POWER[1], 0.2);
   pose.lcd = new T.Vector3(0, WINDOW.y, 0.215); pose.pads = new T.Vector3(); pose.speaker = new T.Vector3(SPEAKER[0], SPEAKER[1], 0.1325);
   pose.pcb = new T.Vector3(); pose.battery = new T.Vector3(BAY[0], BAY[1], 0); pose.cover = new T.Vector3();
   SCREWS.forEach(([x, y], i) => { pose['screw_' + (i + 1)] = new T.Vector3(x, y, -0.302); });
   BSCREWS.forEach(([x, y], i) => { pose['bscrew_' + (i + 1)] = new T.Vector3(x, y, PCB.back); });
 
-  // where grime sits on a dirty part, in that part's own coordinates (all facing -Z)
+  // where grime sits on a dirty part, in that part's own coordinates; back faces -Z, front faces +Z
   const spots = {
     pcb: [
       { x: -0.69, y: BAY[1], z: 0.044, w: 0.3, h: 0.5, kind: 'crust' },
       { x: 0.69, y: BAY[1], z: 0.044, w: 0.3, h: 0.5, kind: 'crust' },
       { x: STAIN[0], y: STAIN[1], z: PCB.back - 0.0015, w: 0.9, h: 0.7, kind: 'stain' },
+      { x: 0.75, y: -0.7, z: PCB.front + 0.0015, w: 1.0, h: 0.9, kind: 'crust', front: true },
+      { x: -0.6, y: 1.3, z: PCB.front + 0.0015, w: 1.1, h: 0.8, kind: 'stain', front: true },
     ],
     pads: [
       { x: DIAL[0], y: DIAL[1], z: 0.098, w: 0.8, h: 0.8, kind: 'juice' },
       { x: 0.8, y: -0.75, z: 0.098, w: 0.9, h: 0.8, kind: 'juice' },
+      { x: DIAL[0], y: DIAL[1], z: 0.137, w: 0.7, h: 0.7, kind: 'juice', front: true },
+      { x: 0.8, y: -0.66, z: 0.152, w: 0.9, h: 0.9, kind: 'juice', front: true },
     ],
   };
-  return { shell, power, led, make, pose, spots, materials: M, size: { w: W, h: H, d: 0.62 } };
+  // where the loose battery wire has to be soldered back (on the board)
+  const joint = new T.Vector3(0.92, -1.2, 0.044);
+  return { make, pose, spots, joint, materials: M, size: { w: W, h: H, d: 0.62 } };
 }
 
 /* ---------- the whole device, assembled (reference sheet and .glb export) ---------- */
@@ -698,12 +734,12 @@ function build(opt) {
   const o = Object.assign({ swollen: true }, opt);
   const k = kit(o);
   const root = new T.Group(); root.name = 'pocket_pal';
-  [...k.shell.children].forEach(c => root.add(c));
+  ['shell', 'bezel', 'dial', 'buttons', 'power'].forEach(t => root.add(k.make[t]()));
   const lcd = k.make.lcd(), pads = k.make.pads(), speaker = k.make.speaker(), pcb = k.make.pcb();
   const battery = k.make.battery({ swollen: o.swollen }), cover = k.make.cover();
   const screws = [1, 2, 3, 4].map(i => k.make.screw(i)), bscrews = [1, 2].map(i => k.make.bscrew(i));
   [lcd, pads, speaker, pcb, battery, cover, ...screws, ...bscrews].forEach(p => root.add(p));
-  return { root, cover, screws, bscrews, battery, power: k.power, led: k.led, materials: k.materials };
+  return { root, cover, screws, bscrews, battery, led: k.materials.led, materials: k.materials };
 }
 
 // Soft studio reflections so metal, plastic and the LiPo pouch read as real materials.
