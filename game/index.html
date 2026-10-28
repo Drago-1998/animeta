@@ -137,8 +137,8 @@ body {
 @keyframes cardIn { from { transform: translateY(30px) scale(.9); opacity: 0; } }
 .eyebrow { font: 800 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: #8a6a45; }
 .who { display: flex; gap: 12px; align-items: center; }
-.ava { width: 56px; height: 56px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  font: 700 18px/1 var(--display); color: var(--cream); box-shadow: inset 0 -4px 0 rgba(0,0,0,.18); }
+.ava { width: 56px; height: 70px; border-radius: 14px; flex: none;
+  background: #f6ecdc url("customers.webp") 0 0 / 672px 70px no-repeat; box-shadow: inset 0 0 0 2px rgba(255,255,255,.6); }
 .who b { display: block; font: 700 17px/1.2 var(--display); }
 .who span { font-size: 14px; color: #6b5238; font-weight: 600; }
 .quote { margin: 0; padding: 12px 14px; background: #efdcb8; border-radius: 14px; font-size: 15px; line-height: 1.4; font-weight: 600; }
@@ -427,13 +427,26 @@ function sparkle(x, y, n = 10) {
 function renderMoney() { $('money').textContent = money.toLocaleString('ru-RU'); $('orderLbl').textContent = 'Заказ №' + orderNo; }
 
 /* ---------- customers ---------- */
+// face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
-  { name: 'Баба Зина', who: 'пенсионерка, 74 года', ini: 'БЗ', color: '#c0442f', pay: 40,
-    quote: 'Внук нашёл на антресолях. Не включается, а там, говорит, все его рекорды! Почините, милок.' },
-  { name: 'Тимур', who: 'школьник, 14 лет', ini: 'Т', color: '#3f8f86', pay: 35,
-    quote: 'Купил на барахолке за 300 рублей. Продавец клялся, что работает. Не работает.' },
-  { name: 'Аркадий Львович', who: 'коллекционер', ini: 'АЛ', color: '#6b4428', pay: 60,
-    quote: 'Редкая расцветка. Мне нужна в идеальном состоянии. Плачу соответственно.' },
+  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, pay: 40,
+    quote: 'Дарил эту приставку внуку в девяносто первом. Батарейку раздуло, крышка не закрывается.',
+    thanks: 'Как новенькая! Внук будет счастлив.' },
+  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, pay: 35,
+    quote: 'Купил на барахолке за 300 рублей. Продавец клялся, что работает. Не работает.',
+    thanks: 'Огонь! Пойду рекорды ставить.' },
+  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, pay: 50,
+    quote: 'Это мой первый гаджет. Хочу поставить на стол в кабинете, а он даже не включается.',
+    thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
+  { name: 'Ваня', who: 'ученик второго класса', face: 6, pay: 30,
+    quote: 'Папа сказал, что она сломалась навсегда. Это правда?',
+    thanks: 'Ура, работает! Спасибо!' },
+  { name: 'Лёва', who: 'музыкант', face: 8, pay: 40,
+    quote: 'Хочу записать с неё восьмибитные звуки для альбома. А она молчит.',
+    thanks: 'Вот это звук! Будет хит.' },
+  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, pay: 60,
+    quote: 'Редкая расцветка. Мне нужна в идеальном состоянии. Плачу соответственно.',
+    thanks: 'Безупречно. Я ещё вернусь.' },
 ];
 
 /* ---------- game flow ---------- */
@@ -448,7 +461,7 @@ function showIntro() {
   const card = $('card');
   card.innerHTML = `<div class="card" role="dialog" aria-label="Новый заказ">
     <div class="eyebrow">Новый заказ · №${orderNo}</div>
-    <div class="who"><div class="ava" style="background:${cust.color}">${cust.ini}</div>
+    <div class="who"><div class="ava" style="background-position-x:${-cust.face * 56}px"></div>
       <div><b>${cust.name}</b><span>${cust.who}</span></div></div>
     <p class="quote">«${cust.quote}»</p>
     <div class="rows"><div><span>Устройство</span><span>Pocket Pal PP-90</span></div><div><span>Оплата</span><span>${cust.pay}</span></div></div>
@@ -696,7 +709,7 @@ function showDone(secs, tip, stars) {
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>Починено!</h2>
     <div class="stars">${star(stars > 0)}${star(stars > 1)}${star(stars > 2)}</div>
-    <p class="quote">«${['Ой, работает! Спасибо, золотые руки!', 'Огонь! Пойду рекорды ставить.', 'Безупречно. Буду рекомендовать вас.'][(orderNo - 1) % 3]}» — ${cust.name}</p>
+    <div class="who"><div class="ava" style="background-position-x:${-(cust.face + 1) * 56}px"></div><p class="quote">«${cust.thanks}» — ${cust.name}</p></div>
     <div class="rows"><div><span>Время</span><span>${mm}</span></div><div><span>Оплата</span><span>${cust.pay}</span></div>
       <div><span>Чаевые за скорость</span><span>+${tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
     <button class="btn" id="next">Следующий заказ</button></div>`;
