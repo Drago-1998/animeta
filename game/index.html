@@ -128,9 +128,15 @@ button.chip { cursor: pointer; }
 .slotbtn span { font-size: 11px; font-weight: 800; color: var(--muted); }
 .slotbtn svg { width: 26px; height: 26px; }
 .slotbtn.empty { opacity: .45; }
+.cups { display: flex; gap: 8px; }
+/* box and bin take parts dragged onto them */
+.slotbtn.drop { transition: transform .15s, box-shadow .15s; }
+.slotbtn.drop.hot { transform: scale(1.12); box-shadow: 0 0 0 3px var(--mustard); }
+#binBtn.hot { box-shadow: 0 0 0 3px var(--red); }
 .trayNote { flex: 1 1 auto; min-width: 0; align-self: center; color: var(--muted); font-weight: 700; font-size: 13px; line-height: 1.3; text-align: center; padding: 0 4px; }
 /* removed parts simply lie on the desk around the gadget */
 #desk { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+#desk.dragging { z-index: 6; } /* a part being carried passes over the tray, onto the box or the bin */
 body.street #desk, body.mat #desk, body.pc #desk { display: none; }
 .dpart { appearance: none; position: absolute; left: 0; top: 0; width: 68px; height: 68px; margin: -34px 0 0 -34px; border: 0; padding: 0; background: none;
   pointer-events: auto; cursor: grab; touch-action: none; transition: transform .15s; }
@@ -341,10 +347,12 @@ body.street #streetBar { display: flex; }
 <div id="bench">
   <div id="benchActions"></div>
   <div id="tray">
-    <button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
-    <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button>
-    <div class="trayNote">Снятые детали лежат на столе. Тащи их обратно на приставку.</div>
-    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями"><img alt="" src="box.webp"></button>
+    <button class="slotbtn drop" id="binBtn" aria-label="Корзина: перетащи сюда деталь, чтобы выбросить">
+      <svg viewBox="0 0 40 40" fill="none" stroke="#c9b391" stroke-width="2" stroke-linejoin="round"><path d="M7 11h26l-3 24H10z" fill="rgba(201,179,145,.12)"/><path d="M5 11h30"/><path d="M12 15l1.5 16M20 15v16M28 15l-1.5 16M9.5 21h21M10.5 27h19"/><path d="M15 11c0-4 10-4 10 0"/></svg>
+      <span>Корзина</span></button>
+    <div class="cups"><button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
+    <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button></div>
+    <button class="slotbtn drop" id="boxBtn" aria-label="Коробка с деталями: перетащи сюда деталь, чтобы убрать"><img alt="" src="box.webp"></button>
   </div>
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
@@ -885,7 +893,7 @@ function situation() {
     if (S.visitor) return ['Верстак', 'У окошка ждёт клиент.'];
     if (S.shelf.length) return ['Верстак', 'На полке ждут приставки — открой коробку на столе → «На стол».'];
     if (S.deliveries.length) return ['Верстак', 'Курьер уже едет.'];
-    return ['Верстак', 'Пусто. Клиенты подходят к окошку сами.'];
+    return ['Верстак', 'Пусто. Возьми заказ на компьютере или загляни к окошку.'];
   }
   const title = jobTitle(j);
   if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Поверни приставку пальцем — проведи вбок.'];
@@ -1248,22 +1256,36 @@ function benchMove(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
   if (!b.moving && Math.hypot(e.clientX - b.x0, e.clientY - b.y0) > 10) {
     b.moving = true;
-    if (b.what.item) { b.el.classList.remove('pop'); b.el.classList.add('lift'); }
+    if (b.what.item) { b.el.classList.remove('pop'); b.el.classList.add('lift'); $('desk').classList.add('dragging'); }
     else { ghost.className = 'screw'; ghost.innerHTML = screwIcon(b.what.kind === 'screw'); ghost.style.display = 'block'; }
     sfx.tick();
   }
   if (!b.moving) return;
-  if (b.what.item) { b.el.style.left = e.clientX + 'px'; b.el.style.top = (e.clientY - 30) + 'px'; }
+  if (b.what.item) { b.el.style.left = e.clientX + 'px'; b.el.style.top = (e.clientY - 30) + 'px'; markDrop(dropTarget(e.clientX, e.clientY)); }
   else ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`;
+}
+// the box or the bin under the finger, if any
+function dropTarget(x, y) {
+  return ['boxBtn', 'binBtn'].find(id => { const r = $(id).getBoundingClientRect(); return x > r.left - 12 && x < r.right + 12 && y > r.top - 16 && y < r.bottom + 12; }) || null;
+}
+const markDrop = t => ['boxBtn', 'binBtn'].forEach(id => $(id).classList.toggle('hot', id === t));
+function stowPart(it, target) {
+  const P = PARTS[it.type];
+  if (it.type === 'cover') { sfx.nope(); say('Это крышка этой приставки — её ставят обратно, а не убирают.', 'thinking'); return renderTray(); }
+  S.tray = S.tray.filter(x => x !== it); delete it.pos; delete it.from;
+  if (target === 'boxBtn') { S.box.push(it); sfx.pop(); say(P.name + ' — в коробке.', 'happy'); }
+  else { sfx.whoosh(); say(P.name + ' — в корзине.', 'determined'); }
+  buzz(20); save(); renderTray(); if (!$('boxSheet').hidden) renderBox();
 }
 function benchUp(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
-  benchDrag = null; ghost.style.display = 'none';
+  benchDrag = null; ghost.style.display = 'none'; markDrop(null); $('desk').classList.remove('dragging');
   if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат в коробке.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
   if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат в коробке.', 'thinking');
   const x = e.clientX, y = e.clientY - 30;
   if (b.what.item) {
     b.el.classList.remove('lift');
+    const t = dropTarget(e.clientX, e.clientY); if (t) return stowPart(b.what.item, t);
     // dropped on the gadget: try to fit it; anywhere else it just stays where it was put down
     if (overDevice(x, y)) { dropOnDevice(x, y, b.what); if (S.tray.includes(b.what.item)) renderTray(); return; }
     b.what.item.pos = { x: Math.min(Math.max(x, 34), innerWidth - 34) / innerWidth, y: Math.min(Math.max(y, 120), innerHeight - 140) / innerHeight };
@@ -1278,8 +1300,9 @@ $('desk').addEventListener('pointerdown', e => {
 ['cupScrew', 'cupBscrew'].forEach(id => $(id).addEventListener('pointerdown', e => benchDown(e, { kind: $(id).dataset.kind }, $(id))));
 addEventListener('pointermove', benchMove);
 addEventListener('pointerup', benchUp);
-addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag.el.classList.remove('lift'); benchDrag = null; ghost.style.display = 'none'; renderTray(); } });
+addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag.el.classList.remove('lift'); $('desk').classList.remove('dragging'); markDrop(null); benchDrag = null; ghost.style.display = 'none'; renderTray(); } });
 $('boxBtn').addEventListener('click', () => { initAudio(); openBox(); });
+$('binBtn').addEventListener('click', () => { initAudio(); say('Перетащи сюда деталь со стола, чтобы выбросить. А в коробку справа — чтобы убрать.', 'thinking'); });
 
 /* ---------- a part on the bench: mat, store, bin ---------- */
 function openItem(it) {
