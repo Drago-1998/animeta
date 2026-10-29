@@ -396,6 +396,7 @@ body.street #streetBar { display: flex; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
 <script src="pocket-pal.js"></script>
+<script src="pixel-pet.js"></script>
 <script>
 (() => {
 'use strict';
@@ -434,6 +435,7 @@ const sfx = {
   sizzle: () => noise(.12, .12, 7000, .8),
   shine: () => [1320, 1760, 2640].forEach((f, i) => tone(f, .2, 'sine', .08, i * .06)),
   boot: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? .5 : .14, 'square', .06, i * .11)),
+  chirp: () => [2093, 2637, 3136, 2637, 3520].forEach((f, i) => tone(f, i === 4 ? .22 : .06, 'square', .04, i * .08)),
   coin: () => { tone(1320, .07, 'square', .05); tone(1980, .16, 'square', .05, .06); },
   bell: () => { tone(1568, .5, 'sine', .12); tone(1175, .7, 'sine', .12, .22); },
   buzz: () => tone(90, .25, 'sawtooth', .07),
@@ -494,7 +496,11 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.fl
 const FONT = '"Unbounded", "Arial Black", sans-serif';
 const screenTex = canvasTex(256, 192, () => {});
 function drawScreen(phase) {
-  const cv = screenTex.cv, g = cv.getContext('2d'), w = cv.width, h = cv.height;
+  const cv = screenTex.cv;
+  (J() ? DV() : DEVICES.pal).screen(cv.getContext('2d'), cv.width, cv.height, phase);
+  screenTex.needsUpdate = true;
+}
+function drawPalScreen(g, w, h, phase) {
   if (phase < 0) {
     g.fillStyle = '#2e3828'; g.fillRect(0, 0, w, h);
     const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, 'rgba(255,255,255,.10)'); gr.addColorStop(.45, 'rgba(255,255,255,0)');
@@ -508,7 +514,6 @@ function drawScreen(phase) {
     if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 165); g.globalAlpha = 1; }
     for (let i = 0; i < h; i += 3) { g.fillStyle = 'rgba(43,61,32,.07)'; g.fillRect(0, i, w, 1); }
   }
-  screenTex.needsUpdate = true;
 }
 // dirt textures: organic blobs with soft edges, painted in layers; each kind has a few variants
 function blob(g, cx, cy, R, rnd, lumps = 5) {
@@ -571,10 +576,15 @@ const VARIANTS = [
   { body: 0x4f9a90, trim: 0x3f8178, name: 'бирюзовый' },
   { body: 0xc4963f, trim: 0xa97f31, name: 'горчичный' },
 ];
+const PET_VARIANTS = [
+  { body: 0xe9799a, trim: 0xf29ab2, name: 'розовый' },
+  { body: 0x5ea8d8, trim: 0x93c8ee, name: 'голубой' },
+  { body: 0x8cc152, trim: 0xc2e08a, name: 'лаймовый' },
+];
 // serviceable slots: what sits over each part (must come off first) and what it mounts on
 const INSIDE = ['bezel', 'dial', 'buttons', 'power', 'lcd', 'pads', 'speaker', 'pcb', 'cover'];
 const PARTS = {
-  shell: { name: 'Корпус', over: INSIDE, price: 35, view: 'front', drop: 'разбери всё, что держится на корпусе' },
+  shell: { name: 'Корпус', over: INSIDE, price: 35, view: 'front', colored: true, drop: 'разбери всё, что держится на корпусе' },
   bezel: { name: 'Рамка экрана', over: ['lcd', 'pcb'], support: 'shell', price: 12, view: 'front', drop: 'сними рамку экрана' },
   dial: { name: 'Колёсико', over: ['pads', 'pcb'], support: 'shell', price: 8, view: 'front', drop: 'сними колёсико' },
   buttons: { name: 'Кнопки', over: ['pads', 'pcb'], support: 'shell', price: 6, view: 'front', drop: 'сними кнопки' },
@@ -584,16 +594,35 @@ const PARTS = {
   speaker: { name: 'Динамик', over: ['pcb'], support: 'shell', price: 10, view: 'back', drop: 'сними динамик' },
   pcb: { name: 'Плата', over: ['cover', 'battery', 'bscrew_1', 'bscrew_2'], support: 'shell', price: 40, view: 'back', drop: 'сними плату' },
   battery: { name: 'Аккумулятор', over: ['cover'], support: 'pcb', price: 15, view: 'back', drop: 'вытащи аккумулятор' },
-  cover: { name: 'Задняя крышка', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4'], support: 'shell', view: 'back', drop: 'сними крышку' },
+  cover: { name: 'Задняя крышка', acc: 'Крышку', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4'], support: 'shell', view: 'back', colored: true, unique: true, drop: 'сними крышку' },
 };
+// Pixel Pet, the second gadget (bought with a licence): its own part names, so a part can never fit the wrong gadget
+const PET_INSIDE = ['petLens', 'petKeys', 'petLcd', 'petPcb', 'petBuzzer', 'petCell', 'petDoor', 'petBack', 'petChain'];
+Object.assign(PARTS, {
+  petShell: { dev: 'pet', name: 'Корпус-яйцо', over: PET_INSIDE, price: 20, view: 'front', colored: true, drop: 'разбери всё, что держится на корпусе' },
+  petLens: { dev: 'pet', name: 'Стекло экрана', over: ['petLcd', 'petPcb'], support: 'petShell', price: 6, view: 'front', drop: 'сними стекло' },
+  petKeys: { dev: 'pet', name: 'Кнопки A·B·C', over: ['petPcb'], support: 'petShell', price: 5, view: 'front', drop: 'сними кнопки' },
+  petLcd: { dev: 'pet', name: 'Экранчик', over: ['petPcb'], support: 'petShell', price: 16, view: 'front', drop: 'сними экранчик' },
+  petPcb: { dev: 'pet', name: 'Плата питомца', over: ['petBack', 'petCell', 'petBuzzer'], support: 'petShell', price: 24, view: 'back', drop: 'сними плату' },
+  petBuzzer: { dev: 'pet', name: 'Пищалка', over: ['petBack'], support: 'petPcb', price: 6, view: 'back', drop: 'сними пищалку' },
+  petCell: { dev: 'pet', name: 'Батарейка-таблетка', over: ['petDoor'], support: 'petPcb', price: 4, view: 'back', drop: 'вытащи батарейку' },
+  petDoor: { dev: 'pet', name: 'Крышка батарейки', acc: 'Крышку батарейки', over: ['bscrew_1'], support: 'petBack', view: 'back', colored: true, unique: true, drop: 'сними крышку батарейки' },
+  petBack: { dev: 'pet', name: 'Задняя половинка', acc: 'Заднюю половинку', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'petDoor'], support: 'petShell', view: 'back', colored: true, unique: true, drop: 'сними заднюю половинку' },
+  petChain: { dev: 'pet', name: 'Цепочка', over: [], support: 'petShell', price: 3, view: 'front', drop: 'сними цепочку' },
+});
+Object.values(PARTS).forEach(P => { P.dev = P.dev || 'pal'; });
+// how a broken part looks: the flag its maker understands
+const LOOK = { battery: 'swollen', lcd: 'cracked', shell: 'cracked', speaker: 'burnt', pcb: 'burnt', bezel: 'scratched', buttons: 'worn', dial: 'broken',
+  petCell: 'swollen', petLcd: 'cracked', petShell: 'cracked', petBuzzer: 'burnt', petPcb: 'burnt', petLens: 'scratched', petKeys: 'worn', petChain: 'broken' };
 const PART_SLOTS = ['shell', 'bezel', 'dial', 'buttons', 'power', 'lcd', 'pads', 'speaker', 'pcb', 'battery', 'cover'];
 const SCREW_SLOTS = ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1', 'bscrew_2'];
 const SCREW = {
-  screw: { name: 'Винты корпуса', short: 'винты', support: 'cover', over: [], lift: .28, pack: 4, price: 4 },
-  bscrew: { name: 'Винтики платы', short: 'винтики', support: 'pcb', over: ['cover'], lift: .12, pack: 2, price: 3 },
+  screw: { name: 'Винты корпуса', short: 'винты', pack: 4, price: 4 },
+  bscrew: { name: 'Мелкие винтики', short: 'винтики', pack: 2, price: 3 },
 };
 const kindOf = slot => slot.startsWith('b') ? 'bscrew' : 'screw';
-const COLORED = t => t === 'shell' || t === 'cover';
+const COLORED = t => !!(PARTS[t] && PARTS[t].colored);
+const isScrew = s => /^b?screw_/.test(s);
 const COND = { ok: 'исправна', dirty: 'грязная', broken: 'сломана', loose: 'отошёл провод' };
 const FAULTS = {
   battery: { slot: 'battery', cond: 'broken', pay: 25, hint: 'Сзади выпирает крышка, не включается.' },
@@ -606,7 +635,18 @@ const FAULTS = {
   bezel: { slot: 'bezel', cond: 'broken', pay: 25, hint: 'Стекло экрана всё в царапинах.' },
   buttons: { slot: 'buttons', cond: 'broken', pay: 25, hint: 'Кнопки стёрлись, одна запала.' },
   dial: { slot: 'dial', cond: 'broken', pay: 20, hint: 'Колёсико болтается.' },
-  screws: { pay: 8, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
+  screws: { pay: 8, missing: 2, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
+  petBatt: { dev: 'pet', slot: 'petCell', cond: 'broken', pay: 10, hint: 'Не включается — наверное, батарейка.' },
+  petLeak: { dev: 'pet', slot: 'petPcb', cond: 'dirty', pay: 22, hint: 'Батарейка протекла — внутри зелёный налёт.' },
+  petBuzz: { dev: 'pet', slot: 'petBuzzer', cond: 'broken', pay: 12, hint: 'Перестал пищать.' },
+  petWire: { dev: 'pet', slot: 'petBuzzer', cond: 'loose', pay: 18, hint: 'Пищит через раз, а если потрясти — замолкает.' },
+  petLcd: { dev: 'pet', slot: 'petLcd', cond: 'broken', pay: 20, hint: 'На экране полосы, питомца не видно.' },
+  petSticky: { dev: 'pet', slot: 'petKeys', cond: 'dirty', pay: 14, hint: 'Кнопки липкие — пролили газировку.' },
+  petKeys: { dev: 'pet', slot: 'petKeys', cond: 'broken', pay: 12, hint: 'Кнопка запала — питомца не покормить.' },
+  petLens: { dev: 'pet', slot: 'petLens', cond: 'broken', pay: 10, hint: 'Стекло всё в царапинах.' },
+  petShell: { dev: 'pet', slot: 'petShell', cond: 'broken', pay: 16, hint: 'Уронили — треснул корпус.' },
+  petChain: { dev: 'pet', slot: 'petChain', cond: 'broken', pay: 6, hint: 'Оторвалась цепочка.' },
+  petScrews: { dev: 'pet', pay: 6, missing: 2, hint: 'Кто-то уже вскрывал — двух винтов нет.' },
 };
 // what the power test shows, worst problem first
 const DIAG = [
@@ -622,6 +662,19 @@ const DIAG = [
   { slot: 'bezel', cond: 'broken', boot: true, text: 'Работает, но стекло экрана в царапинах.' },
   { slot: 'shell', cond: 'broken', boot: true, text: 'Работает, но корпус треснул — так отдавать нельзя.' },
 ];
+const DIAG_PET = [
+  { slot: 'petCell', cond: 'broken', boot: false, text: 'Не включается совсем. Похоже, батарейка села или потекла.' },
+  { slot: 'petPcb', cond: 'broken', boot: false, text: 'Не включается, пахнет горелым. Что-то с платой.' },
+  { slot: 'petPcb', cond: 'dirty', boot: false, blink: true, text: 'Экран мигнул и погас. Контакты в зелёном налёте.' },
+  { slot: 'petBuzzer', cond: 'loose', boot: true, mute: true, text: 'Питомец на экране, но молчит — отошёл провод у пищалки.' },
+  { slot: 'petBuzzer', cond: 'broken', boot: true, mute: true, text: 'Питомец на экране, но пищалка треснула — звука нет.' },
+  { slot: 'petLcd', cond: 'broken', boot: true, text: 'Пищит, а на экране полосы — питомца не видно.' },
+  { slot: 'petKeys', cond: 'dirty', boot: true, text: 'Работает, но кнопки липкие и залипают.' },
+  { slot: 'petKeys', cond: 'broken', boot: true, text: 'Работает, но кнопка запала.' },
+  { slot: 'petLens', cond: 'broken', boot: true, text: 'Работает, но стекло в царапинах.' },
+  { slot: 'petShell', cond: 'broken', boot: true, text: 'Работает, но корпус треснул — так отдавать нельзя.' },
+  { slot: 'petChain', cond: 'broken', boot: true, text: 'Работает, но цепочка порвана.' },
+];
 const DISCOVER = {
   battery: { broken: ['Аккумулятор раздут — его только менять.', 'surprised'] },
   pcb: { dirty: ['Плата в окислах. Почисти её кисточкой на коврике.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'],
@@ -633,6 +686,14 @@ const DISCOVER = {
   bezel: { broken: ['Стекло исцарапано — рамку лучше заменить.', 'thinking'] },
   buttons: { broken: ['Кнопки стёрты, одна запала. Нужны новые.', 'thinking'] },
   dial: { broken: ['Колёсико разболтано — только замена.', 'thinking'] },
+  petCell: { broken: ['Батарейка села и потекла — только новая.', 'surprised'] },
+  petPcb: { dirty: ['Плата в зелёном налёте от батарейки. Почисти кисточкой.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'] },
+  petBuzzer: { broken: ['Пищалка треснула — нужна новая.', 'worried'], loose: ['Провод от пищалки отпаялся. Нужен паяльник.', 'surprised'] },
+  petLcd: { broken: ['Экранчик в полосах — только замена.', 'worried'] },
+  petKeys: { dirty: ['Кнопки липкие от газировки. Почистить бы.', 'thinking'], broken: ['Кнопка запала и стёрлась — нужны новые.', 'thinking'] },
+  petLens: { broken: ['Стекло исцарапано — лучше заменить.', 'thinking'] },
+  petShell: { broken: ['Корпус треснул. Нужен новый.', 'worried'] },
+  petChain: { broken: ['Цепочка порвана. Поставлю новую.', 'thinking'] },
 };
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
@@ -653,7 +714,44 @@ const CUSTOMERS = [
     more: 'В коллекции таких две на весь город. Вторая у меня уже есть.', leave: 'Надеюсь на вашу аккуратность.', thanks: 'Безупречно. Я ещё вернусь.' },
 ];
 const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
-const SELL_PRICE = 70;
+/* the gadgets: what each is made of, its screws and their rules, how it is tested, what it sells for */
+const DEVICES = {
+  pal: { id: 'pal', name: 'Pocket Pal', model: 'PP-90', noun: ['приставка', 'приставку', 'приставки'], variants: VARIANTS,
+    parts: PART_SLOTS, screws: SCREW_SLOTS, shell: 'shell', cover: 'cover', swell: 'battery',
+    rules: {
+      screw: { support: 'cover', over: [], lift: .28, label: 'открути винты', where: 'Винт ставят в свободное отверстие на крышке.', need: 'Винтам некуда вкручиваться — сначала крышка.' },
+      bscrew: { support: 'pcb', over: ['cover'], lift: .12, label: 'открути винтики платы', where: 'Винтик ставят в отверстие на плате.', need: 'Винтики держат плату — сначала поставь её.' },
+    },
+    test: { slot: 'power', mesh: 'power_button_cap', short: 'Нажми кнопку питания', hint: 'Собрана. Нажми красную кнопку питания.', sfx: 'boot' },
+    diag: DIAG, base: 15, sell: 70, shop: ['battery', 'lcd', 'speaker', 'pads', 'pcb', 'bezel', 'dial', 'buttons', 'power'],
+    roll: { battery: [['broken', .4]], pcb: [['dirty', .2], ['loose', .15], ['broken', .15]], lcd: [['broken', .4]], speaker: [['broken', .35]], pads: [['dirty', .4]],
+      shell: [['broken', .25]], bezel: [['broken', .3]], dial: [['broken', .2]], buttons: [['broken', .25]] },
+    describe: c => c.shell === 'broken' ? 'Треснул корпус' : c.lcd === 'broken' ? 'Разбит экран' : c.battery === 'broken' ? 'Раздулась батарейка'
+      : c.pcb === 'dirty' ? 'Побывала в воде' : c.speaker === 'broken' ? 'Нет звука' : c.pcb !== 'ok' ? 'Не включается' : 'Потёртая',
+    notes: ['Нашла на антресолях, хочу подарить сыну.', 'Коллекционирую, нужна рабочая.', 'Детство вспомнил — почините, пожалуйста!', 'Отправлю почтой, верните побыстрее.',
+      'Купил на авито, продавец обманул.', 'Память об отце, очень прошу аккуратно.', 'Хочу пройти игру, которую не прошёл в 10 лет.', 'Внук уронил, я в расстройстве.'],
+    screen: (g, w, h, p) => drawPalScreen(g, w, h, p), lib: () => PocketPal },
+  pet: { id: 'pet', name: 'Pixel Pet', model: 'PX-97', noun: ['игрушка', 'игрушку', 'игрушки'], variants: PET_VARIANTS,
+    parts: ['petShell', 'petLens', 'petKeys', 'petLcd', 'petPcb', 'petBuzzer', 'petCell', 'petDoor', 'petBack', 'petChain'],
+    screws: ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1'], shell: 'petShell', cover: 'petBack',
+    rules: {
+      screw: { support: 'petBack', over: [], lift: .2, label: 'открути винты', where: 'Винт ставят в отверстие на задней половинке.', need: 'Винтам некуда вкручиваться — сначала задняя половинка.' },
+      bscrew: { support: 'petDoor', over: [], lift: .1, label: 'открути винтик крышки батарейки', where: 'Винтик ставят в ушко крышки батарейки.', need: 'Винтик держит крышку батарейки — сначала поставь крышку.' },
+    },
+    test: { slot: 'petKeys', mesh: 'key_b', short: 'Нажми среднюю кнопку B', hint: 'Собрана. Нажми среднюю кнопку B.', sfx: 'chirp' },
+    diag: DIAG_PET, base: 10, sell: 35, shop: ['petCell', 'petLcd', 'petBuzzer', 'petKeys', 'petLens', 'petPcb', 'petChain'],
+    roll: { petCell: [['broken', .5]], petPcb: [['dirty', .3], ['broken', .12]], petLcd: [['broken', .3]], petBuzzer: [['broken', .2], ['loose', .15]],
+      petKeys: [['dirty', .2], ['broken', .15]], petLens: [['broken', .3]], petShell: [['broken', .2]], petChain: [['broken', .3]] },
+    describe: c => c.petShell === 'broken' ? 'Треснул корпус' : c.petLcd === 'broken' ? 'Полосы на экране' : c.petCell === 'broken' ? 'Протекла батарейка'
+      : c.petPcb === 'dirty' ? 'Зелёный налёт внутри' : c.petBuzzer !== 'ok' ? 'Не пищит' : c.petPcb !== 'ok' ? 'Не включается' : 'Потёртая',
+    notes: ['Мой питомец прожил 12 лет — хочу продолжить!', 'Нашла в старом рюкзаке, хочу оживить.', 'Подарок для дочки, она таких никогда не видела.',
+      'Собираю Pixel Pet всех цветов.', 'Пищал на уроках — теперь молчит.', 'Батарейка протекла, всё позеленело.', 'Брат в детстве уронил с балкона.'],
+    licence: { price: 200, rep: 0, blurb: 'Электронный питомец на цепочке. Простой и быстрый ремонт: батарейка, пищалка, кнопки. Заказы дешевле, зато их много.' },
+    screen: (g, w, h, p) => PixelPet.drawScreen(g, w, h, p), lib: () => PixelPet },
+};
+const devOf = x => DEVICES[(x && x.dev) || 'pal'];
+const partDev = it => DEVICES[PARTS[it.type].dev];
+const licensed = () => Object.keys(DEVICES).filter(d => d === 'pal' || (S.lic && S.lic[d]));
 // courier: how long a delivery takes, in seconds
 const DELIVERY = { part: 20, device: 25 };
 /* the workshop grows: tools speed up the work, the rest widens the business; rep: the reputation level needed */
@@ -697,7 +795,7 @@ const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 0, bscrew: 0 }, tray: [], cup: { screw: 4, bscrew: 2 },
     orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
-    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null }, rep: 0, upg: {}, screwNext: 0 };
+    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null }, rep: 0, upg: {}, screwNext: 0, lic: {} };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
@@ -706,7 +804,7 @@ function migrate() {
   S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.nextCustomer = S.nextCustomer || 0; S.mode = S.mode || 'street';
   S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
   S.story = S.story || { step: 0, since: 0, active: null };
-  S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0;
+  S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0; S.lic = S.lic || {};
   // screws no longer go in the box: pour whatever was stored there into the cups
   if (S.boxScrews && (S.boxScrews.screw || S.boxScrews.bscrew)) { S.cup.screw += S.boxScrews.screw; S.cup.bscrew += S.boxScrews.bscrew; S.boxScrews = { screw: 0, bscrew: 0 }; }
   // saves from before parts remembered their gadget: give each loose part on the desk to a gadget missing exactly that part
@@ -718,7 +816,7 @@ function migrate() {
     else { owner.parts = [...(owner.parts || []), { ...it, from: owner.id }]; it.gone = true; }
   });
   S.tray = S.tray.filter(it => !it.gone);
-  [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
+  [S.job, ...S.shelf].filter(Boolean).forEach(j => devOf(j).parts.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
 }
@@ -727,12 +825,12 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } cat
 const item = (type, cond = 'ok', fresh = false, variant = 0) => ({ id: S.uid++, type, cond, fresh, variant });
 const pick1 = a => a[Math.floor(Math.random() * a.length)];
 
-const orderPay = faults => 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0);
+const orderPay = (faults, dev = 'pal') => DEVICES[dev].base + faults.reduce((a, f) => a + FAULTS[f].pay, 0);
 // who an order is for: a story character at the window, or a nickname from the internet
 const whoOf = o => o.nick || CUSTOMERS[o.cust].name;
-function randomFaults() {
+function randomFaults(dev = 'pal') {
   const lv = repLevel(), n = 1 + (Math.random() < .5 + lv * .1 ? 1 : 0) + (lv >= 1 && Math.random() < .2 + lv * .12 ? 1 : 0), used = new Set(), faults = [];
-  Object.keys(FAULTS).sort(() => Math.random() - .5).forEach(f => {
+  Object.keys(FAULTS).filter(f => (FAULTS[f].dev || 'pal') === dev).sort(() => Math.random() - .5).forEach(f => {
     const slot = FAULTS[f].slot || f;
     if (faults.length < n && !used.has(slot)) { faults.push(f); used.add(slot); }
   });
@@ -740,15 +838,17 @@ function randomFaults() {
 }
 /* orders from the internet: the courier brings the gadget and takes it back; late repairs are paid half */
 const NICKS = ['Kolya_95', 'retro_lena', 'Дмитрий, Самара', 'pixel_masha', 'Сергей Палыч', 'olga.k', 'gamer2001', 'Анна из Твери', 'dendy_fan', 'Миша_Владивосток', 'vovan_spb', 'Катя_М'];
-const WEB_NOTES = ['Нашла на антресолях, хочу подарить сыну.', 'Коллекционирую, нужна рабочая.', 'Детство вспомнил — почините, пожалуйста!', 'Отправлю почтой, верните побыстрее.',
-  'Купил на авито, продавец обманул.', 'Память об отце, очень прошу аккуратно.', 'Хочу пройти игру, которую не прошёл в 10 лет.', 'Внук уронил, я в расстройстве.'];
-function makeWebOrder() {
-  const faults = randomFaults();
+// half the internet orders are for the licensed gadgets, the rest for the Pocket Pal
+function makeWebOrder(dev) {
+  const extra = licensed().filter(d => d !== 'pal');
+  dev = dev || (extra.length && Math.random() < .5 ? pick1(extra) : 'pal');
+  const faults = randomFaults(dev), WEB_NOTES = DEVICES[dev].notes;
   // no two open orders from the same person, or with the same story
   const open = [...S.web, ...[S.job, ...S.shelf, ...S.deliveries.map(d => d.what.job)].filter(j => j && j.order).map(j => j.order)];
   const free = (list, k) => list.filter(x => !open.some(o => o[k] === x));
-  return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, pay: Math.round(orderPay(faults) * (.9 + repLevel() * .12)), variant: Math.floor(Math.random() * VARIANTS.length),
-    mins: 3 + Math.round(faults.length * 1.5) };
+  return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, dev,
+    pay: Math.round(orderPay(faults, dev) * (.9 + repLevel() * .12)), variant: Math.floor(Math.random() * DEVICES[dev].variants.length),
+    mins: 3 + Math.round(faults.length * (dev === 'pal' ? 1.5 : 1)) };
 }
 function ensureWeb() {
   const now = Date.now();
@@ -760,45 +860,43 @@ function ensureWeb() {
   S.web.push(makeWebOrder()); S.webNext = now + (25000 + Math.random() * 25000) * (has('ad') ? .55 : 1); S.webSeen = false; save(); renderNav();
   if (!$('tablet').hidden && tab === 'orders') renderTablet();
 }
-function makeOffer() {
-  const roll = (...p) => { let r = Math.random(); for (const [c, w] of p) { if ((r -= w) < 0) return c; } return 'ok'; };
-  const conds = {
-    battery: roll(['ok', .6], ['broken', .4]), pcb: roll(['ok', .5], ['dirty', .2], ['loose', .15], ['broken', .15]),
-    lcd: roll(['ok', .6], ['broken', .4]), speaker: roll(['ok', .65], ['broken', .35]), pads: roll(['ok', .6], ['dirty', .4]),
-    shell: roll(['ok', .75], ['broken', .25]), bezel: roll(['ok', .7], ['broken', .3]), dial: roll(['ok', .8], ['broken', .2]),
-    buttons: roll(['ok', .75], ['broken', .25]),
-  };
-  if (Object.values(conds).every(c => c === 'ok')) conds[pick1(['battery', 'lcd', 'speaker'])] = 'broken';
-  const desc = conds.shell === 'broken' ? 'Треснул корпус' : conds.lcd === 'broken' ? 'Разбит экран' : conds.battery === 'broken' ? 'Раздулась батарейка'
-    : conds.pcb === 'dirty' ? 'Побывала в воде' : conds.speaker === 'broken' ? 'Нет звука' : conds.pcb !== 'ok' ? 'Не включается' : 'Потёртая';
+function makeOffer(dev) {
+  dev = dev || pick1(licensed());
+  const dv = DEVICES[dev], roll = list => { let r = Math.random(); for (const [c, w] of list) { if ((r -= w) < 0) return c; } return 'ok'; };
+  const conds = {}; Object.entries(dv.roll).forEach(([t, list]) => { conds[t] = roll(list); });
+  if (Object.values(conds).every(c => c === 'ok')) conds[pick1(Object.keys(dv.roll).filter(t => dv.roll[t].some(([c]) => c === 'broken')))] = 'broken';
   const okCount = Object.values(conds).filter(c => c === 'ok').length;
-  return { id: S.uid++, conds, desc, missing: Math.random() < .3 ? 1 + (Math.random() < .5 ? 1 : 0) : 0,
-    price: 6 + okCount * 3 + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * VARIANTS.length) };
+  return { id: S.uid++, dev, conds, desc: dv.describe(conds), missing: Math.random() < .3 ? 1 + (Math.random() < .5 ? 1 : 0) : 0,
+    price: (dev === 'pal' ? 6 + okCount * 3 : 3 + okCount * 2) + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * dv.variants.length) };
 }
+// one used gadget of every licensed kind is always on sale, plus a couple more
 function ensureListings() {
-  while (S.offers.length < 3) S.offers.push(makeOffer());
+  licensed().forEach(d => { if (!S.offers.some(o => (o.dev || 'pal') === d)) S.offers.push(makeOffer(d)); });
+  while (S.offers.length < 2 + licensed().length) S.offers.push(makeOffer());
 }
 function makeJob(kind, src) {
-  const slots = {}, tight = {};
-  PART_SLOTS.forEach(t => { slots[t] = item(t, 'ok', false, src.variant); });
+  const dv = devOf(src), slots = {}, tight = {};
+  dv.parts.forEach(t => { slots[t] = item(t, 'ok', false, src.variant); });
   if (kind === 'order') src.faults.forEach(f => { const F = FAULTS[f]; if (F.slot) slots[F.slot].cond = F.cond; });
-  else Object.entries(src.conds).forEach(([t, c]) => { slots[t].cond = c; });
-  SCREW_SLOTS.forEach(s => { slots[s] = { type: kindOf(s) }; tight[s] = true; });
-  const missing = kind === 'order' ? (src.faults.includes('screws') ? 2 : 0) : src.missing;
-  ['screw_4', 'screw_3'].slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
-  return { id: S.uid++, kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: 0, variant: src.variant };
+  else Object.entries(src.conds).forEach(([t, c]) => { if (slots[t]) slots[t].cond = c; });
+  dv.screws.forEach(s => { slots[s] = { type: kindOf(s) }; tight[s] = true; });
+  const missing = kind === 'order' ? src.faults.reduce((a, f) => a + (FAULTS[f].missing || 0), 0) : src.missing;
+  dv.screws.filter(s => kindOf(s) === 'screw').reverse().slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
+  return { id: S.uid++, dev: dv.id, kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: 0, variant: src.variant };
 }
-const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + whoOf(j.order) : 'Б/у Pocket Pal, ' + VARIANTS[j.variant].name;
+const variantOf = (dv, v) => dv.variants[v] || dv.variants[0];
+const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + whoOf(j.order) : 'Б/у ' + devOf(j).name + ', ' + variantOf(devOf(j), j.variant).name;
 
 /* ---------- kits: one per body colour, shared by everything built in that colour ---------- */
 const kits = {}, thumbKits = {};
-const kitFor = v => kits[v] || (kits[v] = PocketPal.kit({ body: VARIANTS[v].body, trim: VARIANTS[v].trim, screen: screenTex, font: FONT }));
-const thumbKitFor = v => thumbKits[v] || (thumbKits[v] = PocketPal.kit({ body: VARIANTS[v].body, trim: VARIANTS[v].trim, font: FONT }));
+const kitFor = (dev, v) => kits[dev + v] || (kits[dev + v] = DEVICES[dev].lib().kit({ body: variantOf(DEVICES[dev], v).body, trim: variantOf(DEVICES[dev], v).trim, screen: screenTex, font: FONT }));
+const thumbKitFor = (dev, v) => thumbKits[dev + v] || (thumbKits[dev + v] = DEVICES[dev].lib().kit({ body: variantOf(DEVICES[dev], v).body, trim: variantOf(DEVICES[dev], v).trim, font: FONT }));
 
 /* ---------- the device on the bench ---------- */
 let K = null, powerHit = null;
 const objs = new Map(); // slot → 3D object currently installed
 const J = () => S.job;
+const DV = () => devOf(J()); // the gadget on the bench
 
 function grime(kind, n = 0) {
   const k = kind + n % 3;
@@ -827,11 +925,12 @@ function decalOn(o, sp, i) {
 }
 // a part in its condition; colour-dependent parts (housing, cover) come from their own colour's kit
 function makePart(kitOf, it) {
-  const kit = kitOf(COLORED(it.type) ? (it.variant || 0) : (J() ? J().variant : 0));
-  const c = it.cond;
-  const o = kit.make[it.type]({ swollen: it.type === 'battery' && c === 'broken', fresh: it.fresh, cracked: (it.type === 'lcd' || it.type === 'shell') && c === 'broken',
-    burnt: (it.type === 'speaker' || it.type === 'pcb') && c === 'broken', loose: it.type === 'pcb' && c === 'loose',
-    scratched: it.type === 'bezel' && c === 'broken', worn: it.type === 'buttons' && c === 'broken', broken: it.type === 'dial' && c === 'broken' });
+  const dev = PARTS[it.type].dev, j = J();
+  const kit = kitOf(dev, COLORED(it.type) ? (it.variant || 0) : (j && devOf(j).id === dev ? j.variant : 0));
+  const c = it.cond, flags = { fresh: it.fresh };
+  if (c === 'broken' && LOOK[it.type]) flags[LOOK[it.type]] = true;
+  if (c === 'loose') flags.loose = true;
+  const o = kit.make[it.type](flags);
   if (c === 'dirty') (kit.spots[it.type] || []).forEach((sp, i) => {
     const m = decalOn(o, sp, i); if (!m) return;
     m.geometry.computeBoundingBox(); m.userData.c = m.geometry.boundingBox.getCenter(new V3());
@@ -844,7 +943,7 @@ function makePart(kitOf, it) {
   return o;
 }
 function objFor(slot, v) {
-  const o = SCREW_SLOTS.includes(slot) ? K.make[kindOf(slot)](+slot.slice(-1)) : makePart(kitFor, v);
+  const o = isScrew(slot) ? K.make[kindOf(slot)](+slot.slice(-1)) : makePart(kitFor, v);
   o.userData.slot = slot;
   return o;
 }
@@ -852,7 +951,7 @@ function place(slot) {
   const v = J().slots[slot]; if (!v) return null;
   const o = objFor(slot, v);
   o.position.copy(K.pose[slot]);
-  if (SCREW_SLOTS.includes(slot) && !J().tight[slot]) o.position.z -= SCREW[kindOf(slot)].lift;
+  if (isScrew(slot) && !J().tight[slot]) o.position.z -= rule(slot).lift;
   device.add(o); objs.set(slot, o);
   return o;
 }
@@ -864,10 +963,10 @@ function buildJobScene() {
   clearDevice();
   if (!J()) return;
   drawScreen(-1);
-  K = kitFor(J().variant);
-  K.materials.led.color.setHex(0x5a1510); K.materials.led.emissive.setHex(0);
-  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.pose.power); device.add(powerHit);
-  [...PART_SLOTS, ...SCREW_SLOTS].forEach(place);
+  K = kitFor(DV().id, J().variant);
+  if (K.materials.led) { K.materials.led.color.setHex(0x5a1510); K.materials.led.emissive.setHex(0); }
+  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.testAt); device.add(powerHit);
+  [...DV().parts, ...DV().screws].forEach(place);
   device.rotation.set(0, J().side === 'back' ? Math.PI : 0, 0);
 }
 const shadow = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 6.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: .6 }));
@@ -875,18 +974,19 @@ shadow.position.set(.25, -.35, -1.1); holder.add(shadow);
 
 /* rules */
 const filled = s => !!J().slots[s];
-const overOf = slot => SCREW_SLOTS.includes(slot) ? SCREW[kindOf(slot)].over : PARTS[slot].over;
-const supportOf = slot => SCREW_SLOTS.includes(slot) ? SCREW[kindOf(slot)].support : PARTS[slot].support;
+const rule = slot => DV().rules[kindOf(slot)];
+const overOf = slot => isScrew(slot) ? rule(slot).over : PARTS[slot].over;
+const supportOf = slot => isScrew(slot) ? rule(slot).support : PARTS[slot].support;
 const blockers = slot => overOf(slot).filter(filled);
 function canInstall(slot) { return !filled(slot) && !blockers(slot).length && (!supportOf(slot) || filled(supportOf(slot))); }
 function blockerText(list) {
   const out = [];
-  if (list.some(s => s.startsWith('screw'))) out.push('открути винты');
-  if (list.some(s => s.startsWith('bscrew'))) out.push('открути винтики платы');
+  if (list.some(s => s.startsWith('screw'))) out.push(DV().rules.screw.label);
+  if (list.some(s => s.startsWith('bscrew'))) out.push(DV().rules.bscrew.label);
   list.filter(s => PARTS[s]).forEach(s => out.push(PARTS[s].drop));
   return out.slice(0, 3).join(', ') + (out.length > 3 ? '…' : '');
 }
-const assembled = () => [...PART_SLOTS, ...SCREW_SLOTS].every(filled) && SCREW_SLOTS.every(s => J().tight[s]);
+const assembled = () => [...DV().parts, ...DV().screws].every(filled) && DV().screws.every(s => J().tight[s]);
 
 /* ---------- part thumbnails (rendered from the same 3D parts) ---------- */
 const thumbR = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
@@ -914,7 +1014,24 @@ function thumb(it, size = 152) {
   thumbCache.set(k, url);
   return url;
 }
-const jobThumb = j => thumb({ type: 'shell', cond: j.slots.shell ? j.slots.shell.cond : 'ok', variant: j.variant });
+// the whole gadget, assembled, for shelf, market and licence cards
+function deviceThumb(dev, v = 0, size = 152) {
+  const k = ['dev', dev, v, size].join('|');
+  if (thumbCache.has(k)) return thumbCache.get(k);
+  const kit = thumbKitFor(dev, v), g = new THREE.Group();
+  DEVICES[dev].parts.forEach(t => { const o = kit.make[t]({}); o.position.copy(kit.pose[t]); g.add(o); });
+  const wrap = new THREE.Group(); wrap.add(g); thumbScene.add(wrap);
+  wrap.rotation.set(-.18, .42, 0); wrap.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new V3()), r = box.getSize(new V3()).length() / 2;
+  wrap.position.sub(c);
+  thumbR.setSize(size, size, false);
+  thumbCam.position.set(0, 0, r / Math.tan(THREE.MathUtils.degToRad(13)) * .96); thumbCam.lookAt(0, 0, 0);
+  thumbR.render(thumbScene, thumbCam);
+  const url = thumbR.domElement.toDataURL('image/png');
+  thumbScene.remove(wrap); thumbCache.set(k, url);
+  return url;
+}
+const jobThumb = j => deviceThumb(devOf(j).id, j.variant);
 
 /* ---------- picking ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -960,16 +1077,17 @@ function situation() {
   if (onMat) return ['Коврик: ' + PARTS[onMat.it.type].name, matHint()];
   if (!j) {
     if (S.visitor) return ['Верстак', 'У окошка ждёт клиент.'];
-    if (S.shelf.length) return ['Верстак', 'На полке ждут приставки — открой коробку на столе → «На стол».'];
+    if (S.shelf.length) return ['Верстак', 'На полке ждут устройства — открой коробку на столе → «На стол».'];
     if (S.deliveries.length) return ['Верстак', 'Курьер уже едет.'];
     return ['Верстак', 'Пусто. Возьми заказ на компьютере или загляни к окошку.'];
   }
   const title = jobTitle(j);
-  if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Поверни приставку пальцем — проведи вбок.'];
-  const tight = SCREW_SLOTS.filter(s => filled(s) && j.tight[s]), loose = SCREW_SLOTS.filter(s => filled(s) && !j.tight[s]);
+  const dv = DV();
+  if (j.side === 'front') return [title, assembled() ? dv.test.hint : 'Поверни ' + dv.noun[1] + ' пальцем — проведи вбок.'];
+  const tight = dv.screws.filter(s => filled(s) && j.tight[s]), loose = dv.screws.filter(s => filled(s) && !j.tight[s]);
   if (loose.length) return [title, 'Закрути винт — крути пальцем по кругу.'];
-  if (filled('cover') && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Поверни лицом и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
-  if (filled('cover')) return [title, 'Поставь винты из чашки и закрути их.'];
+  if (filled(dv.cover) && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Поверни лицом и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
+  if (filled(dv.cover)) return [title, 'Поставь винты из чашки и закрути их.'];
   return [title, 'Снимай детали, смотри, что сломано. Ставь их обратно, перетаскивая со стола.'];
 }
 function refreshHint(force) {
@@ -998,9 +1116,9 @@ function tutorial() {
   const j = J();
   if (!j || onMat || S.ordersDone > 0 || j.opened || drag) return setHint(null);
   if (j.side === 'front') return setHint('drag', device, new V3(0, 0, .4), [120, 0]);
-  const tight = ['screw_1', 'screw_2', 'screw_3', 'screw_4'].find(s => filled(s) && j.tight[s]);
-  if (filled('cover') && tight) return setHint('spin', objs.get(tight));
-  if (filled('cover') && !SCREW_SLOTS.slice(0, 4).some(filled)) return setHint('drag', device, new V3(0, -.3, -.4), [0, -90]);
+  const dv = DV(), caseScrews = dv.screws.filter(s => kindOf(s) === 'screw'), tight = caseScrews.find(s => filled(s) && j.tight[s]);
+  if (filled(dv.cover) && tight) return setHint('spin', objs.get(tight));
+  if (filled(dv.cover) && !caseScrews.some(filled)) return setHint('drag', device, new V3(0, -.3, -.4), [0, -90]);
   setHint(null);
 }
 
@@ -1031,7 +1149,7 @@ function badge(it) {
 }
 // where the gadget sits on screen, so parts put down on the desk keep clear of it
 function deviceRect() {
-  const { w, h, d } = PocketPal.size; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  const { w, h, d } = K ? K.size : PocketPal.size; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   if (!J()) { const c = toScreen(holder); return { x0: c.x, y0: c.y, x1: c.x, y1: c.y }; }
   for (const x of [-w / 2, w / 2]) for (const y of [-h / 2, h / 2]) for (const z of [-d, d]) {
     const p = toScreen(device, new V3(x, y, z)); x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
@@ -1130,7 +1248,7 @@ async function endTurn(d) {
 
 function nearestScrew(e) {
   let best = null, bd = 56;
-  SCREW_SLOTS.forEach(s => {
+  DV().screws.forEach(s => {
     const o = objs.get(s); if (!o || blockers(s).length) return;
     const p = toScreen(o), d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
     if (d < bd) { bd = d; best = s; }
@@ -1138,7 +1256,7 @@ function nearestScrew(e) {
   return best;
 }
 function partAt(e) {
-  const list = PART_SLOTS.map(s => objs.get(s)).filter(Boolean);
+  const list = DV().parts.map(s => objs.get(s)).filter(Boolean);
   const h = pick(e, list); if (!h) return null;
   let o = h.object; while (o && !o.userData.slot) o = o.parent;
   return o ? o.userData.slot : null;
@@ -1150,9 +1268,10 @@ canvas.addEventListener('pointerdown', e => {
   if (onMat) return matDown(e);
   const j = J(); if (!j) return;
   if (j.side === 'front') {
-    if (objs.get('power') && pick(e, [powerHit, objs.get('power')])) return powerTest();
+    const test = objs.get(DV().test.slot);
+    if (test && pick(e, [powerHit, test])) return powerTest();
     const onDev = pick(e, [device]);
-    return startTurn(e, () => { if (onDev) say('Проведи пальцем вбок, чтобы повернуть приставку.', 'thinking'); });
+    return startTurn(e, () => { if (onDev) say('Проведи пальцем вбок, чтобы повернуть ' + DV().noun[1] + '.', 'thinking'); });
   }
   const s = nearestScrew(e);
   if (s) { drag = { type: 'screw', slot: s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); setHint(null); return; }
@@ -1160,7 +1279,7 @@ canvas.addEventListener('pointerdown', e => {
   if (!slot) return startTurn(e);
   const b = blockers(slot);
   // a part that cannot come off yet: a swipe turns the gadget, a tap says what is in the way
-  if (b.length) return startTurn(e, () => refuse(slot, slot === 'shell' ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'));
+  if (b.length) return startTurn(e, () => refuse(slot, slot === DV().shell ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'));
   const o = objs.get(slot), at = pointerLocal(e, o.position.z); if (!at) return;
   drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z };
   canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
@@ -1207,7 +1326,7 @@ function turnScrew(e) {
   const a = Math.atan2(dy, dx);
   if (d.last !== null) {
     let da = a - d.last; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
-    const tight = j.tight[d.slot], lift = SCREW[kindOf(d.slot)].lift, home = K.pose[d.slot].z;
+    const tight = j.tight[d.slot], lift = rule(d.slot).lift, home = K.pose[d.slot].z;
     o.userData.progress = (o.userData.progress || 0) + Math.abs(da); d.acc += Math.abs(da);
     const k = Math.min(1, o.userData.progress / (has('driver') ? NEED / 5 : NEED));
     o.rotation.z += tight ? -Math.abs(da) : Math.abs(da);
@@ -1240,8 +1359,8 @@ async function releasePart(d) {
   const dist = Math.hypot(from.x - d.start.x, from.y - d.start.y);
   const t = d.px != null && dropTarget(d.px, d.py); markDrop(null); ghost.style.display = 'none'; delete ghost.dataset.slot; d.obj.visible = true;
   if (TOOL_OF[t]) { const it = await removePart(d.slot); return toMat(it, t); }
-  if (t && !(d.slot === 'cover' && t === 'binBtn')) return removePart(d.slot, t);
-  if (t) { await removePart(d.slot); return say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Положил на стол — можно убрать в коробку.', 'thinking'); }
+  if (t && !(PARTS[d.slot].unique && t === 'binBtn')) return removePart(d.slot, t);
+  if (t) { await removePart(d.slot); return say(keepText(PARTS[d.slot]) + ' Положил на стол — можно убрать в коробку.', 'thinking'); }
   if (dist > 1.0) return removePart(d.slot);
   busy = true;
   await tween(.28, k => { o.position.lerpVectors(from, d.start, k); o.rotation.z = fromR * (1 - k); }, ease.back);
@@ -1249,7 +1368,7 @@ async function releasePart(d) {
 }
 async function removePart(slot, target) {
   const j = J(), o = objs.get(slot), it = j.slots[slot];
-  busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
+  busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === DV().cover) j.opened = true;
   if (target) { const r = $(target).getBoundingClientRect(); it.pos = { x: (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight }; }
   else it.pos = freeSpot();
   it.from = j.id; S.tray.push(it); save();
@@ -1292,22 +1411,23 @@ function installScrew(kind, slot) {
 /* dropping things from the bench onto the device */
 function dropOnDevice(x, y, what) {
   const j = J();
-  if (!j) return say('На столе нет приставки. Возьми её с полки: коробка на столе → «На стол».', 'thinking');
+  if (!j) return say('На столе ничего нет. Возьми устройство с полки: коробка на столе → «На стол».', 'thinking');
   if (!overDevice(x, y)) return;
-  if (j.side === 'front') return say('Поверни приставку пальцем — детали ставят сзади.', 'thinking');
+  if (j.side === 'front') return say('Поверни ' + DV().noun[1] + ' пальцем — детали ставят сзади.', 'thinking');
   if (what.kind) {
     let best = null, bd = 70;
-    SCREW_SLOTS.filter(s => kindOf(s) === what.kind && !filled(s)).forEach(s => {
+    DV().screws.filter(s => kindOf(s) === what.kind && !filled(s)).forEach(s => {
       const p = toScreen(device, K.pose[s]), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = s; }
     });
-    if (!best) return say(what.kind === 'screw' ? 'Винт ставят в свободное отверстие на крышке.' : 'Винтик ставят в отверстие на плате.', 'thinking');
+    if (!best) return say(DV().rules[what.kind].where, 'thinking');
     if (!canInstall(best)) return refuseDrop(best);
     return installScrew(what.kind, best);
   }
   const it = what.item, slot = it.type;
+  if (partDev(it) !== DV()) return refuseNoShake(PARTS[slot].name + ' — от ' + partDev(it).name + ', сюда не подходит.');
   if (filled(slot)) return refuseNoShake('Здесь уже стоит ' + PARTS[slot].name.toLowerCase() + '.');
-  if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: нажми на деталь → «На коврик».');
-  if (it.cond === 'loose') return refuseNoShake('Сначала припаяй провод: нажми на плату → «На коврик».');
+  if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: перетащи деталь на кисточку справа.');
+  if (it.cond === 'loose') return refuseNoShake('Сначала припаяй провод: перетащи деталь на паяльник справа.');
   if (!canInstall(slot)) return refuseDrop(slot);
   installPart(it, slot);
 }
@@ -1317,10 +1437,10 @@ function overDevice(x, y) {
 }
 function refuseNoShake(text) { sfx.nope(); buzz(20); say(text, 'worried'); }
 function refuseDrop(slot) {
-  if (SCREW_SLOTS.includes(slot) && !filled(supportOf(slot))) return refuseNoShake(kindOf(slot) === 'screw' ? 'Винтам некуда вкручиваться — сначала крышка.' : 'Винтики держат плату — сначала поставь её.');
+  if (isScrew(slot) && !filled(supportOf(slot))) return refuseNoShake(rule(slot).need);
   const b = blockers(slot);
   if (b.length) return refuseNoShake('Мешает: ' + blockerText(b).replace(/^./, c => c.toUpperCase()) + '.');
-  if (!filled('shell')) return refuseNoShake('Сначала нужен корпус — на него крепится всё остальное.');
+  if (!filled(DV().shell)) return refuseNoShake('Сначала нужен корпус — на него крепится всё остальное.');
   refuseNoShake('Не встаёт — под неё нужна другая деталь.');
 }
 
@@ -1352,9 +1472,11 @@ function dropTarget(x, y) {
 const markDrop = t => ['boxBtn', 'binBtn', 'toolBrush', 'toolIron'].forEach(id => $(id).classList.toggle('hot', id === t));
 const TOOL_OF = { toolBrush: 'brush', toolIron: 'iron' };
 function toMat(it, target) { renderTray(); openMat(it); setTool(TOOL_OF[target]); say(matHint(), 'focused'); }
+// one-of-a-kind parts (the gadget's own back cover) cannot be bought, so they never go in the bin
+const keepText = P => P.acc + ' не выбрасывай: новую не купить, а без неё ' + DEVICES[P.dev].noun[1] + ' не собрать.';
 function stowPart(it, target) {
   const P = PARTS[it.type];
-  if (it.type === 'cover' && target === 'binBtn') { sfx.nope(); say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Можно убрать в коробку.', 'thinking'); return renderTray(); }
+  if (P.unique && target === 'binBtn') { sfx.nope(); say(keepText(P) + ' Можно убрать в коробку.', 'thinking'); return renderTray(); }
   S.tray = S.tray.filter(x => x !== it); delete it.pos; delete it.from;
   if (target === 'boxBtn') { S.box.push(it); sfx.pop(); say(P.name + ' — в коробке.', 'happy'); }
   else { sfx.whoosh(); say(P.name + ' — в корзине.', 'determined'); }
@@ -1392,12 +1514,12 @@ $('binBtn').addEventListener('click', () => { initAudio(); say('Перетащи
 /* ---------- a part on the bench: mat, store, bin ---------- */
 function openItem(it) {
   const P = PARTS[it.type], sh = $('sheet');
-  const unique = it.type === 'cover';
+  const unique = P.unique;
   const work = it.cond === 'dirty' ? 'Почистить кисточкой' : it.cond === 'loose' ? 'Припаять провод' : 'Рассмотреть';
   sh.innerHTML = `<div class="card" role="dialog" aria-label="${esc(P.name)}">
     <div class="itemhead"><img alt="" src="${thumb(it, 192)}"><div><h3>${esc(P.name)}</h3>
       <span class="state ${it.cond}">${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
-    ${unique ? '<p>Это крышка приставки с этой наклейкой — её ставят обратно на корпус.</p>' : ''}
+    ${unique ? `<p>Это деталь именно этого устройства — новую не купить. Её ставят обратно.</p>` : ''}
     <div class="btns">
       <button class="btn${it.cond === 'ok' || it.cond === 'broken' ? ' alt' : ''}" data-a="mat">На коврик: ${work.toLowerCase()}</button>
       <button class="btn alt" data-a="box">Убрать в коробку</button>
@@ -1451,7 +1573,11 @@ $('matDone').addEventListener('click', () => { initAudio(); sfx.tick(); closeMat
 const cursor = $('cursor');
 function matDown(e) {
   const m = onMat; m.down = { x: e.clientX, y: e.clientY, rx: m.pivot.rotation.x, ry: m.pivot.rotation.y };
-  m.turn = tool === 'hand' || !pick(e, [m.pivot]);
+  // with a tool in hand, a stroke on the part — or just beside a stain or the joint, small parts are easy to miss — works it; elsewhere it turns the part
+  const near = (o, r) => { const p = toScreen(o, o.userData.c); return Math.hypot(p.x - e.clientX, p.y - e.clientY) < r; };
+  let aimed = false; m.obj.traverse(o => { if (o.name === 'grime' && o.visible && near(o, 46)) aimed = true; });
+  const jt = m.obj.getObjectByName('joint'); if (jt && near(jt, 60)) aimed = true;
+  m.turn = tool === 'hand' || (!pick(e, [m.pivot]) && !(tool === 'brush' ? aimed && m.it.cond === 'dirty' : aimed));
   canvas.setPointerCapture(e.pointerId);
   if (tool !== 'hand') { cursor.className = tool === 'iron' ? 'iron' : ''; cursor.style.display = 'block'; moveCursor(e); }
   if (tool === 'brush' && m.it.cond !== 'dirty') say(m.it.cond === 'loose' ? 'Грязи нет — тут нужен паяльник.' : 'Она и так чистая.', 'thinking');
@@ -1518,26 +1644,27 @@ function solderStep(dt) {
 
 /* ---------- power test ---------- */
 async function powerTest() {
-  const j = J(); busy = true;
-  const p = objs.get('power').children[0], z = p.position.z;
+  const j = J(), dv = DV(); busy = true;
+  const t = objs.get(dv.test.slot), p = t.getObjectByName(dv.test.mesh) || t.children[0], z = p.position.z;
   await tween(.1, k => { p.position.z = z - .05 * k; }); sfx.clunk(); buzz(30);
   await tween(.1, k => { p.position.z = z - .05 * (1 - k); });
-  if (!assembled()) { busy = false; return say('Сначала собери приставку полностью и закрути все винты.', 'thinking'); }
-  const issue = DIAG.find(d => j.slots[d.slot].cond === d.cond);
+  if (!assembled()) { busy = false; return say('Сначала собери ' + dv.noun[1] + ' полностью и закрути все винты.', 'thinking'); }
+  const DIAG = dv.diag, issue = DIAG.find(d => j.slots[d.slot].cond === d.cond);
   // the multimeter lists every problem, not only the first one the power test runs into
   const meter = issue && has('meter') && DIAG.filter(d => j.slots[d.slot].cond === d.cond).length > 1
     ? 'Мультиметр: ' + DIAG.filter(d => j.slots[d.slot].cond === d.cond).map(d => d.text).join(' ') : null;
-  const led = K.materials.led;
+  // the Pocket Pal has a power LED; a gadget without one blinks its screen instead
+  const led = K.materials.led, flash = on => { if (led) led.emissive.setHex(on ? 0xe0200c : 0); else drawScreen(on ? .2 : -1); };
   if (issue && !issue.boot) {
-    if (issue.blink) { for (let i = 0; i < 3; i++) { led.emissive.setHex(0xe0200c); await wait(.12); led.emissive.setHex(0); await wait(.16); } }
+    if (issue.blink) { for (let i = 0; i < 3; i++) { flash(true); await wait(.12); flash(false); await wait(.16); } }
     else { sfx.buzz(); await wait(.3); }
     busy = false; return say(meter || issue.text, 'worried');
   }
-  led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c);
-  if (!(issue && issue.mute)) sfx.boot();
+  if (led) { led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c); }
+  if (!(issue && issue.mute)) sfx[dv.test.sfx]();
   await tween(1.5, k => drawScreen(k * 1.6), k => k);
   if (issue) {
-    await wait(.4); drawScreen(-1); led.emissive.setHex(0); led.color.setHex(0x5a1510);
+    await wait(.4); drawScreen(-1); if (led) { led.emissive.setHex(0); led.color.setHex(0x5a1510); }
     busy = false; return say(meter || issue.text, 'worried');
   }
   face($('hero'), 'laughing');
@@ -1603,14 +1730,14 @@ function showPaid(r, then) {
   $('next').onclick = () => { sfx.pop(); card.hidden = true; then && then(); };
 }
 function offerSale() {
-  const card = $('card');
-  card.innerHTML = `<div class="card" role="dialog" aria-label="Приставка работает">
+  const card = $('card'), dv = DV();
+  card.innerHTML = `<div class="card" role="dialog" aria-label="Работает">
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>Работает!</h2>
-    <p>Ты собрал рабочую приставку из б/у. Её можно продать на барахолке или оставить у себя.</p>
-    <div class="btns"><button class="btn" id="sell">Продать за ${SELL_PRICE}</button><button class="btn alt" id="keep">Оставить</button></div></div>`;
+    <p>Ты собрал рабочую ${dv.noun[1]} из б/у. Её можно продать на барахолке или оставить у себя.</p>
+    <div class="btns"><button class="btn" id="sell">Продать за ${dv.sell}</button><button class="btn alt" id="keep">Оставить</button></div></div>`;
   card.hidden = false; face($('heroBig'), 'proud');
-  $('sell').onclick = () => { card.hidden = true; S.job = null; ensureListings(); save(); clearDevice(); flyCoins(SELL_PRICE); refreshHint(true); say('Продано! Можно брать следующую.', 'happy'); };
+  $('sell').onclick = () => { card.hidden = true; S.job = null; ensureListings(); save(); clearDevice(); flyCoins(dv.sell); refreshHint(true); say('Продано! Можно брать следующую.', 'happy'); };
   $('keep').onclick = () => { card.hidden = true; };
 }
 function flyCoins(total) {
@@ -1639,7 +1766,9 @@ function putOnBench(job) {
   holder.scale.setScalar(.01);
   tween(.5, k => holder.scale.setScalar(Math.max(.01, k)), ease.back);
   sfx.pop();
-  say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. Нажми кнопку питания или поверни её пальцем.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
+  const dv = devOf(job);
+  if (dv.id === 'pet' && !S.petSeen) { S.petSeen = true; save(); say('Это Pixel Pet. Батарейка — под круглой крышкой сзади, её держит один винтик. Чтобы вскрыть корпус, открути 4 винта по краям.', 'excited'); }
+  else say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. ' + dv.test.short + ' или поверни её пальцем.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
   refreshHint();
 }
 async function shelve() {
@@ -1685,7 +1814,7 @@ function checkDeliveries() {
 $('courier').addEventListener('click', () => { initAudio(); openTablet('post'); });
 function askFinishDonor() {
   const sh = $('sheet');
-  const inside = PART_SLOTS.filter(s => s !== 'cover' && s !== 'shell' && filled(s)).length;
+  const dv = DV(), inside = dv.parts.filter(s => s !== dv.cover && s !== dv.shell && filled(s)).length;
   sh.innerHTML = `<div class="card" role="dialog" aria-label="Разобрать до конца">
     <h3>Закончить разбор?</h3>
     <p>Снятые детали уйдут в коробку, винты останутся в чашках, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
@@ -1695,7 +1824,7 @@ function askFinishDonor() {
     const a = ev.target.closest('[data-a]'); if (!a && ev.target !== sh) return;
     sh.hidden = true; sh.onclick = null;
     if (!a || a.dataset.a !== 'ok') return;
-    S.tray.filter(x => x.type !== 'cover').forEach(x => S.box.push(x));
+    S.tray.filter(x => !PARTS[x.type].unique).forEach(x => S.box.push(x));
     S.tray = [];
     S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали в коробке. Стол свободен.', 'happy');
   };
@@ -1727,7 +1856,8 @@ function renderNav() {
   $('dotPc').hidden = S.webSeen || here === 'pc';
   $('postDot').hidden = !S.deliveries.length;
   $('ordersDot').hidden = S.webSeen;
-  const canBuy = UPGRADES.some(u => !has(u.id) && repLevel() >= u.rep && (!u.needs || has(u.needs)) && S.money >= u.price);
+  const canBuy = UPGRADES.some(u => !has(u.id) && repLevel() >= u.rep && (!u.needs || has(u.needs)) && S.money >= u.price)
+    || Object.values(DEVICES).some(dv => dv.licence && !S.lic[dv.id] && repLevel() >= dv.licence.rep && S.money >= dv.licence.price);
   $('upgDot').hidden = !canBuy;
 }
 // painted backdrops are 941×1672 portraits: cover the screen with them and map picture pixels to screen pixels
@@ -1760,27 +1890,24 @@ $('boxClose').addEventListener('click', closeBox);
 $('boxSheet').addEventListener('click', e => { if (e.target === $('boxSheet')) closeBox(); });
 function renderBox() {
   let h = '<div class="sec">Полка</div>';
-  if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные приставки и привезённые б/у ждут здесь.</p>';
+  if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные устройства и привезённые б/у ждут здесь.</p>';
   S.shelf.forEach(j => {
-    const removed = PART_SLOTS.filter(s => !j.slots[s]).length;
+    const removed = devOf(j).parts.filter(s => !j.slots[s]).length;
     h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
       <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}${j.parts && j.parts.length ? ', лежат рядом с ней' : ''}` : 'собрана'}</span></div></div>
       <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
   });
   h += '<div class="sec">Детали</div>';
-  if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине на компьютере или разбери б/у приставку.</p>';
+  if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине на компьютере или разбери б/у устройство.</p>';
   S.box.forEach(it => {
+    const dv = partDev(it);
     h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
-      <div class="meta"><b>${esc(PARTS[it.type].name)}${it.type === 'shell' ? ', ' + VARIANTS[it.variant || 0].name : ''}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
+      <div class="meta"><b>${esc(PARTS[it.type].name)}${COLORED(it.type) ? ', ' + variantOf(dv, it.variant || 0).name : ''}</b><span>${dv.name} · ${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
       <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
   });
   $('boxBody').innerHTML = h;
 }
 const price = n => `<span class="price"><span class="coin"></span>${n}</span>`;
-const SHOP = [
-  ...['battery', 'lcd', 'speaker', 'pads', 'pcb', 'bezel', 'dial', 'buttons', 'power'].map(t => ({ type: t })),
-  ...VARIANTS.map((v, i) => ({ type: 'shell', variant: i })),
-];
 function renderTablet() {
   renderMoney();
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
@@ -1789,7 +1916,7 @@ function renderTablet() {
   let h = '';
   if (tab === 'orders') {
     S.webSeen = true; renderNav();
-    h += `<p class="note">Заказы со всей страны. Курьер привезёт приставку на полку, а починенную заберёт сам. Успей до срока — опоздаешь, заплатят половину.</p>`;
+    h += `<p class="note">Заказы со всей страны. Курьер привезёт устройство на полку, а починенное заберёт сам. Успей до срока — опоздаешь, заплатят половину.</p>`;
     const ava = o => o.nick ? `<div class="ava nick">${esc(o.nick[0].toUpperCase())}</div>`
       : `<div class="ava" style="background-image:url('${figSrc(CUSTOMERS[o.cust], 'neutral')}');background-size:auto 165px;background-position:50% 3px"></div>`;
     const due = o => o.deadline ? `<span class="eta${o.deadline < now ? ' late' : ''}" data-eta="${o.deadline}">${o.deadline < now ? 'просрочен' : mmss(o.deadline - now)}</span>` : '';
@@ -1799,14 +1926,14 @@ function renderTablet() {
     h += '<div class="sec">В работе</div>';
     if (!rows.length) h += '<p class="note">Пока ничего. Возьми заказ ниже.</p>';
     rows.forEach(([o, where]) => {
-      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${where}</span></div>${due(o) || price(o.pay)}</div>
+      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${devOf(o).name} · ${where}</span></div>${due(o) || price(o.pay)}</div>
         <p class="quote">«${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
     });
     const busyWeb = rows.filter(([o]) => o.nick).length, cap = webCap();
     h += '<div class="sec">Новые заказы</div>';
     if (!S.web.length) h += '<p class="note">Новых заказов нет. Загляни попозже.</p>';
     S.web.forEach(o => {
-      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>срок ${o.mins} мин после заказа</span></div>${price(o.pay)}</div>
+      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>${devOf(o).name} · срок ${o.mins} мин</span></div>${price(o.pay)}</div>
         <p class="quote">«${esc(o.note)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
         <button class="btn" data-web="${o.id}" ${busyWeb >= cap ? 'disabled' : ''}>${busyWeb >= cap ? `Полка занята (${cap}) — закончи начатые` : 'Взять заказ'}</button></div>`;
     });
@@ -1816,6 +1943,13 @@ function renderTablet() {
     h += `<div class="row"><div class="top"><div class="meta"><b>${LEVELS[lv].name}</b><span>Репутация ${S.rep} ★${next ? ` · до «${next.name}» ещё ${next.at - S.rep}` : ' · высший уровень'}</span></div></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <p class="note">Звёзды дают за каждый заказ, за опоздание — минус 3. Чем выше репутация, тем дороже и сложнее заказы.</p></div>`;
+    h += '<div class="sec">Лицензии</div><p class="note">Лицензия открывает новое устройство: заказы на него, б/у на барахолке и запчасти в магазине.</p>';
+    Object.values(DEVICES).forEach(dv => {
+      const own = dv.id === 'pal' || S.lic[dv.id], L = dv.licence, locked = L && lv < L.rep;
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, 0)}">
+        <div class="meta"><b>${dv.name} ${dv.model}</b><span>${own ? (dv.id === 'pal' ? 'есть с самого начала' : 'лицензия куплена') : esc(L.blurb)}</span></div>${own ? '<span class="tag">есть</span>' : price(L.price)}</div>
+        ${own ? '' : `<button class="btn" data-lic="${dv.id}" ${locked || S.money < L.price ? 'disabled' : ''}>${locked ? 'Нужна репутация: ' + LEVELS[L.rep].name : 'Купить лицензию'}</button>`}</div>`;
+    });
     h += '<div class="sec">Инструменты и улучшения</div>';
     UPGRADES.forEach(u => {
       const own = has(u.id), locked = lv < u.rep || (u.needs && !has(u.needs));
@@ -1824,28 +1958,34 @@ function renderTablet() {
         ${own ? '' : `<button class="btn" data-upg="${u.id}" ${locked || S.money < u.price ? 'disabled' : ''}>${locked ? (lv < u.rep ? 'Нужна репутация: ' + LEVELS[u.rep].name : 'Сначала: полка побольше') : 'Купить'}</button>`}</div>`;
     });
   } else if (tab === 'market') {
-    h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
+    h += '<p class="note">Б/у устройства на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочее можно перепродать.</p>';
     S.offers.forEach(o => {
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: 'shell', cond: o.conds.shell, variant: o.variant })}">
-        <div class="meta"><b>Pocket Pal PP-90</b><span>${VARIANTS[o.variant].name} · продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
+      const dv = devOf(o);
+      h += `<div class="row"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, o.variant)}">
+        <div class="meta"><b>${dv.name} ${dv.model}</b><span>${variantOf(dv, o.variant).name} · продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
         <div class="tags"><span class="tag">${esc(o.desc)}</span>${o.missing ? '<span class="tag">не хватает винтов</span>' : ''}<span class="tag">остальное — как повезёт</span></div>
         <button class="btn" data-buyoff="${o.id}" ${S.money < o.price ? 'disabled' : ''}>Купить на разбор</button></div>`;
     });
   } else if (tab === 'shop') {
     h += `<p class="note">Новые запчасти. Курьер привезёт за ${Math.round(courierTime(DELIVERY.part))} с: детали — в коробку, винты — сразу в чашки.</p>`;
-    SHOP.forEach(s => {
-      const P = PARTS[s.type], cost = P.price, label = s.type === 'shell' ? `${P.name}, ${VARIANTS[s.variant].name}` : P.name;
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
-        <div class="meta"><b>${esc(label)}</b><span>новая, для Pocket Pal</span></div>${price(cost)}</div>
-        <button class="btn" data-buy="${s.type}" data-variant="${s.variant || 0}" ${S.money < cost ? 'disabled' : ''}>Заказать</button></div>`;
+    licensed().forEach(d => {
+      const dv = DEVICES[d];
+      h += `<div class="sec">${dv.name}</div>`;
+      [...dv.shop.map(t => ({ type: t })), ...dv.variants.map((v, i) => ({ type: dv.shell, variant: i }))].forEach(s => {
+        const P = PARTS[s.type], cost = P.price, label = COLORED(s.type) ? `${P.name}, ${variantOf(dv, s.variant).name}` : P.name;
+        h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
+          <div class="meta"><b>${esc(label)}</b><span>новая, для ${dv.name}</span></div>${price(cost)}</div>
+          <button class="btn" data-buy="${s.type}" data-variant="${s.variant || 0}" ${S.money < cost ? 'disabled' : ''}>Заказать</button></div>`;
+      });
     });
+    h += '<div class="sec">Винты</div>';
     ['screw', 'bscrew'].forEach(k => {
       h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
         <div class="meta"><b>${SCREW[k].name}</b><span>набор, ${SCREW[k].pack} шт.</span></div>${price(SCREW[k].price)}</div>
         <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Заказать</button></div>`;
     });
   } else {
-    h += '<p class="note">Курьерская служба. Посылки приезжают прямо в киоск: детали — в коробку, приставки — на полку.</p>';
+    h += '<p class="note">Курьерская служба. Посылки приезжают прямо в киоск: детали — в коробку, устройства — на полку.</p>';
     if (!S.deliveries.length) h += '<p class="note">Сейчас в пути ничего нет.</p>';
     [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
       h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : d.what.kind === 'screws' ? 'высыплет в чашку' : 'приедет в коробку'}</span></div>
@@ -1858,19 +1998,25 @@ function shopClick(e) {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   initAudio(); toastHost = e.currentTarget;
   const renderTablet = () => { if (!$('tablet').hidden) window.__renderTablet(); if (!$('boxSheet').hidden) renderBox(); };
-  if (b.dataset.upg) {
+  if (b.dataset.lic) {
+    const dv = DEVICES[b.dataset.lic], L = dv.licence; if (!L || S.lic[dv.id] || S.money < L.price || repLevel() < L.rep) return;
+    S.money -= L.price; S.lic[dv.id] = true;
+    S.web.unshift(makeWebOrder(dv.id)); S.webSeen = false; ensureListings();
+    save(); sfx.coin(); sfx.shine(); renderTablet(); renderNav(); toast('Лицензия ' + dv.name + ' — куплена!');
+    notice('Теперь можно брать заказы на ' + dv.name + ' — загляни в «Заказы».');
+  } else if (b.dataset.upg) {
     const u = UPGRADES.find(x => x.id === b.dataset.upg); if (!u || has(u.id) || S.money < u.price || repLevel() < u.rep) return;
     S.money -= u.price; S.upg[u.id] = true; if (u.id === 'screws') S.screwNext = Date.now() + 1000;
     save(); sfx.coin(); sfx.shine(); renderTablet(); renderNav(); toast(u.name + ' — теперь в мастерской');
   } else if (b.dataset.web) {
     const o = S.web.find(x => x.id === +b.dataset.web); if (!o) return;
     S.web = S.web.filter(x => x !== o); o.deadline = Date.now() + o.mins * 60000;
-    deliver({ kind: 'job', job: makeJob('order', o) }, DELIVERY.device, 'приставка от ' + o.nick);
-    sfx.coin(); renderTablet(); toast('Заказ принят — курьер везёт приставку');
+    deliver({ kind: 'job', job: makeJob('order', o) }, DELIVERY.device, devOf(o).noun[0] + ' от ' + o.nick);
+    sfx.coin(); renderTablet(); toast('Заказ принят — курьер везёт ' + devOf(o).noun[1]);
   } else if (b.dataset.buyoff) {
     const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || S.money < o.price) return;
     S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings();
-    deliver({ kind: 'job', job: makeJob('donor', o) }, DELIVERY.device, 'б/у Pocket Pal');
+    deliver({ kind: 'job', job: makeJob('donor', o) }, DELIVERY.device, 'б/у ' + devOf(o).name);
     renderMoney(); sfx.coin(); renderTablet(); toast('Куплено. Курьер привезёт на полку');
   } else if (b.dataset.buy) {
     const t = b.dataset.buy, v = +b.dataset.variant, P = PARTS[t]; if (S.money < P.price) return;
@@ -1905,8 +2051,8 @@ function frame(now) {
   // the lit magnifier makes leftover dirt glow on the mat
   if (onMat && has('lens')) { const k = .55 + .45 * Math.sin(clock * 5); onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) o.material.color.setRGB(1, 1, .45 + .55 * k); }); }
   holder.position.y = Math.sin(clock * 1.1) * .03;
-  const bat = objs.get('battery');
-  if (bat && J() && J().slots.battery && J().slots.battery.cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
+  const sw = J() && DV().swell, bat = sw && objs.get(sw);
+  if (bat && J().slots[sw] && J().slots[sw].cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
   if (onMat) { const j = onMat.obj.getObjectByName('joint'); if (j && !onMat.solder) j.material.emissiveIntensity = .4 + .4 * Math.sin(clock * 5); solderStep(dt); }
   shadow.visible = !!J();
   if (hintTarget && hintEl.classList.contains('on')) {
@@ -1920,9 +2066,10 @@ function frame(now) {
 }
 
 // automated playtests open the page with #test to read where parts are on screen
-if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now: () => { S.nextVisit = Date.now(); }, at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(objs.get('power')),
+if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now: () => { S.nextVisit = Date.now(); }, at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(device, K.testAt),
   pt: (x, y, z) => toScreen(device, new V3(x, y, z)), joint: () => toScreen(onMat.obj.getObjectByName('joint')), state: () => S,
   rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
+  thumb: it => thumb(it), deviceThumb: (d, v) => deviceThumb(d, v),
   grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o, o.userData.c)); }); return out; } };
 
 /* ---------- boot ---------- */
@@ -2024,7 +2171,7 @@ function placeWalker(walk) {
   }
   walker.style.height = h + 'px'; walker.style.top = top + 'px';
   // size the box from the picture's own proportions: some browsers squeeze an auto-width image inside an absolutely placed box
-  const img = walker.querySelector('img'), fit = () => { if (img.naturalWidth) walker.style.width = (h * img.naturalWidth / img.naturalHeight) + 'px'; };
+  const el = walker, img = el.querySelector('img'), fit = () => { if (img.naturalWidth) el.style.width = (h * img.naturalWidth / img.naturalHeight) + 'px'; };
   img.onload = fit; fit();
   if (!walk) { walker.style.transform = 'translateX(-50%)'; return Promise.resolve(); }
   walker.moving = true; walker.classList.add('walking');

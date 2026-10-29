@@ -726,7 +726,7 @@ function kit(opt) {
   };
   // where the loose battery wire has to be soldered back (on the board)
   const joint = new T.Vector3(0.92, -1.2, 0.044);
-  return { make, pose, spots, joint, materials: M, size: { w: W, h: H, d: 0.62 } };
+  return { make, pose, spots, joint, materials: M, size: { w: W, h: H, d: 0.62 }, testAt: pose.power };
 }
 
 /* ---------- the whole device, assembled (reference sheet and .glb export) ---------- */
@@ -758,5 +758,7 @@ function environment(renderer) {
   return tex;
 }
 
-window.PocketPal = { kit, build, environment, size: { w: W, h: H, d: 0.62 } };
+// the geometry helpers are shared with the other gadgets (pixel-pet.js builds on them)
+const util = { rr, disc, stadium, ringShape, extrude, roundedBox, lathe, merge, canvasTex, fitText, rng, at };
+window.PocketPal = { kit, build, environment, util, size: { w: W, h: H, d: 0.62 } };
 })();
