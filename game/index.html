@@ -651,7 +651,7 @@ function gainRep(n) {
 /* ---------- save ---------- */
 const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
-  return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
+  return { money: 40, uid: 1, box: [], boxScrews: { screw: 0, bscrew: 0 }, tray: [], cup: { screw: 4, bscrew: 2 },
     orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
     mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null }, rep: 0, upg: {}, screwNext: 0 };
 }
@@ -663,6 +663,8 @@ function migrate() {
   S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
   S.story = S.story || { step: 0, since: 0, active: null };
   S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0;
+  // screws no longer go in the box: pour whatever was stored there into the cups
+  if (S.boxScrews && (S.boxScrews.screw || S.boxScrews.bscrew)) { S.cup.screw += S.boxScrews.screw; S.cup.bscrew += S.boxScrews.bscrew; S.boxScrews = { screw: 0, bscrew: 0 }; }
   // saves from before parts remembered their gadget: give each loose part on the desk to a gadget missing exactly that part
   S.tray.filter(it => it.from === undefined).forEach(it => {
     const owner = [S.job, ...S.shelf].filter(j => j && j.slots && j.slots[it.type] === null)
@@ -707,7 +709,7 @@ function makeWebOrder() {
 function ensureWeb() {
   const now = Date.now();
   if (has('screws') && now > S.screwNext) {
-    if (S.screwNext) { S.boxScrews.screw += 4; S.boxScrews.bscrew += 2; notice('Курьер по подписке привёз винты — они в коробке.'); if (!$('boxSheet').hidden) renderBox(); }
+    if (S.screwNext) { S.cup.screw += 4; S.cup.bscrew += 2; renderCup(); notice('Курьер по подписке привёз винты — высыпал в чашки.'); }
     S.screwNext = now + 180000; save();
   }
   if (S.web.length >= (has('ad') ? 6 : 4) || now < S.webNext) return;
@@ -1292,8 +1294,8 @@ function stowPart(it, target) {
 function benchUp(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
   benchDrag = null; ghost.style.display = 'none'; markDrop(null); $('desk').classList.remove('dragging');
-  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат в коробке.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
-  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат в коробке.', 'thinking');
+  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Винты кончились — закажи набор в магазине на компьютере.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
+  if (b.what.kind && !S.cup[b.what.kind]) return say('Винты кончились — закажи набор в магазине на компьютере.', 'thinking');
   const x = e.clientX, y = e.clientY - 30;
   if (b.what.item) {
     b.el.classList.remove('lift');
@@ -1581,10 +1583,10 @@ function deliver(what, secs, label) {
 function arrive(d) {
   const w = d.what;
   if (w.kind === 'part') S.box.push(w.item);
-  if (w.kind === 'screws') S.boxScrews[w.k] += w.n;
+  if (w.kind === 'screws') { S.cup[w.k] += w.n; renderCup(); }
   if (w.kind === 'job') S.shelf.push(w.job);
   save(); sfx.bell(); buzz(60);
-  notice('Курьер привёз: ' + d.label + (w.kind === 'job' ? ' — на полке' : ' — в коробке'));
+  notice('Курьер привёз: ' + d.label + (w.kind === 'job' ? ' — на полке' : w.kind === 'screws' ? ' — высыпал в чашку' : ' — в коробке'));
   if (!$('tablet').hidden) renderTablet();
   if (!$('boxSheet').hidden) renderBox();
   refreshHint();
@@ -1611,7 +1613,7 @@ function askFinishDonor() {
   const inside = PART_SLOTS.filter(s => s !== 'cover' && s !== 'shell' && filled(s)).length;
   sh.innerHTML = `<div class="card" role="dialog" aria-label="Разобрать до конца">
     <h3>Закончить разбор?</h3>
-    <p>Снятые детали и винты из чашки уйдут в коробку, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
+    <p>Снятые детали уйдут в коробку, винты останутся в чашках, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
     <div class="btns"><button class="btn" data-a="ok">Закончить</button><button class="btn alt" data-a="no">Отмена</button></div></div>`;
   sh.hidden = false;
   sh.onclick = ev => {
@@ -1620,7 +1622,6 @@ function askFinishDonor() {
     if (!a || a.dataset.a !== 'ok') return;
     S.tray.filter(x => x.type !== 'cover').forEach(x => S.box.push(x));
     S.tray = [];
-    S.boxScrews.screw += S.cup.screw; S.boxScrews.bscrew += S.cup.bscrew; S.cup = { screw: 0, bscrew: 0 };
     S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали в коробке. Стол свободен.', 'happy');
   };
 }
@@ -1691,12 +1692,6 @@ function renderBox() {
       <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}${j.parts && j.parts.length ? ', лежат рядом с ней' : ''}` : 'собрана'}</span></div></div>
       <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
   });
-  h += '<div class="sec">Винты</div>';
-  ['screw', 'bscrew'].forEach(k => {
-    h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
-      <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. в коробке · ${S.cup[k]} в чашке</span></div></div>
-      <button class="btn alt" data-cup="${k}" ${S.boxScrews[k] ? '' : 'disabled'}>Высыпать в чашку</button></div>`;
-  });
   h += '<div class="sec">Детали</div>';
   if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине на компьютере или разбери б/у приставку.</p>';
   S.box.forEach(it => {
@@ -1762,7 +1757,7 @@ function renderTablet() {
         <button class="btn" data-buyoff="${o.id}" ${S.money < o.price ? 'disabled' : ''}>Купить на разбор</button></div>`;
     });
   } else if (tab === 'shop') {
-    h += `<p class="note">Новые запчасти. Курьер привезёт их в коробку за ${DELIVERY.part} с.</p>`;
+    h += `<p class="note">Новые запчасти. Курьер привезёт за ${Math.round(courierTime(DELIVERY.part))} с: детали — в коробку, винты — сразу в чашки.</p>`;
     SHOP.forEach(s => {
       const P = PARTS[s.type], cost = P.price, label = s.type === 'shell' ? `${P.name}, ${VARIANTS[s.variant].name}` : P.name;
       h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
@@ -1778,7 +1773,7 @@ function renderTablet() {
     h += '<p class="note">Курьерская служба. Посылки приезжают прямо в киоск: детали — в коробку, приставки — на полку.</p>';
     if (!S.deliveries.length) h += '<p class="note">Сейчас в пути ничего нет.</p>';
     [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
-      h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : 'приедет в коробку'}</span></div>
+      h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : d.what.kind === 'screws' ? 'высыплет в чашку' : 'приедет в коробку'}</span></div>
         <span class="eta" data-eta="${d.eta}">${mmss(d.eta - now)}</span></div></div>`;
     });
   }
@@ -1810,8 +1805,6 @@ function shopClick(e) {
     const k = b.dataset.buys; if (S.money < SCREW[k].price) return;
     S.money -= SCREW[k].price; deliver({ kind: 'screws', k, n: SCREW[k].pack }, DELIVERY.part, SCREW[k].name.toLowerCase());
     sfx.coin(); renderTablet(); toast(SCREW[k].name + ' — заказано');
-  } else if (b.dataset.cup) {
-    const k = b.dataset.cup; S.cup[k] += S.boxScrews[k]; S.boxScrews[k] = 0; save(); renderCup(); renderTablet(); sfx.tick(); toast('Винты в чашке на столе');
   } else if (b.dataset.tray) {
     const it = S.box.find(x => x.id === +b.dataset.tray); if (!it) return;
     S.box = S.box.filter(x => x !== it); delete it.pos; it.from = 'box'; S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
