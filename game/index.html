@@ -1675,9 +1675,9 @@ function drawStreet() {
   const win = { x: m.x(144), y: m.y(200), w: (823 - 144) * m.s, h: (955 - 200) * m.s }, top = m.y(955);
   bg.fillStyle = '#2a2040'; bg.fillRect(0, 0, W, H);
   if (ART.street.complete && ART.street.naturalWidth) {
-    // a bit wider than the window, with the near pavement at the sill so customers stand on it
+    // a bit wider than the window, with the kerb of the near pavement at the sill so the street sits low
     const s2 = win.w * 1.25 / 941;
-    bg.drawImage(ART.street, win.x + win.w / 2 - 941 * s2 / 2, top - 1330 * s2, 941 * s2, 1672 * s2);
+    bg.drawImage(ART.street, win.x + win.w / 2 - 941 * s2 / 2, top - 1130 * s2, 941 * s2, 1672 * s2);
   }
   if (ART.kiosk.complete && ART.kiosk.naturalWidth) fg.drawImage(ART.kiosk, m.x(0), m.y(0), 941 * m.s, 1672 * m.s);
   else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
