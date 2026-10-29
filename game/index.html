@@ -654,6 +654,15 @@ function migrate() {
   S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
   S.story = S.story || { step: 0, since: 0, active: null };
   S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0;
+  // saves from before parts remembered their gadget: give each loose part on the desk to a gadget missing exactly that part
+  S.tray.filter(it => it.from === undefined).forEach(it => {
+    const owner = [S.job, ...S.shelf].filter(j => j && j.slots && j.slots[it.type] === null)
+      .find(j => ![...S.tray, ...(j.parts || [])].some(x => x !== it && x.from === j.id && x.type === it.type));
+    if (!owner) return;
+    if (owner === S.job) it.from = owner.id;
+    else { owner.parts = [...(owner.parts || []), { ...it, from: owner.id }]; it.gone = true; }
+  });
+  S.tray = S.tray.filter(it => !it.gone);
   [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
@@ -1770,7 +1779,7 @@ function shopClick(e) {
     const k = b.dataset.cup; S.cup[k] += S.boxScrews[k]; S.boxScrews[k] = 0; save(); renderCup(); renderTablet(); sfx.tick(); toast('Винты в чашке на столе');
   } else if (b.dataset.tray) {
     const it = S.box.find(x => x.id === +b.dataset.tray); if (!it) return;
-    S.box = S.box.filter(x => x !== it); delete it.pos; S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
+    S.box = S.box.filter(x => x !== it); delete it.pos; it.from = 'box'; S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
   } else if (b.dataset.bench) {
     const j = S.shelf.find(x => x.id === +b.dataset.bench); if (!j || J()) return;
     closeBox(); putOnBench(j);
