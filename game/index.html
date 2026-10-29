@@ -581,7 +581,8 @@ const CUSTOMERS = [
     more: 'Продавец клялся, что работает. Я все карманные на неё потратил!', leave: 'Только не потеряйте её, ладно?', thanks: 'Огонь! Пойду рекорды ставить.' },
   { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, fig: 'business', scale: 1.05, poses: true, story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.',
     more: 'Мне её подарил отец, когда я была в пятом классе. Хочу, чтобы она снова работала.', leave: 'Хорошо. Позвоните… то есть, я сама зайду.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
-  { name: 'Ваня', who: 'ученик второго класса', face: 6, fig: 'kid', scale: 0.78, story: 'Папа сказал, что она сломалась навсегда. Это правда?',
+  { name: 'Ваня', who: 'ученик второго класса', face: 6, fig: 'kid', scale: 0.78, poses: true,
+    alias: { wave: 'cheer', thumbs: 'proud', idea: 'think', shy: 'laugh', nervous: 'shock', explain: 'neutral' }, story: 'Папа сказал, что она сломалась навсегда. Это правда?',
     more: 'Я её не ронял! Ну… почти не ронял.', leave: 'Я буду каждый день приходить и смотреть!', thanks: 'Ура, работает! Спасибо!' },
   { name: 'Лёва', who: 'музыкант', face: 8, fig: 'hipster', scale: 1.05, story: 'Хочу записывать с неё восьмибитные звуки для альбома.',
     more: 'У неё особенный писк. Новые так не умеют — я проверял.', leave: 'Без неё альбом не допишу. Жду!', thanks: 'Вот это звук! Будет хит.' },
@@ -1733,7 +1734,8 @@ function placeWalker(walk) {
 }
 // customers with a pose sheet change pose line by line; the rest have one picture
 const POSES = ['neutral', 'wave', 'cheer', 'think', 'thumbs', 'proud', 'idea', 'shock', 'shy', 'sad', 'angry', 'thanks', 'nervous', 'explain'];
-const figSrc = (c, pose) => c.poses ? `people/${c.fig}/${pose || 'neutral'}.webp` : `people/${c.fig}.webp`;
+// a short pose sheet stands in for the missing poses through c.alias
+const figSrc = (c, pose) => { pose = pose || 'neutral'; return c.poses ? `people/${c.fig}/${(c.alias && c.alias[pose]) || pose}.webp` : `people/${c.fig}.webp`; };
 function setPose(pose) {
   const c = walker && walker.cust; if (!c || !c.poses || !pose) return;
   const img = walker.querySelector('img'), src = figSrc(c, pose); if (!img.src.endsWith(src)) img.src = src;
