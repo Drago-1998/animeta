@@ -834,6 +834,7 @@ function makePart(kitOf, it) {
     scratched: it.type === 'bezel' && c === 'broken', worn: it.type === 'buttons' && c === 'broken', broken: it.type === 'dial' && c === 'broken' });
   if (c === 'dirty') (kit.spots[it.type] || []).forEach((sp, i) => {
     const m = decalOn(o, sp, i); if (!m) return;
+    m.geometry.computeBoundingBox(); m.userData.c = m.geometry.boundingBox.getCenter(new V3());
     m.name = 'grime'; m.userData.dirt = 1; o.add(m);
   });
   if (c === 'loose') {
@@ -1471,11 +1472,14 @@ function matMove(e) {
     m.pivot.rotation.x = Math.max(-1.4, Math.min(1.4, m.down.rx + (e.clientY - m.down.y) * .012));
   } else if (tool === 'brush' && m.it.cond === 'dirty') {
     const d = Math.hypot(e.clientX - (m.lx ?? e.clientX), e.clientY - (m.ly ?? e.clientY)); m.lx = e.clientX; m.ly = e.clientY;
-    const h = pick(e, [m.pivot]);
-    if (h && h.object.name === 'grime' && h.object.userData.dirt > 0 && d) {
+    // stains lie flush on the part, so the part itself is often hit first: take a stain on (about) the same surface
+    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects([m.pivot], true), near = hits[0];
+    const h = near && hits.find(x => x.object.name === 'grime' && x.object.visible && x.object.userData.dirt > 0 && x.distance - near.distance < .25);
+    if (h && d) {
       const g = h.object; g.userData.dirt -= d * (has('brush') ? .012 : .006); g.material.opacity = Math.max(0, g.userData.dirt) * .8 + .2;
       m.scrub = (m.scrub || 0) + d; if (m.scrub > 40) { m.scrub = 0; sfx.scrub(); buzz(3); }
-      if (g.userData.dirt <= 0) { g.visible = false; const p = toScreen(g); sparkle(p.x, p.y, 10); sfx.shine(); matCheck(); }
+      if (g.userData.dirt <= 0) { g.visible = false; const p = toScreen(g, g.userData.c); sparkle(p.x, p.y, 10); sfx.shine(); matCheck(); }
     }
   } else if (tool === 'iron' && m.solder) {
     const j = m.obj.getObjectByName('joint'), p = toScreen(j);
@@ -1919,7 +1923,7 @@ function frame(now) {
 if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now: () => { S.nextVisit = Date.now(); }, at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(objs.get('power')),
   pt: (x, y, z) => toScreen(device, new V3(x, y, z)), joint: () => toScreen(onMat.obj.getObjectByName('joint')), state: () => S,
   rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
-  grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o)); }); return out; } };
+  grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o, o.userData.c)); }); return out; } };
 
 /* ---------- boot ---------- */
 function start(data) {
