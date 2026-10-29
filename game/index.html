@@ -397,6 +397,7 @@ body.street #streetBar { display: flex; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
 <script src="pocket-pal.js"></script>
 <script src="pixel-pet.js"></script>
+<script src="brick-phone.js"></script>
 <script>
 (() => {
 'use strict';
@@ -436,6 +437,7 @@ const sfx = {
   shine: () => [1320, 1760, 2640].forEach((f, i) => tone(f, .2, 'sine', .08, i * .06)),
   boot: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i === 4 ? .5 : .14, 'square', .06, i * .11)),
   chirp: () => [2093, 2637, 3136, 2637, 3520].forEach((f, i) => tone(f, i === 4 ? .22 : .06, 'square', .04, i * .08)),
+  ring: () => [1319, 1568, 1760, 1568, 1319, 1175, 1319].forEach((f, i) => tone(f, i === 6 ? .3 : .11, 'square', .045, i * .12)),
   coin: () => { tone(1320, .07, 'square', .05); tone(1980, .16, 'square', .05, .06); },
   bell: () => { tone(1568, .5, 'sine', .12); tone(1175, .7, 'sine', .12, .22); },
   buzz: () => tone(90, .25, 'sawtooth', .07),
@@ -576,6 +578,11 @@ const VARIANTS = [
   { body: 0x4f9a90, trim: 0x3f8178, name: 'бирюзовый' },
   { body: 0xc4963f, trim: 0xa97f31, name: 'горчичный' },
 ];
+const PHONE_VARIANTS = [
+  { body: 0x23356b, trim: 0x4a63a8, name: 'тёмно-синий' },
+  { body: 0x9aa0a9, trim: 0xd3d7dd, name: 'серебристый' },
+  { body: 0xb3261e, trim: 0xe0574a, name: 'красный' },
+];
 const PET_VARIANTS = [
   { body: 0xe9799a, trim: 0xf29ab2, name: 'розовый' },
   { body: 0x5ea8d8, trim: 0x93c8ee, name: 'голубой' },
@@ -610,10 +617,22 @@ Object.assign(PARTS, {
   petBack: { dev: 'pet', name: 'Задняя половинка', acc: 'Заднюю половинку', over: ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'petDoor'], support: 'petShell', view: 'back', colored: true, unique: true, drop: 'сними заднюю половинку' },
   petChain: { dev: 'pet', name: 'Цепочка', over: [], support: 'petShell', price: 3, view: 'front', drop: 'сними цепочку' },
 });
-Object.values(PARTS).forEach(P => { P.dev = P.dev || 'pal'; });
+// Nordik 3300: the front cover, keymat, display, earpiece and board come off from the front (reach), the rest from the back
+Object.assign(PARTS, {
+  phShell: { dev: 'phone', name: 'Шасси', over: ['phFront', 'phKeys', 'phLcd', 'phEar', 'phPcb', 'phBatt', 'phCover'], price: 15, view: 'back', drop: 'разбери всё, что держится на шасси' },
+  phFront: { dev: 'phone', name: 'Передняя панель', over: ['phCover', 'phBatt'], support: 'phShell', price: 9, view: 'front', reach: 'front', colored: true, drop: 'сними переднюю панель' },
+  phKeys: { dev: 'phone', name: 'Клавиатура', over: ['phFront'], support: 'phPcb', price: 6, view: 'front', reach: 'front', drop: 'сними клавиатуру' },
+  phLcd: { dev: 'phone', name: 'Дисплей', over: ['phFront'], support: 'phPcb', price: 18, view: 'front', reach: 'front', drop: 'сними дисплей' },
+  phEar: { dev: 'phone', name: 'Динамик', over: ['phFront'], support: 'phPcb', price: 6, view: 'front', reach: 'front', drop: 'сними динамик' },
+  phPcb: { dev: 'phone', name: 'Плата телефона', over: ['phKeys', 'phLcd', 'phEar', 'screw_1', 'screw_2', 'screw_3', 'screw_4'], support: 'phShell', price: 30, view: 'back', reach: 'front', drop: 'сними плату' },
+  phBatt: { dev: 'phone', name: 'Аккумулятор', over: ['phCover'], support: 'phShell', price: 10, view: 'back', drop: 'вытащи аккумулятор' },
+  phCover: { dev: 'phone', name: 'Задняя крышка', acc: 'Заднюю крышку', over: [], support: 'phShell', view: 'back', colored: true, unique: true, drop: 'сними заднюю крышку' },
+});
+Object.values(PARTS).forEach(P => { P.dev = P.dev || 'pal'; P.reach = P.reach || 'back'; });
 // how a broken part looks: the flag its maker understands
 const LOOK = { battery: 'swollen', lcd: 'cracked', shell: 'cracked', speaker: 'burnt', pcb: 'burnt', bezel: 'scratched', buttons: 'worn', dial: 'broken',
-  petCell: 'swollen', petLcd: 'cracked', petShell: 'cracked', petBuzzer: 'burnt', petPcb: 'burnt', petLens: 'scratched', petKeys: 'worn', petChain: 'broken' };
+  petCell: 'swollen', petLcd: 'cracked', petShell: 'cracked', petBuzzer: 'burnt', petPcb: 'burnt', petLens: 'scratched', petKeys: 'worn', petChain: 'broken',
+  phBatt: 'swollen', phLcd: 'cracked', phFront: 'cracked', phEar: 'burnt', phPcb: 'burnt', phKeys: 'worn' };
 const PART_SLOTS = ['shell', 'bezel', 'dial', 'buttons', 'power', 'lcd', 'pads', 'speaker', 'pcb', 'battery', 'cover'];
 const SCREW_SLOTS = ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1', 'bscrew_2'];
 const SCREW = {
@@ -625,28 +644,37 @@ const COLORED = t => !!(PARTS[t] && PARTS[t].colored);
 const isScrew = s => /^b?screw_/.test(s);
 const COND = { ok: 'исправна', dirty: 'грязная', broken: 'сломана', loose: 'отошёл провод' };
 const FAULTS = {
-  battery: { slot: 'battery', cond: 'broken', pay: 25, hint: 'Сзади выпирает крышка, не включается.' },
-  board: { slot: 'pcb', cond: 'dirty', pay: 30, hint: 'Её залило водой — включается через раз.' },
-  wire: { slot: 'pcb', cond: 'loose', pay: 30, hint: 'Выключается, если её тряхнуть.' },
-  pads: { slot: 'pads', cond: 'dirty', pay: 20, hint: 'Пролили сок, кнопки залипают.' },
-  lcd: { slot: 'lcd', cond: 'broken', pay: 40, hint: 'Уронили — экран в трещинах.' },
-  speaker: { slot: 'speaker', cond: 'broken', pay: 20, hint: 'Звука нет совсем.' },
-  shell: { slot: 'shell', cond: 'broken', pay: 35, hint: 'Треснул корпус спереди.' },
-  bezel: { slot: 'bezel', cond: 'broken', pay: 25, hint: 'Стекло экрана всё в царапинах.' },
-  buttons: { slot: 'buttons', cond: 'broken', pay: 25, hint: 'Кнопки стёрлись, одна запала.' },
-  dial: { slot: 'dial', cond: 'broken', pay: 20, hint: 'Колёсико болтается.' },
-  screws: { pay: 8, missing: 2, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
-  petBatt: { dev: 'pet', slot: 'petCell', cond: 'broken', pay: 10, hint: 'Не включается — наверное, батарейка.' },
-  petLeak: { dev: 'pet', slot: 'petPcb', cond: 'dirty', pay: 22, hint: 'Батарейка протекла — внутри зелёный налёт.' },
-  petBuzz: { dev: 'pet', slot: 'petBuzzer', cond: 'broken', pay: 12, hint: 'Перестал пищать.' },
-  petWire: { dev: 'pet', slot: 'petBuzzer', cond: 'loose', pay: 18, hint: 'Пищит через раз, а если потрясти — замолкает.' },
-  petLcd: { dev: 'pet', slot: 'petLcd', cond: 'broken', pay: 20, hint: 'На экране полосы, питомца не видно.' },
-  petSticky: { dev: 'pet', slot: 'petKeys', cond: 'dirty', pay: 14, hint: 'Кнопки липкие — пролили газировку.' },
-  petKeys: { dev: 'pet', slot: 'petKeys', cond: 'broken', pay: 12, hint: 'Кнопка запала — питомца не покормить.' },
-  petLens: { dev: 'pet', slot: 'petLens', cond: 'broken', pay: 10, hint: 'Стекло всё в царапинах.' },
-  petShell: { dev: 'pet', slot: 'petShell', cond: 'broken', pay: 16, hint: 'Уронили — треснул корпус.' },
-  petChain: { dev: 'pet', slot: 'petChain', cond: 'broken', pay: 6, hint: 'Оторвалась цепочка.' },
-  petScrews: { dev: 'pet', pay: 6, missing: 2, hint: 'Кто-то уже вскрывал — двух винтов нет.' },
+  battery: { slot: 'battery', cond: 'broken', pay: 25, time: 60, hint: 'Сзади выпирает крышка, не включается.' },
+  board: { slot: 'pcb', cond: 'dirty', pay: 30, time: 120, hint: 'Её залило водой — включается через раз.' },
+  wire: { slot: 'pcb', cond: 'loose', pay: 30, time: 110, hint: 'Выключается, если её тряхнуть.' },
+  pads: { slot: 'pads', cond: 'dirty', pay: 20, time: 120, hint: 'Пролили сок, кнопки залипают.' },
+  lcd: { slot: 'lcd', cond: 'broken', pay: 40, time: 120, hint: 'Уронили — экран в трещинах.' },
+  speaker: { slot: 'speaker', cond: 'broken', pay: 20, time: 110, hint: 'Звука нет совсем.' },
+  shell: { slot: 'shell', cond: 'broken', pay: 35, time: 150, hint: 'Треснул корпус спереди.' },
+  bezel: { slot: 'bezel', cond: 'broken', pay: 25, time: 130, hint: 'Стекло экрана всё в царапинах.' },
+  buttons: { slot: 'buttons', cond: 'broken', pay: 25, time: 130, hint: 'Кнопки стёрлись, одна запала.' },
+  dial: { slot: 'dial', cond: 'broken', pay: 20, time: 130, hint: 'Колёсико болтается.' },
+  screws: { pay: 8, time: 20, missing: 2, hint: 'Её уже кто-то вскрывал — двух винтов не хватает.' },
+  petBatt: { dev: 'pet', slot: 'petCell', cond: 'broken', pay: 10, time: 30, hint: 'Не включается — наверное, батарейка.' },
+  petLeak: { dev: 'pet', slot: 'petPcb', cond: 'dirty', pay: 22, time: 110, hint: 'Батарейка протекла — внутри зелёный налёт.' },
+  petBuzz: { dev: 'pet', slot: 'petBuzzer', cond: 'broken', pay: 12, time: 70, hint: 'Перестал пищать.' },
+  petWire: { dev: 'pet', slot: 'petBuzzer', cond: 'loose', pay: 18, time: 80, hint: 'Пищит через раз, а если потрясти — замолкает.' },
+  petLcd: { dev: 'pet', slot: 'petLcd', cond: 'broken', pay: 20, time: 110, hint: 'На экране полосы, питомца не видно.' },
+  petSticky: { dev: 'pet', slot: 'petKeys', cond: 'dirty', pay: 14, time: 100, hint: 'Кнопки липкие — пролили газировку.' },
+  petKeys: { dev: 'pet', slot: 'petKeys', cond: 'broken', pay: 12, time: 90, hint: 'Кнопка запала — питомца не покормить.' },
+  petLens: { dev: 'pet', slot: 'petLens', cond: 'broken', pay: 10, time: 110, hint: 'Стекло всё в царапинах.' },
+  petShell: { dev: 'pet', slot: 'petShell', cond: 'broken', pay: 16, time: 140, hint: 'Уронили — треснул корпус.' },
+  petChain: { dev: 'pet', slot: 'petChain', cond: 'broken', pay: 6, time: 15, hint: 'Оторвалась цепочка.' },
+  petScrews: { dev: 'pet', pay: 6, time: 15, missing: 2, hint: 'Кто-то уже вскрывал — двух винтов нет.' },
+  phBattDead: { dev: 'phone', slot: 'phBatt', cond: 'broken', pay: 15, time: 30, hint: 'Не включается — аккумулятор раздуло.' },
+  phCrack: { dev: 'phone', slot: 'phFront', cond: 'broken', pay: 12, time: 60, hint: 'Уронил — треснула передняя панель.' },
+  phWorn: { dev: 'phone', slot: 'phKeys', cond: 'broken', pay: 15, time: 70, hint: 'Цифры стёрлись, пятёрка провалилась.' },
+  phSticky: { dev: 'phone', slot: 'phKeys', cond: 'dirty', pay: 16, time: 90, hint: 'Кнопки залипают — пролил сладкий чай.' },
+  phInk: { dev: 'phone', slot: 'phLcd', cond: 'broken', pay: 25, time: 80, hint: 'Экран в чёрных пятнах.' },
+  phEarDead: { dev: 'phone', slot: 'phEar', cond: 'broken', pay: 12, time: 70, hint: 'Собеседника не слышно.' },
+  phWet: { dev: 'phone', slot: 'phPcb', cond: 'dirty', pay: 28, time: 160, hint: 'Уронил в лужу — включается через раз.' },
+  phLoose: { dev: 'phone', slot: 'phPcb', cond: 'loose', pay: 26, time: 150, hint: 'Выключается, если стукнуть.' },
+  phScrews: { dev: 'phone', pay: 6, time: 20, missing: 2, hint: 'Кто-то уже разбирал — двух винтов нет.' },
 };
 // what the power test shows, worst problem first
 const DIAG = [
@@ -661,6 +689,17 @@ const DIAG = [
   { slot: 'dial', cond: 'broken', boot: true, text: 'Включилась, но колёсико болтается.' },
   { slot: 'bezel', cond: 'broken', boot: true, text: 'Работает, но стекло экрана в царапинах.' },
   { slot: 'shell', cond: 'broken', boot: true, text: 'Работает, но корпус треснул — так отдавать нельзя.' },
+];
+const DIAG_PHONE = [
+  { slot: 'phBatt', cond: 'broken', boot: false, text: 'Не включается совсем — аккумулятор раздуло.' },
+  { slot: 'phPcb', cond: 'broken', boot: false, text: 'Не включается, пахнет горелым. Что-то с платой.' },
+  { slot: 'phPcb', cond: 'dirty', boot: false, blink: true, text: 'Подсветка мигнула и погасла. Плата побывала в воде.' },
+  { slot: 'phPcb', cond: 'loose', boot: false, blink: true, text: 'Включается и сразу гаснет — отошёл контакт аккумулятора.' },
+  { slot: 'phLcd', cond: 'broken', boot: true, text: 'Мелодия играет, а экран в чёрных пятнах.' },
+  { slot: 'phEar', cond: 'broken', boot: true, text: 'Включилась, но в динамике тишина — собеседника не услышать.' },
+  { slot: 'phKeys', cond: 'dirty', boot: true, text: 'Работает, но кнопки залипают.' },
+  { slot: 'phKeys', cond: 'broken', boot: true, text: 'Работает, но цифры стёрлись, а пятёрка провалилась.' },
+  { slot: 'phFront', cond: 'broken', boot: true, text: 'Работает, но передняя панель треснула.' },
 ];
 const DIAG_PET = [
   { slot: 'petCell', cond: 'broken', boot: false, text: 'Не включается совсем. Похоже, батарейка села или потекла.' },
@@ -694,6 +733,13 @@ const DISCOVER = {
   petLens: { broken: ['Стекло исцарапано — лучше заменить.', 'thinking'] },
   petShell: { broken: ['Корпус треснул. Нужен новый.', 'worried'] },
   petChain: { broken: ['Цепочка порвана. Поставлю новую.', 'thinking'] },
+  phBatt: { broken: ['Аккумулятор раздуло — только новый.', 'surprised'] },
+  phPcb: { dirty: ['Плата после лужи — в разводах и налёте. Почисти кисточкой.', 'thinking'], broken: ['На плате нагар — она сгорела.', 'worried'],
+    loose: ['Контакт аккумулятора отогнулся и отпаялся. Нужен паяльник.', 'surprised'] },
+  phLcd: { broken: ['Дисплей в чёрных пятнах — только замена.', 'worried'] },
+  phEar: { broken: ['Динамик подгорел — нужен новый.', 'worried'] },
+  phKeys: { dirty: ['Клавиатура липкая от чая. Почистить бы.', 'thinking'], broken: ['Цифры стёрлись, пятёрка провалилась — нужна новая клавиатура.', 'thinking'] },
+  phFront: { broken: ['Панель треснула. Поставим новую — можно другого цвета!', 'happy'] },
 };
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
@@ -731,6 +777,23 @@ const DEVICES = {
     notes: ['Нашла на антресолях, хочу подарить сыну.', 'Коллекционирую, нужна рабочая.', 'Детство вспомнил — почините, пожалуйста!', 'Отправлю почтой, верните побыстрее.',
       'Купил на авито, продавец обманул.', 'Память об отце, очень прошу аккуратно.', 'Хочу пройти игру, которую не прошёл в 10 лет.', 'Внук уронил, я в расстройстве.'],
     screen: (g, w, h, p) => drawPalScreen(g, w, h, p), lib: () => PocketPal },
+  phone: { id: 'phone', name: 'Nordik', model: '3300', noun: ['трубка', 'трубку', 'трубки'], variants: PHONE_VARIANTS,
+    parts: ['phShell', 'phPcb', 'phLcd', 'phEar', 'phKeys', 'phFront', 'phBatt', 'phCover'], screws: ['screw_1', 'screw_2', 'screw_3', 'screw_4'],
+    shell: 'phShell', cover: 'phCover', swell: 'phBatt', shopColored: 'phFront',
+    rules: {
+      screw: { support: 'phPcb', over: ['phBatt'], lift: .15, label: 'открути винты в отсеке аккумулятора', where: 'Винт ставят в отверстие в отсеке аккумулятора.', need: 'Винтам некуда вкручиваться — сначала плата.' },
+    },
+    test: { slot: 'phKeys', mesh: 'key_navi', hit: .3, short: 'Нажми большую кнопку под экраном', hint: 'Собрана. Нажми большую кнопку под экраном.', sfx: 'ring' },
+    hint: 'Сзади снимаются крышка и аккумулятор, под ним — винты. Переднюю панель, клавиатуру и плату снимают спереди.',
+    diag: DIAG_PHONE, base: 12, sell: 55, shop: ['phBatt', 'phKeys', 'phLcd', 'phEar', 'phPcb', 'phShell'],
+    roll: { phBatt: [['broken', .45]], phPcb: [['dirty', .25], ['loose', .12], ['broken', .12]], phLcd: [['broken', .3]], phEar: [['broken', .25]],
+      phKeys: [['dirty', .2], ['broken', .25]], phFront: [['broken', .35]] },
+    describe: c => c.phFront === 'broken' ? 'Треснула панель' : c.phLcd === 'broken' ? 'Пятна на экране' : c.phBatt === 'broken' ? 'Раздуло аккумулятор'
+      : c.phPcb === 'dirty' ? 'Побывала в воде' : c.phEar === 'broken' ? 'Не слышно собеседника' : c.phPcb !== 'ok' ? 'Не включается' : 'Потёртая',
+    notes: ['Это мой первый телефон — хочу снова с него позвонить.', 'Бабушкина трубка, она с ней не расстаётся.', 'Беру в походы — аккумулятор держит неделю.',
+      'Хочу поиграть в змейку, как на переменах.', 'Уронил с пятого этажа — выжила, но не включается.', 'Купил «неубиваемую», а она убилась.', 'Собираю цветные панели.'],
+    licence: { price: 350, rep: 1, blurb: 'Тот самый неубиваемый кнопочный телефон. Сменные цветные панели, резиновая клавиатура, аккумулятор на неделю. Заказы дороже, чем на питомцев.' },
+    screen: (g, w, h, p) => BrickPhone.drawScreen(g, w, h, p), lib: () => BrickPhone },
   pet: { id: 'pet', name: 'Pixel Pet', model: 'PX-97', noun: ['игрушка', 'игрушку', 'игрушки'], variants: PET_VARIANTS,
     parts: ['petShell', 'petLens', 'petKeys', 'petLcd', 'petPcb', 'petBuzzer', 'petCell', 'petDoor', 'petBack', 'petChain'],
     screws: ['screw_1', 'screw_2', 'screw_3', 'screw_4', 'bscrew_1'], shell: 'petShell', cover: 'petBack',
@@ -751,7 +814,7 @@ const DEVICES = {
 };
 const devOf = x => DEVICES[(x && x.dev) || 'pal'];
 const partDev = it => DEVICES[PARTS[it.type].dev];
-const licensed = () => Object.keys(DEVICES).filter(d => d === 'pal' || (S.lic && S.lic[d]));
+const licensed = () => ['pal', 'pet', 'phone'].filter(d => d === 'pal' || (S.lic && S.lic[d]));
 // courier: how long a delivery takes, in seconds
 const DELIVERY = { part: 20, device: 25 };
 /* the workshop grows: tools speed up the work, the rest widens the business; rep: the reputation level needed */
@@ -848,7 +911,7 @@ function makeWebOrder(dev) {
   const free = (list, k) => list.filter(x => !open.some(o => o[k] === x));
   return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, dev,
     pay: Math.round(orderPay(faults, dev) * (.9 + repLevel() * .12)), variant: Math.floor(Math.random() * DEVICES[dev].variants.length),
-    mins: 3 + Math.round(faults.length * (dev === 'pal' ? 1.5 : 1)) };
+    mins: 2 + Math.ceil(faults.reduce((a, f) => a + (FAULTS[f].time || 60), 0) * 1.6 / 60) };
 }
 function ensureWeb() {
   const now = Date.now();
@@ -965,7 +1028,7 @@ function buildJobScene() {
   drawScreen(-1);
   K = kitFor(DV().id, J().variant);
   if (K.materials.led) { K.materials.led.color.setHex(0x5a1510); K.materials.led.emissive.setHex(0); }
-  powerHit = new THREE.Mesh(new THREE.SphereGeometry(.38), hitMat); powerHit.position.copy(K.testAt); device.add(powerHit);
+  powerHit = new THREE.Mesh(new THREE.SphereGeometry(DV().test.hit || .38), hitMat); powerHit.position.copy(K.testAt); device.add(powerHit);
   [...DV().parts, ...DV().screws].forEach(place);
   device.rotation.set(0, J().side === 'back' ? Math.PI : 0, 0);
 }
@@ -975,6 +1038,9 @@ shadow.position.set(.25, -.35, -1.1); holder.add(shadow);
 /* rules */
 const filled = s => !!J().slots[s];
 const rule = slot => DV().rules[kindOf(slot)];
+// which side of the gadget a part or screw is worked from
+const reachOf = slot => isScrew(slot) ? (rule(slot).reach || 'back') : PARTS[slot].reach;
+const testMesh = () => { const t = objs.get(DV().test.slot); return t && (t.getObjectByName(DV().test.mesh) || t); };
 const overOf = slot => isScrew(slot) ? rule(slot).over : PARTS[slot].over;
 const supportOf = slot => isScrew(slot) ? rule(slot).support : PARTS[slot].support;
 const blockers = slot => overOf(slot).filter(filled);
@@ -1083,11 +1149,19 @@ function situation() {
   }
   const title = jobTitle(j);
   const dv = DV();
-  if (j.side === 'front') return [title, assembled() ? dv.test.hint : 'Поверни ' + dv.noun[1] + ' пальцем — проведи вбок.'];
+  if (j.side === 'front') {
+    if (assembled()) return [title, dv.test.hint];
+    // a gadget with parts that come off from the front: say so when one of them is free now
+    const free = dv.parts.some(t => PARTS[t].reach === 'front' && filled(t) && !blockers(t).length);
+    return [title, free ? 'Снимай детали спереди — тяни их пальцем.' : 'Поверни ' + dv.noun[1] + ' пальцем — проведи вбок.'];
+  }
   const tight = dv.screws.filter(s => filled(s) && j.tight[s]), loose = dv.screws.filter(s => filled(s) && !j.tight[s]);
   if (loose.length) return [title, 'Закрути винт — крути пальцем по кругу.'];
-  if (filled(dv.cover) && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Поверни лицом и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
-  if (filled(dv.cover)) return [title, 'Поставь винты из чашки и закрути их.'];
+  const coverScrewed = dv.rules.screw.support === dv.cover; // the back cover is held by the case screws (not on the phone)
+  if (coverScrewed && filled(dv.cover) && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Поверни лицом и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
+  if (coverScrewed && filled(dv.cover)) return [title, 'Поставь винты из чашки и закрути их.'];
+  if (assembled()) return [title, 'Всё на месте. Поверни лицом и проверь.'];
+  if (dv.hint) return [title, dv.hint];
   return [title, 'Снимай детали, смотри, что сломано. Ставь их обратно, перетаскивая со стола.'];
 }
 function refreshHint(force) {
@@ -1221,12 +1295,13 @@ const NEED = Math.PI * 2.5;
 
 /* turning the gadget with the hand: it follows the finger, then settles face or back up; a quick flick turns it over */
 function startTurn(e, onTap) {
-  drag = { type: 'turn', x0: e.clientX, last: e.clientX, t: performance.now(), v: 0, r0: device.rotation.y, moved: false, onTap };
+  drag = { type: 'turn', x0: e.clientX, y0: e.clientY, last: e.clientX, t: performance.now(), v: 0, r0: device.rotation.y, moved: false, onTap };
   canvas.setPointerCapture(e.pointerId); setHint(null);
 }
 function turnMove(e) {
   const d = drag, now = performance.now(), dt = Math.max(1, now - d.t);
-  if (!d.moved && Math.abs(e.clientX - d.x0) < 8) return;
+  const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+  if (!d.moved && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 0.5)) return;
   if (!d.moved) { d.moved = true; sfx.tick(); }
   d.v = d.v * .6 + ((e.clientX - d.last) / dt) * .4; d.last = e.clientX; d.t = now;
   device.rotation.y = d.r0 + (e.clientX - d.x0) * .011;
@@ -1249,14 +1324,14 @@ async function endTurn(d) {
 function nearestScrew(e) {
   let best = null, bd = 56;
   DV().screws.forEach(s => {
-    const o = objs.get(s); if (!o || blockers(s).length) return;
+    const o = objs.get(s); if (!o || blockers(s).length || reachOf(s) !== J().side) return;
     const p = toScreen(o), d = Math.hypot(p.x - e.clientX, p.y - e.clientY);
     if (d < bd) { bd = d; best = s; }
   });
   return best;
 }
 function partAt(e) {
-  const list = DV().parts.map(s => objs.get(s)).filter(Boolean);
+  const list = DV().parts.filter(s => reachOf(s) === J().side).map(s => objs.get(s)).filter(Boolean);
   const h = pick(e, list); if (!h) return null;
   let o = h.object; while (o && !o.userData.slot) o = o.parent;
   return o ? o.userData.slot : null;
@@ -1267,21 +1342,19 @@ canvas.addEventListener('pointerdown', e => {
   initAudio();
   if (onMat) return matDown(e);
   const j = J(); if (!j) return;
-  if (j.side === 'front') {
-    const test = objs.get(DV().test.slot);
-    if (test && pick(e, [powerHit, test])) return powerTest();
-    const onDev = pick(e, [device]);
-    return startTurn(e, () => { if (onDev) say('Проведи пальцем вбок, чтобы повернуть ' + DV().noun[1] + '.', 'thinking'); });
-  }
+  if (j.side === 'front') { const tm = testMesh(); if (tm && pick(e, [powerHit, tm])) return powerTest(); }
   const s = nearestScrew(e);
   if (s) { drag = { type: 'screw', slot: s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); setHint(null); return; }
   const slot = partAt(e);
-  if (!slot) return startTurn(e);
+  if (!slot) {
+    const onDev = j.side === 'front' && pick(e, [device]);
+    return startTurn(e, () => { if (onDev) say('Проведи пальцем вбок, чтобы повернуть ' + DV().noun[1] + '.', 'thinking'); });
+  }
   const b = blockers(slot);
   // a part that cannot come off yet: a swipe turns the gadget, a tap says what is in the way
   if (b.length) return startTurn(e, () => refuse(slot, slot === DV().shell ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'));
   const o = objs.get(slot), at = pointerLocal(e, o.position.z); if (!at) return;
-  drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z };
+  drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z, lift: j.side === 'front' ? .3 : -.3 };
   canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
 });
 canvas.addEventListener('pointermove', e => {
@@ -1297,7 +1370,7 @@ canvas.addEventListener('pointermove', e => {
     if (t) { ghost.className = ''; if (!ghost.firstChild || ghost.dataset.slot !== d.slot) { ghost.innerHTML = `<img alt="" src="${thumb(J().slots[d.slot])}">`; ghost.dataset.slot = d.slot; } ghost.style.display = 'block'; ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`; }
     else ghost.style.display = 'none';
     d.obj.position.x = at.x - d.grab.x; d.obj.position.y = at.y - d.grab.y;
-    d.obj.position.z += ((d.z - .3) - d.obj.position.z) * .3;
+    d.obj.position.z += ((d.z + d.lift) - d.obj.position.z) * .3;
     d.obj.rotation.z = (d.obj.position.x - d.start.x) * -.06;
   }
 });
@@ -1392,7 +1465,7 @@ async function installPart(it, slot) {
   const o = objFor(slot, it), pose = K.pose[slot];
   device.add(o); objs.set(slot, o);
   busy = true;
-  const from = pose.clone().add(new V3(0, -1.6, -1.6));
+  const from = pose.clone().add(new V3(0, -1.6, PARTS[slot].reach === 'front' ? 1.6 : -1.6));
   await tween(.45, k => { o.position.lerpVectors(from, pose, k); o.scale.setScalar(.6 + .4 * k); }, ease.out);
   sfx.clunk(); buzz(30); busy = false;
   const sp = toScreen(o); sparkle(sp.x, sp.y, 8);
@@ -1413,8 +1486,9 @@ function dropOnDevice(x, y, what) {
   const j = J();
   if (!j) return say('На столе ничего нет. Возьми устройство с полки: коробка на столе → «На стол».', 'thinking');
   if (!overDevice(x, y)) return;
-  if (j.side === 'front') return say('Поверни ' + DV().noun[1] + ' пальцем — детали ставят сзади.', 'thinking');
   if (what.kind) {
+    if (!DV().rules[what.kind]) return say('Таким винтикам в ' + DV().name + ' места нет.', 'thinking');
+    if (j.side !== (DV().rules[what.kind].reach || 'back')) return say('Поверни ' + DV().noun[1] + ' пальцем — винты ставят с другой стороны.', 'thinking');
     let best = null, bd = 70;
     DV().screws.filter(s => kindOf(s) === what.kind && !filled(s)).forEach(s => {
       const p = toScreen(device, K.pose[s]), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = s; }
@@ -1425,6 +1499,7 @@ function dropOnDevice(x, y, what) {
   }
   const it = what.item, slot = it.type;
   if (partDev(it) !== DV()) return refuseNoShake(PARTS[slot].name + ' — от ' + partDev(it).name + ', сюда не подходит.');
+  if (j.side !== PARTS[slot].reach) return say('Поверни ' + DV().noun[1] + ' пальцем — эту деталь ставят ' + (PARTS[slot].reach === 'front' ? 'спереди' : 'сзади') + '.', 'thinking');
   if (filled(slot)) return refuseNoShake('Здесь уже стоит ' + PARTS[slot].name.toLowerCase() + '.');
   if (it.cond === 'dirty') return refuseNoShake('Её сначала почистить: перетащи деталь на кисточку справа.');
   if (it.cond === 'loose') return refuseNoShake('Сначала припаяй провод: перетащи деталь на паяльник справа.');
@@ -1677,7 +1752,7 @@ function star(on) {
 // the owner comes back to the window to collect it (and pay)
 function markReady() {
   const j = J(), o = j.order;
-  const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 90 + 60 * o.faults.length;
+  const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 60 + o.faults.reduce((a, f) => a + (FAULTS[f].time || 60), 0);
   const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1;
   if (o.nick) return shipOut(j, secs, stars);
   S.ready.push({ id: j.id, job: j, secs, stars, tip: [0, 0, 10, 20][stars], at: Date.now() + 5000 });
@@ -1944,7 +2019,7 @@ function renderTablet() {
       <div class="bar"><i style="width:${pct}%"></i></div>
       <p class="note">Звёзды дают за каждый заказ, за опоздание — минус 3. Чем выше репутация, тем дороже и сложнее заказы.</p></div>`;
     h += '<div class="sec">Лицензии</div><p class="note">Лицензия открывает новое устройство: заказы на него, б/у на барахолке и запчасти в магазине.</p>';
-    Object.values(DEVICES).forEach(dv => {
+    ['pal', 'pet', 'phone'].map(d => DEVICES[d]).forEach(dv => {
       const own = dv.id === 'pal' || S.lic[dv.id], L = dv.licence, locked = L && lv < L.rep;
       h += `<div class="row"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, 0)}">
         <div class="meta"><b>${dv.name} ${dv.model}</b><span>${own ? (dv.id === 'pal' ? 'есть с самого начала' : 'лицензия куплена') : esc(L.blurb)}</span></div>${own ? '<span class="tag">есть</span>' : price(L.price)}</div>
@@ -1971,7 +2046,7 @@ function renderTablet() {
     licensed().forEach(d => {
       const dv = DEVICES[d];
       h += `<div class="sec">${dv.name}</div>`;
-      [...dv.shop.map(t => ({ type: t })), ...dv.variants.map((v, i) => ({ type: dv.shell, variant: i }))].forEach(s => {
+      [...dv.shop.map(t => ({ type: t })), ...dv.variants.map((v, i) => ({ type: dv.shopColored || dv.shell, variant: i }))].forEach(s => {
         const P = PARTS[s.type], cost = P.price, label = COLORED(s.type) ? `${P.name}, ${variantOf(dv, s.variant).name}` : P.name;
         h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
           <div class="meta"><b>${esc(label)}</b><span>новая, для ${dv.name}</span></div>${price(cost)}</div>
