@@ -283,6 +283,8 @@ body.street #streetBar { display: flex; }
   background-repeat: no-repeat; box-shadow: 0 8px 20px rgba(0,0,0,.35); }
 .nface.hero-face { background-image: url("hero.webp"); background-size: 880px 110px; }
 .nface.cust-face { background-image: url("customers.webp"); background-size: 1056px 110px; }
+/* a customer drawn in many poses: the portrait is the head and shoulders of the current pose */
+.nface.pose-face { background-size: auto 330px; background-position: 50% 6px; }
 .nbox.right .nface { left: auto; right: 12px; }
 .nname { position: absolute; top: -17px; left: 112px; background: #6b4428; color: var(--cream); font: 700 14px/1 var(--display); padding: 8px 12px; border-radius: 10px; white-space: nowrap; }
 .nbox.right .nname { left: auto; right: 112px; }
@@ -570,7 +572,7 @@ const DISCOVER = {
 };
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
-  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', story: 'Дарил её внуку в девяносто первом.',
+  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', poses: true, story: 'Дарил её внуку в девяносто первом.',
     more: 'Внук вырос, а приставку хранит. Я сам паяльник держать умею, но тут глаза уже не те.', leave: 'Зайду, как будет готово. Спасибо, сынок!', thanks: 'Как новенькая! Внук будет счастлив.' },
   { name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', story: 'Купил на барахолке за 300 рублей.',
     more: 'Продавец клялся, что работает. Я все карманные на неё потратил!', leave: 'Только не потеряйте её, ладно?', thanks: 'Огонь! Пойду рекорды ставить.' },
@@ -1692,8 +1694,9 @@ function placeWalker(walk) {
   const v = S.visitor; if (!v) return;
   const c = CUSTOMERS[v.cust], { h, top } = figSize(c);
   if (!walker) {
-    walker = document.createElement('div'); walker.className = 'walker';
-    walker.innerHTML = `<div class="bob"><img alt="${esc(c.name)}" src="people/${c.fig}.webp"></div>`;
+    walker = document.createElement('div'); walker.className = 'walker'; walker.cust = c;
+    walker.innerHTML = `<div class="bob"><img alt="${esc(c.name)}" src="${figSrc(c, 'neutral')}"></div>`;
+    if (c.poses) POSES.forEach(n => { new Image().src = figSrc(c, n); });
     walker.addEventListener('click', () => { if (S.mode === 'street' && v === S.visitor && !walker.moving && $('novel').hidden) converse(); });
     $('walkers').appendChild(walker);
   }
@@ -1704,7 +1707,15 @@ function placeWalker(walk) {
   return walker.animate([{ transform: `translateX(${from}px)` }, { transform: 'translateX(-50%)' }], { duration: 2600, easing: 'cubic-bezier(.3,.6,.4,1)' }).finished
     .then(() => { walker.style.transform = 'translateX(-50%)'; walker.moving = false; walker.classList.remove('walking'); });
 }
-function walkAway() {
+// customers with a pose sheet change pose line by line; the rest have one picture
+const POSES = ['neutral', 'wave', 'cheer', 'think', 'thumbs', 'proud', 'idea', 'shock', 'shy', 'sad', 'angry', 'thanks', 'nervous', 'explain'];
+const figSrc = (c, pose) => c.poses ? `people/${c.fig}/${pose || 'neutral'}.webp` : `people/${c.fig}.webp`;
+function setPose(pose) {
+  const c = walker && walker.cust; if (!c || !c.poses || !pose) return;
+  const img = walker.querySelector('img'), src = figSrc(c, pose); if (!img.src.endsWith(src)) img.src = src;
+}
+function walkAway(pose) {
+  setPose(pose);
   const el = walker; walker = null; if (!el) return;
   el.classList.add('walking'); el.moving = true;
   el.animate([{ transform: 'translateX(-50%)' }, { transform: `translateX(${-innerWidth * .5 - el.offsetHeight * .4 - 60}px)` }], { duration: 2400, easing: 'cubic-bezier(.5,0,.7,.6)', fill: 'forwards' })
@@ -1742,8 +1753,14 @@ function nextLine() {
   const L = n.lines[n.i], box = $('nbox'), fc = $('nface');
   const hero = L.who === 'hero', c = S.visitor ? CUSTOMERS[S.visitor.cust] : null;
   box.classList.toggle('right', !hero);
-  fc.className = 'nface ' + (hero ? 'hero-face' : 'cust-face');
-  fc.style.backgroundPositionX = hero ? (-FACES.indexOf(L.face) * 88) + 'px' : (-(c.face + (L.face === 'happy' ? 1 : 0)) * 88) + 'px';
+  const pose = hero ? L.cpose : L.pose || (L.face === 'happy' ? 'cheer' : 'sad');
+  setPose(pose);
+  if (!hero && c.poses) {
+    fc.className = 'nface pose-face'; fc.style.backgroundImage = `url("${walker ? walker.querySelector('img').getAttribute('src') : figSrc(c, pose)}")`; fc.style.backgroundPositionX = '';
+  } else {
+    fc.className = 'nface ' + (hero ? 'hero-face' : 'cust-face'); fc.style.backgroundImage = '';
+    fc.style.backgroundPositionX = hero ? (-FACES.indexOf(L.face) * 88) + 'px' : (-(c.face + (L.face === 'happy' ? 1 : 0)) * 88) + 'px';
+  }
   $('nname').textContent = hero ? 'Мастер' : c.name;
   $('nchoices').innerHTML = ''; $('nnext').hidden = true;
   const t = $('ntext'); t.textContent = ''; n.full = L.text; n.typing = true;
@@ -1780,22 +1797,22 @@ function converse() {
     if (!r) { S.visitor = null; save(); walkAway(); return; }
     const total = r.job.order.pay + r.tip;
     return talk([
-      { who: 'cust', face: 'upset', text: 'Здравствуйте! Ну как, получилось?' },
-      { who: 'hero', face: 'proud', text: 'Готово — работает как новенькая. Всё проверил.' },
-      { who: 'cust', face: 'happy', text: c.thanks },
-      { who: 'cust', face: 'happy', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` },
+      { who: 'cust', face: 'upset', pose: 'nervous', text: 'Здравствуйте! Ну как, получилось?' },
+      { who: 'hero', face: 'proud', cpose: 'shock', text: 'Готово — работает как новенькая. Всё проверил.' },
+      { who: 'cust', face: 'happy', pose: 'cheer', text: c.thanks },
+      { who: 'cust', face: 'happy', pose: 'thanks', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` },
     ], () => showPaid(r, () => leave(true)));
   }
   const o = v.order;
-  const decide = { who: 'hero', face: 'focused', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
-    { label: `Беру в работу · ${o.pay}`, act: () => talk([{ who: 'cust', face: 'happy', text: 'Вот она. ' + c.leave }], () => accept(o)) },
-    { label: 'Расскажите подробнее', act: () => talk([{ who: 'cust', face: 'upset', text: c.more }, { who: 'hero', face: 'thinking', text: 'Понятно. Что ж…' }, decide]) },
-    { label: 'Сейчас не возьмусь', act: () => talk([{ who: 'cust', face: 'upset', text: 'Жаль… Поищу другого мастера.' }], () => leave(false)) },
+  const decide = { who: 'hero', face: 'focused', cpose: 'think', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
+    { label: `Беру в работу · ${o.pay}`, act: () => talk([{ who: 'cust', face: 'happy', pose: 'thumbs', text: 'Вот она. ' + c.leave }], () => accept(o)) },
+    { label: 'Расскажите подробнее', act: () => talk([{ who: 'cust', face: 'upset', pose: 'explain', text: c.more }, { who: 'hero', face: 'thinking', cpose: 'idea', text: 'Понятно. Что ж…' }, decide]) },
+    { label: 'Сейчас не возьмусь', act: () => talk([{ who: 'cust', face: 'upset', pose: 'sad', text: 'Жаль… Поищу другого мастера.' }], () => leave(false)) },
   ] };
   talk([
-    { who: 'cust', face: 'upset', text: 'Здравствуйте! ' + c.story },
-    { who: 'cust', face: 'upset', text: o.faults.map(f => FAULTS[f].hint).join(' ') },
-    { who: 'hero', face: 'thinking', text: 'Дайте-ка взгляну…' },
+    { who: 'cust', face: 'upset', pose: 'wave', text: 'Здравствуйте! ' + c.story },
+    { who: 'cust', face: 'upset', pose: 'sad', text: o.faults.map(f => FAULTS[f].hint).join(' ') },
+    { who: 'hero', face: 'thinking', cpose: 'nervous', text: 'Дайте-ка взгляну…' },
     decide,
   ]);
 }
@@ -1807,7 +1824,7 @@ function accept(o) {
 }
 function leave(ok) {
   S.visitor = null; S.nextVisit = Date.now() + (ok ? 15000 : 9000) + Math.random() * 12000; save();
-  walkAway(); renderActions(); refreshHint(true);
+  walkAway(ok ? 'wave' : 'sad'); renderActions(); refreshHint(true);
   if (ok && S.mode === 'street' && J() && !J().worked && !J().opened) say('Приставка на верстаке — жми «К верстаку».', 'happy');
 }
 // labels on the model are painted once, so wait for the faces they use (but never block the game on them)
