@@ -574,7 +574,7 @@ const DISCOVER = {
 const CUSTOMERS = [
   { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', poses: true, story: 'Дарил её внуку в девяносто первом.',
     more: 'Внук вырос, а приставку хранит. Я сам паяльник держать умею, но тут глаза уже не те.', leave: 'Зайду, как будет готово. Спасибо, сынок!', thanks: 'Как новенькая! Внук будет счастлив.' },
-  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', story: 'Купил на барахолке за 300 рублей.',
+  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', poses: true, story: 'Купил на барахолке за 300 рублей.',
     more: 'Продавец клялся, что работает. Я все карманные на неё потратил!', leave: 'Только не потеряйте её, ладно?', thanks: 'Огонь! Пойду рекорды ставить.' },
   { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, fig: 'business', story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.',
     more: 'Мне её подарил отец, когда я была в пятом классе. Хочу, чтобы она снова работала.', leave: 'Хорошо. Позвоните… то есть, я сама зайду.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
@@ -1709,7 +1709,7 @@ const STREET = { win: null, top: 0 };
 addEventListener('resize', () => { drawStreet(); if (walker && !walker.moving) placeWalker(false); });
 
 let walker = null;
-function figSize(c) { const h = Math.min(STREET.win.h * 1.45, innerWidth * 1.3); return { h, top: STREET.top - h * .7 }; }
+function figSize(c) { const h = Math.min(STREET.win.h * 1.45, innerWidth * 1.3) * .8; return { h, top: STREET.top - h * .6 }; }
 function placeWalker(walk) {
   const v = S.visitor; if (!v) return;
   const c = CUSTOMERS[v.cust], { h, top } = figSize(c);
