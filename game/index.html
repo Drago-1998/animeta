@@ -1155,7 +1155,7 @@ async function releasePart(d) {
 async function removePart(slot) {
   const j = J(), o = objs.get(slot), it = j.slots[slot];
   busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
-  it.pos = freeSpot(); S.tray.push(it); save();
+  it.pos = freeSpot(); it.from = j.id; S.tray.push(it); save();
   sfx.whoosh(); buzz(20);
   // fly to the free spot on the desk, then lie there as a flat picture
   const at = pointerLocal({ clientX: it.pos.x * innerWidth, clientY: it.pos.y * innerHeight }, o.position.z) || new V3(o.position.x * .3, -6, o.position.z);
@@ -1512,7 +1512,9 @@ function flyCoins(total) {
 /* ---------- bench, shelf and courier ---------- */
 function putOnBench(job) {
   S.shelf = S.shelf.filter(x => x !== job);
-  S.job = job; job.started = Date.now(); save(); buildJobScene();
+  S.job = job; job.started = Date.now(); buildJobScene();
+  if (job.parts && job.parts.length) { job.parts.forEach(x => { delete x.pos; S.tray.push(x); }); job.parts = []; renderTray(); }
+  save();
   holder.scale.setScalar(.01);
   tween(.5, k => holder.scale.setScalar(Math.max(.01, k)), ease.back);
   sfx.pop();
@@ -1524,8 +1526,10 @@ async function shelve() {
   busy = true; sfx.whoosh();
   await tween(.35, k => holder.scale.setScalar(Math.max(.01, 1 - k)), ease.in);
   j.worked = (j.worked || 0) + (Date.now() - j.started);
-  S.shelf.push(j); S.job = null; save(); clearDevice(); holder.scale.setScalar(1);
-  busy = false; refreshHint(true); say('Отложил на полку. Вернуть — коробка на столе → «На стол».', 'happy');
+  // the parts taken off this gadget go to the shelf with it; parts brought from the box stay on the desk
+  j.parts = [...(j.parts || []), ...S.tray.filter(x => x.from === j.id)]; S.tray = S.tray.filter(x => x.from !== j.id);
+  S.shelf.push(j); S.job = null; save(); clearDevice(); holder.scale.setScalar(1); renderTray();
+  busy = false; refreshHint(true); say(j.parts.length ? 'Отложил на полку вместе со снятыми деталями. Вернуть — коробка на столе → «На стол».' : 'Отложил на полку. Вернуть — коробка на столе → «На стол».', 'happy');
 }
 function deliver(what, secs, label) {
   S.deliveries.push({ id: S.uid++, eta: Date.now() + courierTime(secs) * 1000, what, label }); save(); renderCourier();
@@ -1640,7 +1644,7 @@ function renderBox() {
   S.shelf.forEach(j => {
     const removed = PART_SLOTS.filter(s => !j.slots[s]).length;
     h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
-      <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}` : 'собрана'}</span></div></div>
+      <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}${j.parts && j.parts.length ? ', лежат рядом с ней' : ''}` : 'собрана'}</span></div></div>
       <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
   });
   h += '<div class="sec">Винты</div>';
