@@ -1103,6 +1103,11 @@ canvas.addEventListener('pointermove', e => {
   else if (drag.type === 'screw') turnScrew(e);
   else if (drag.type === 'part') {
     const d = drag, at = pointerLocal(e, d.z); if (!at) return;
+    d.px = e.clientX; d.py = e.clientY;
+    // over the box or the bin the 3D part would hide under the tray, so a picture of it follows the finger instead
+    const t = dropTarget(e.clientX, e.clientY); markDrop(t); d.obj.visible = !t;
+    if (t) { ghost.className = ''; if (!ghost.firstChild || ghost.dataset.slot !== d.slot) { ghost.innerHTML = `<img alt="" src="${thumb(J().slots[d.slot])}">`; ghost.dataset.slot = d.slot; } ghost.style.display = 'block'; ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`; }
+    else ghost.style.display = 'none';
     d.obj.position.x = at.x - d.grab.x; d.obj.position.y = at.y - d.grab.y;
     d.obj.position.z += ((d.z - .3) - d.obj.position.z) * .3;
     d.obj.rotation.z = (d.obj.position.x - d.start.x) * -.06;
@@ -1164,15 +1169,20 @@ function screwHome(slot) {
 async function releasePart(d) {
   const o = d.obj, from = o.position.clone(), fromR = o.rotation.z;
   const dist = Math.hypot(from.x - d.start.x, from.y - d.start.y);
+  const t = d.px != null && dropTarget(d.px, d.py); markDrop(null); ghost.style.display = 'none'; delete ghost.dataset.slot; d.obj.visible = true;
+  if (t && !(d.slot === 'cover' && t === 'binBtn')) return removePart(d.slot, t);
+  if (t) { await removePart(d.slot); return say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Положил на стол — можно убрать в коробку.', 'thinking'); }
   if (dist > 1.0) return removePart(d.slot);
   busy = true;
   await tween(.28, k => { o.position.lerpVectors(from, d.start, k); o.rotation.z = fromR * (1 - k); }, ease.back);
   busy = false;
 }
-async function removePart(slot) {
+async function removePart(slot, target) {
   const j = J(), o = objs.get(slot), it = j.slots[slot];
   busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
-  it.pos = freeSpot(); it.from = j.id; S.tray.push(it); save();
+  if (target) { const r = $(target).getBoundingClientRect(); it.pos = { x: (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight }; }
+  else it.pos = freeSpot();
+  it.from = j.id; S.tray.push(it); save();
   sfx.whoosh(); buzz(20);
   // fly to the free spot on the desk, then lie there as a flat picture
   const at = pointerLocal({ clientX: it.pos.x * innerWidth, clientY: it.pos.y * innerHeight }, o.position.z) || new V3(o.position.x * .3, -6, o.position.z);
@@ -1181,6 +1191,7 @@ async function removePart(slot) {
   device.remove(o);
   renderTray(); busy = false;
   const dsc = DISCOVER[it.type] && DISCOVER[it.type][it.cond];
+  if (target) { stowPart(it, target); if (dsc) say(dsc[0] + (target === 'boxBtn' ? ' Убрал в коробку.' : ' Выбросил.'), dsc[1]); refreshHint(); return; }
   if (dsc) say(dsc[0], dsc[1]); else say(PARTS[it.type].name + ' — на столе.', 'focused');
   refreshHint();
 }
@@ -1271,7 +1282,7 @@ function dropTarget(x, y) {
 const markDrop = t => ['boxBtn', 'binBtn'].forEach(id => $(id).classList.toggle('hot', id === t));
 function stowPart(it, target) {
   const P = PARTS[it.type];
-  if (it.type === 'cover') { sfx.nope(); say('Это крышка этой приставки — её ставят обратно, а не убирают.', 'thinking'); return renderTray(); }
+  if (it.type === 'cover' && target === 'binBtn') { sfx.nope(); say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Можно убрать в коробку.', 'thinking'); return renderTray(); }
   S.tray = S.tray.filter(x => x !== it); delete it.pos; delete it.from;
   if (target === 'boxBtn') { S.box.push(it); sfx.pop(); say(P.name + ' — в коробке.', 'happy'); }
   else { sfx.whoosh(); say(P.name + ' — в корзине.', 'determined'); }
@@ -1315,7 +1326,7 @@ function openItem(it) {
     ${unique ? '<p>Это крышка приставки с этой наклейкой — её ставят обратно на корпус.</p>' : ''}
     <div class="btns">
       <button class="btn${it.cond === 'ok' || it.cond === 'broken' ? ' alt' : ''}" data-a="mat">На коврик: ${work.toLowerCase()}</button>
-      ${unique ? '' : '<button class="btn alt" data-a="box">Убрать в коробку</button>'}
+      <button class="btn alt" data-a="box">Убрать в коробку</button>
       ${unique ? '' : '<button class="btn danger" data-a="bin">Выбросить</button>'}
       <button class="btn alt" data-a="close">Закрыть</button>
     </div></div>`;
