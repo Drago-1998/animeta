@@ -152,6 +152,9 @@ body.street #desk, body.mat #desk, body.pc #desk { display: none; }
   font: 800 10px/1.2 var(--body); color: #fff; text-align: center; letter-spacing: .02em; }
 .badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.loose { background: #8b5bb0; } .badge.fresh { background: var(--green); }
 #boxBtn { width: 84px; background: none; border: 0; cursor: pointer; }
+#binBtn { width: 66px; background: none; border: 0; cursor: pointer; }
+#binBtn img { height: 72px; width: auto; display: block; margin: 0 auto; filter: drop-shadow(0 4px 4px rgba(0,0,0,.45)); pointer-events: none; }
+#binBtn:active img { transform: scale(.95); }
 #boxBtn img { width: 84px; height: auto; display: block; filter: drop-shadow(0 4px 4px rgba(0,0,0,.45)); pointer-events: none; }
 #boxBtn:active img { transform: scale(.95); }
 .boxcard { max-height: 82%; }
@@ -347,9 +350,7 @@ body.street #streetBar { display: flex; }
 <div id="bench">
   <div id="benchActions"></div>
   <div id="tray">
-    <button class="slotbtn drop" id="binBtn" aria-label="Корзина: перетащи сюда деталь, чтобы выбросить">
-      <svg viewBox="0 0 40 40" fill="none" stroke="#c9b391" stroke-width="2" stroke-linejoin="round"><path d="M7 11h26l-3 24H10z" fill="rgba(201,179,145,.12)"/><path d="M5 11h30"/><path d="M12 15l1.5 16M20 15v16M28 15l-1.5 16M9.5 21h21M10.5 27h19"/><path d="M15 11c0-4 10-4 10 0"/></svg>
-      <span>Корзина</span></button>
+    <button class="slotbtn drop" id="binBtn" aria-label="Корзина: перетащи сюда деталь, чтобы выбросить"><img alt="" src="bin.webp"></button>
     <div class="cups"><button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
     <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button></div>
     <button class="slotbtn drop" id="boxBtn" aria-label="Коробка с деталями: перетащи сюда деталь, чтобы убрать"><img alt="" src="box.webp"></button>
