@@ -40,7 +40,7 @@ body.mat #bg::after { background: radial-gradient(ellipse 70% 50% at 50% 50%, rg
 
 /* HUD */
 #hud {
-  position: fixed; left: 0; right: 0; top: 0; z-index: 5;
+  position: fixed; left: 0; right: 0; top: 0; z-index: 9;
   padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; align-items: center; gap: 8px;
@@ -145,9 +145,9 @@ body.street #desk, body.mat #desk, body.pc #desk { display: none; }
 .badge { position: absolute; left: 4px; right: 4px; bottom: 4px; border-radius: 6px; padding: 2px 4px;
   font: 800 10px/1.2 var(--body); color: #fff; text-align: center; letter-spacing: .02em; }
 .badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.loose { background: #8b5bb0; } .badge.fresh { background: var(--green); }
-#boxBtn { background: linear-gradient(#c9955a, #a6743f); border-color: #7a5128; color: #3a2410; }
-#boxBtn span { color: #3a2410; }
-#boxBtn svg { width: 30px; height: 30px; }
+#boxBtn { width: 84px; background: none; border: 0; cursor: pointer; }
+#boxBtn img { width: 84px; height: auto; display: block; filter: drop-shadow(0 4px 4px rgba(0,0,0,.45)); pointer-events: none; }
+#boxBtn:active img { transform: scale(.95); }
 .boxcard { max-height: 82%; }
 .boxhead { display: flex; align-items: center; justify-content: space-between; }
 .boxbody { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
@@ -212,10 +212,27 @@ body.street #desk, body.mat #desk, body.pc #desk { display: none; }
 
 /* the computer: its own scene — the monitor fills the screen, the browser lives inside its glass */
 #tablet { position: fixed; inset: 0; z-index: 8; background: #1d140e; }
-#pcBg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#pcBg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* the desktop shown on the monitor's glass (sits under the picture, which has the glass cut out) */
+#pcDesk { position: absolute; overflow: hidden; background: #0f7f7a; display: flex; flex-direction: column; }
+#pcDesk::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(rgba(0,0,0,.12) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.12), rgba(0,0,0,.35) 100%); }
+.icons { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: center; justify-items: center; gap: 4px 0; padding: 6px; }
+.pcIcon { appearance: none; border: 0; background: none; cursor: pointer; width: 92px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: #fff; font: 800 12px/1.15 var(--body); text-shadow: 0 1px 0 #000; position: relative; }
+.pcIcon svg { width: 34px; height: 34px; filter: drop-shadow(1px 1px 0 rgba(0,0,0,.5)); }
+.pcIcon:active span { background: #0a246a; outline: 1px dotted #fff; }
+.pcIcon .dot { position: absolute; top: 2px; right: 22px; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 2px #fff; }
+.taskbar { position: relative; z-index: 1; height: 24px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 3px;
+  background: #c3c0b6; border-top: 2px solid #fff; font: 800 11px/1 var(--body); color: #222; }
+.taskbar b { border: 2px outset #eee; padding: 2px 6px; font: 800 11px/1 var(--body); }
+.taskbar span { border: 1px inset #eee; padding: 3px 6px; font-variant-numeric: tabular-nums; }
 body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.pc #street, body.pc #streetBar, body.pc #matBar { display: none !important; }
-.screen { position: absolute; left: 36px; right: 36px; top: calc(env(safe-area-inset-top, 0px) + 96px); bottom: 24%;
-  background: #c3c0b6; color: var(--ink); display: flex; flex-direction: column; overflow: hidden; padding: 3px; border-radius: 4px; }
+.screen { position: absolute; z-index: 2; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 60px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  background: #c3c0b6; color: var(--ink); display: flex; flex-direction: column; overflow: hidden; padding: 3px; border: 2px outset #eee;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6); animation: winOpen .22s ease-out; }
+@keyframes winOpen { from { transform: scale(.55); opacity: 0; } }
 .screen header { display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 9px; background: linear-gradient(90deg, #0a246a, #3a6ea5); color: #fff; }
 .screen header b { font: 800 13px/1 var(--body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bal { display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1 var(--display); font-variant-numeric: tabular-nums; }
@@ -315,10 +332,7 @@ body.street #streetBar { display: flex; }
     <button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
     <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button>
     <div class="trayNote">Снятые детали лежат на столе. Тащи их обратно на приставку.</div>
-    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями">
-      <svg viewBox="0 0 32 32" fill="none" stroke="#3a2410" stroke-width="2" stroke-linejoin="round"><path d="M4 11l12-6 12 6v12l-12 6-12-6z"/><path d="M4 11l12 6 12-6M16 17v12M10 8l12 6"/></svg>
-      <span>Коробка</span>
-    </button>
+    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями"><img alt="" src="box.webp"></button>
   </div>
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
@@ -329,9 +343,19 @@ body.street #streetBar { display: flex; }
 <div id="ghost"></div>
 
 <div class="overlay sheet" id="sheet" hidden></div>
-<div id="tablet" hidden><canvas id="pcBg"></canvas>
-  <div class="screen" id="pcScreen" role="dialog" aria-label="Компьютер">
-    <header><b>Интернет-Навигатор — Ретро-Ремонт</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Выйти из-за компьютера">×</button></header>
+<div id="tablet" hidden>
+  <div id="pcDesk">
+    <div class="icons">
+      <button class="pcIcon" data-app="orders"><svg viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" fill="#fff" stroke="#333"/><path d="M10 10h12M10 15h12M10 20h8" stroke="#3a6ea5" stroke-width="2"/></svg><span>Заказы</span></button>
+      <button class="pcIcon" data-app="market"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#3a6ea5" stroke="#123"/><path d="M4 16h24M16 4c-6 6-6 18 0 24M16 4c6 6 6 18 0 24" stroke="#bfe3ff" stroke-width="1.5" fill="none"/></svg><span>Барахолка</span></button>
+      <button class="pcIcon" data-app="shop"><svg viewBox="0 0 32 32"><path d="M5 9h22l-2 14H7z" fill="#e7b04a" stroke="#5a3a10"/><path d="M11 9a5 5 0 0 1 10 0" stroke="#5a3a10" fill="none" stroke-width="2"/></svg><span>Запчасти</span></button>
+      <button class="pcIcon" data-app="post"><svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="16" fill="#c9955a" stroke="#5a3a10"/><path d="M4 9l12 9 12-9" stroke="#5a3a10" fill="none"/></svg><span>Посылки</span><span class="dot" id="postDot" hidden></span></button>
+    </div>
+    <div class="taskbar"><b>Пуск</b><span id="pcClock">00:00</span></div>
+  </div>
+  <canvas id="pcBg"></canvas>
+  <div class="screen" id="pcScreen" role="dialog" aria-label="Интернет-Навигатор" hidden>
+    <header><b>Интернет-Навигатор — Ретро-Ремонт</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Закрыть окно">×</button></header>
     <div class="addr" id="addr"></div>
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="orders">Заказы</button><button role="tab" data-tab="market">Барахолка</button>
@@ -1432,9 +1456,12 @@ function askFinishDonor() {
 /* ---------- the computer: a scene of its own ---------- */
 let tab = 'orders', toastTimer = 0, toastHost = null;
 function openTablet(t) {
-  tab = t || tab; if (onMat) closeMat(); $('boxSheet').hidden = true;
-  $('tablet').hidden = false; document.body.classList.add('pc'); drawPC(); renderTablet(); renderNav(); sfx.tick();
+  if (onMat) closeMat(); $('boxSheet').hidden = true;
+  $('tablet').hidden = false; document.body.classList.add('pc'); drawPC(); renderNav(); sfx.tick();
+  if (t) openApp(t); else $('pcScreen').hidden = true;
 }
+function openApp(t) { tab = t; $('pcScreen').hidden = false; renderTablet(); sfx.tick(); }
+document.querySelector('#pcDesk .icons').addEventListener('click', e => { const b = e.target.closest('[data-app]'); if (b) { initAudio(); openApp(b.dataset.app); } });
 function closePC() { $('tablet').hidden = true; document.body.classList.remove('pc'); renderNav(); refreshHint(); }
 function go(m) {
   initAudio();
@@ -1443,45 +1470,29 @@ function go(m) {
   if (m !== S.mode || wasPc) { sfx.tick(); setMode(m); }
 }
 $('nav').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
-$('tabClose').addEventListener('click', () => go(S.mode));
+$('tabClose').addEventListener('click', () => { $('pcScreen').hidden = true; sfx.tick(); });
 function renderNav() {
   const here = !$('tablet').hidden ? 'pc' : S.mode;
   document.querySelectorAll('#nav [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === here)));
   $('dotStreet').hidden = !(S.visitor && here !== 'street');
   $('dotPc').hidden = true;
+  $('postDot').hidden = !S.deliveries.length;
 }
-// prototype art: a beige CRT on the desk, close enough that its glass fills the phone
-function drawPC() {
-  const c = $('pcBg'), dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+// painted backdrops are 941×1672 portraits: cover the screen with them and map picture pixels to screen pixels
+const ART = {};
+['street', 'kiosk', 'pc'].forEach(n => { const i = new Image(); i.onload = () => { if (n === 'pc') { if (!$('tablet').hidden) drawPC(); } else drawStreet(); }; i.src = n + '.webp'; ART[n] = i; });
+function coverMap() { const W = innerWidth, H = innerHeight, s = Math.max(W / 941, H / 1672); return { s, x: v => (W - 941 * s) / 2 + v * s, y: v => (H - 1672 * s) / 2 + v * s }; }
+function paintCanvas(c) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
   c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
-  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const sr = $('pcScreen').getBoundingClientRect();
-  let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2f3d3a'); gr.addColorStop(1, '#1d2624');
-  g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  g.fillStyle = 'rgba(255,255,255,.035)'; for (let x = 0; x < W; x += 22) g.fillRect(x, 0, 11, H);
-  const deskY = sr.bottom + 70;
-  gr = g.createLinearGradient(0, deskY, 0, H); gr.addColorStop(0, '#7a4f2e'); gr.addColorStop(1, '#4e311c');
-  g.fillStyle = gr; g.fillRect(0, deskY, W, H - deskY);
-  // the monitor case around the glass
-  const m = { x: sr.left - 26, y: sr.top - 26, w: sr.width + 52, h: sr.height + 80 };
-  g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.roundRect ? g.roundRect(m.x + 4, m.y + 10, m.w, m.h, 22) : g.rect(m.x + 4, m.y + 10, m.w, m.h); g.fill();
-  gr = g.createLinearGradient(0, m.y, 0, m.y + m.h); gr.addColorStop(0, '#e6dec8'); gr.addColorStop(1, '#c4b996');
-  g.fillStyle = gr; g.beginPath(); g.roundRect ? g.roundRect(m.x, m.y, m.w, m.h, 22) : g.rect(m.x, m.y, m.w, m.h); g.fill();
-  g.fillStyle = '#2b2a28'; g.beginPath(); g.roundRect ? g.roundRect(sr.left - 8, sr.top - 8, sr.width + 16, sr.height + 16, 10) : g.rect(sr.left - 8, sr.top - 8, sr.width + 16, sr.height + 16); g.fill();
-  g.fillStyle = '#8a8068'; g.font = '800 11px Nunito, Arial'; g.fillText('ЭЛЕКТРОН-2000', m.x + 26, m.y + m.h - 22);
-  g.fillStyle = '#5fd36a'; g.shadowColor = '#5fd36a'; g.shadowBlur = 8; g.beginPath(); g.arc(m.x + m.w - 30, m.y + m.h - 26, 5, 0, 7); g.fill(); g.shadowBlur = 0;
-  g.fillStyle = '#b3a988'; for (let i = 0; i < 5; i++) g.fillRect(m.x + m.w - 110 + i * 12, m.y + m.h - 30, 7, 7);
-  // sticky notes on the case
-  [['пароль:\nretro90', '#ffe27a', m.x + m.w - 70, m.y - 12, .08], ['позвонить\nкурьеру', '#9fe3c4', m.x - 6, m.y + 30, -.1]].forEach(([t, col, x, y, rot]) => {
-    g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = col; g.fillRect(0, 0, 64, 44);
-    g.fillStyle = '#3a2b1f'; g.font = '800 10px Nunito, Arial'; t.split('\n').forEach((l, i) => g.fillText(l, 6, 17 + i * 13)); g.restore();
-  });
-  // keyboard and mouse on the desk
-  const ky = Math.max(m.y + m.h + 14, H - 96), kw = W * .74;
-  g.fillStyle = '#cfc6aa'; g.beginPath(); g.roundRect ? g.roundRect(W * .06, ky, kw, 70, 10) : g.rect(W * .06, ky, kw, 70); g.fill();
-  g.fillStyle = '#e7dfc9'; for (let r = 0; r < 4; r++) for (let k = 0; k < 13; k++) g.fillRect(W * .06 + 10 + k * (kw - 20) / 13, ky + 8 + r * 15, (kw - 20) / 13 - 3, 11);
-  g.fillStyle = '#d8cfb4'; g.beginPath(); g.ellipse(W * .9, ky + 34, 18, 26, 0, 0, 7); g.fill();
-  g.strokeStyle = '#3a3a3a'; g.lineWidth = 2; g.beginPath(); g.moveTo(W * .9, ky + 8); g.quadraticCurveTo(W * .9, ky - 30, W * .7, m.y + m.h); g.stroke();
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return g;
+}
+// the computer: the painted monitor with its glass cut out, the desktop showing through it
+function drawPC() {
+  const g = paintCanvas($('pcBg')), m = coverMap(), SCR = [158, 419, 777, 881];
+  Object.assign($('pcDesk').style, { left: m.x(SCR[0]) + 'px', top: m.y(SCR[1]) + 'px', width: (SCR[2] - SCR[0]) * m.s + 'px', height: (SCR[3] - SCR[1]) * m.s + 'px' });
+  if (ART.pc.complete && ART.pc.naturalWidth) g.drawImage(ART.pc, m.x(0), m.y(0), 941 * m.s, 1672 * m.s);
+  const d = new Date(); $('pcClock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 addEventListener('resize', () => { if (!$('tablet').hidden) drawPC(); });
 document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; renderTablet(); sfx.tick(); } });
@@ -1658,84 +1669,25 @@ const INTRO = [
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
 function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+// the window scene: the street picture, then the customers, then the kiosk interior with the window cut out
 function drawStreet() {
-  const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
-  const [bg, fg] = [$('streetBg'), $('streetFg')].map(c => { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return g; });
-  const win = { x: W * .05, y: H * .12, w: W * .9, h: H * .62 }, top = win.y + win.h, horizon = H * .6, r = seeded(7);
-  // evening sky
-  let gr = bg.createLinearGradient(0, 0, 0, horizon);
-  gr.addColorStop(0, '#1d2846'); gr.addColorStop(.5, '#6a4b78'); gr.addColorStop(1, '#f1a35e');
-  bg.fillStyle = gr; bg.fillRect(0, 0, W, horizon);
-  gr = bg.createRadialGradient(W * .3, horizon, 10, W * .3, horizon, W * .6); gr.addColorStop(0, 'rgba(255,214,150,.55)'); gr.addColorStop(1, 'rgba(255,214,150,0)');
-  bg.fillStyle = gr; bg.fillRect(0, 0, W, horizon);
-  // two rows of buildings with lit windows
-  [[.2, .34, '#4a3d5e', .5], [.28, .5, '#30283f', .7]].forEach(([hmin, hmax, col, lit]) => {
-    for (let x = -10; x < W; ) {
-      const w = 40 + r() * 70, h = H * (hmin + r() * (hmax - hmin));
-      bg.fillStyle = col; bg.fillRect(x, horizon - h, w, h);
-      for (let wy = horizon - h + 10; wy < horizon - 14; wy += 16) for (let wx = x + 7; wx < x + w - 10; wx += 14)
-        if (r() < lit * .5) { bg.fillStyle = `rgba(255,${200 + (r() * 40 | 0)},120,${.55 + r() * .4})`; bg.fillRect(wx, wy, 7, 9); }
-      x += w + 2;
-    }
-  });
-  // road and pavement
-  bg.fillStyle = '#463f4d'; bg.fillRect(0, horizon, W, H * .06);
-  bg.fillStyle = '#f2d69a'; for (let x = 0; x < W; x += 46) bg.fillRect(x, horizon + H * .028, 24, 3);
-  gr = bg.createLinearGradient(0, horizon + H * .06, 0, H); gr.addColorStop(0, '#a08b76'); gr.addColorStop(1, '#6f5d4e');
-  bg.fillStyle = gr; bg.fillRect(0, horizon + H * .06, W, H);
-  bg.strokeStyle = 'rgba(40,28,20,.35)'; bg.lineWidth = 1.5;
-  for (let y = horizon + H * .06, k = 8; y < H; y += k, k *= 1.35) { bg.beginPath(); bg.moveTo(0, y); bg.lineTo(W, y); bg.stroke(); }
-  for (let i = -8; i <= 8; i++) { bg.beginPath(); bg.moveTo(W / 2 + i * 30, horizon + H * .06); bg.lineTo(W / 2 + i * 140, H); bg.stroke(); }
-  // street lamp with a warm halo
-  const lx = W * .84;
-  bg.fillStyle = '#2a2430'; bg.fillRect(lx - 3, H * .22, 6, horizon + H * .1 - H * .22);
-  gr = bg.createRadialGradient(lx, H * .22, 4, lx, H * .22, 120); gr.addColorStop(0, 'rgba(255,225,160,.8)'); gr.addColorStop(1, 'rgba(255,225,160,0)');
-  bg.fillStyle = gr; bg.fillRect(lx - 130, H * .22 - 130, 260, 260);
-  bg.fillStyle = '#fff1c9'; bg.beginPath(); bg.arc(lx, H * .22, 9, 0, 7); bg.fill();
-
-  // kiosk wall around the window
-  fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd');
-  fg.strokeStyle = 'rgba(0,0,0,.18)'; fg.lineWidth = 2;
-  for (let x = 0; x < W; x += 34) { fg.beginPath(); fg.moveTo(x, 0); fg.lineTo(x, win.y); fg.moveTo(x, top); fg.lineTo(x, H); fg.stroke(); }
-  // striped awning just outside the glass
-  const ah = Math.min(56, win.h * .12), sw = 30;
-  for (let x = win.x, i = 0; x < win.x + win.w; x += sw, i++) {
-    fg.fillStyle = i % 2 ? '#f2e3c6' : '#c4432c'; fg.fillRect(x, win.y, Math.min(sw, win.x + win.w - x), ah);
-    fg.beginPath(); fg.arc(x + sw / 2, win.y + ah, sw / 2, 0, Math.PI); fg.fill();
+  const bg = paintCanvas($('streetBg')), fg = paintCanvas($('streetFg')), m = coverMap(), W = innerWidth, H = innerHeight;
+  const win = { x: m.x(144), y: m.y(200), w: (823 - 144) * m.s, h: (955 - 200) * m.s }, top = m.y(955);
+  bg.fillStyle = '#2a2040'; bg.fillRect(0, 0, W, H);
+  if (ART.street.complete && ART.street.naturalWidth) {
+    // a bit wider than the window, with the near pavement at the sill so customers stand on it
+    const s2 = win.w * 1.25 / 941;
+    bg.drawImage(ART.street, win.x + win.w / 2 - 941 * s2 / 2, top - 1330 * s2, 941 * s2, 1672 * s2);
   }
-  fg.fillStyle = 'rgba(0,0,0,.18)'; fg.fillRect(win.x, win.y + ah + sw / 2, win.w, 6);
-  // glass sheen and the frame
-  gr = fg.createLinearGradient(win.x, win.y, win.x + win.w, win.y + win.h); gr.addColorStop(0, 'rgba(255,255,255,.08)'); gr.addColorStop(.4, 'rgba(255,255,255,0)'); gr.addColorStop(.7, 'rgba(255,255,255,.05)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-  fg.fillStyle = gr; fg.fillRect(win.x, win.y, win.w, win.h);
-  fg.strokeStyle = '#7a4e2c'; fg.lineWidth = 12; fg.strokeRect(win.x - 6, win.y - 6, win.w + 12, win.h + 12);
-  fg.strokeStyle = '#a0703f'; fg.lineWidth = 2; fg.strokeRect(win.x, win.y, win.w, win.h);
-  // paper sign taped to the glass
-  fg.save(); fg.translate(win.x + 14, win.y + ah + 26); fg.rotate(-.05);
-  fg.fillStyle = '#f6ecd6'; fg.fillRect(0, 0, 132, 66); fg.fillStyle = 'rgba(230,200,120,.8)'; fg.fillRect(50, -6, 32, 12);
-  fg.fillStyle = '#3a2b1f'; fg.font = `700 13px ${FONT}`; fg.fillText('РЕМОНТ', 10, 24); fg.font = '800 11px Nunito, Arial'; fg.fillText('ретро-электроники', 10, 42); fg.fillText('за один день ★', 10, 57);
-  fg.restore();
-  // counter
-  const ct = H * .05;
-  gr = fg.createLinearGradient(0, top, 0, top + ct); gr.addColorStop(0, '#c99058'); gr.addColorStop(1, '#a8743f');
-  fg.fillStyle = gr; fg.fillRect(0, top, W, ct);
-  fg.fillStyle = '#e0ad72'; fg.fillRect(0, top, W, 3);
-  fg.fillStyle = '#5e3b22'; fg.fillRect(0, top + ct, W, H - top - ct);
-  fg.strokeStyle = 'rgba(0,0,0,.22)'; for (let y = top + ct + 26; y < H; y += 26) { fg.beginPath(); fg.moveTo(0, y); fg.lineTo(W, y); fg.stroke(); }
-  // service bell and a little plant on the counter
-  const bx = W * .8, by = top + ct * .45;
-  fg.fillStyle = '#5a4a3a'; fg.fillRect(bx - 22, by - 3, 44, 6);
-  gr = fg.createLinearGradient(bx - 18, 0, bx + 18, 0); gr.addColorStop(0, '#f6d27a'); gr.addColorStop(.5, '#fff1c0'); gr.addColorStop(1, '#c99a3a');
-  fg.fillStyle = gr; fg.beginPath(); fg.arc(bx, by - 3, 18, Math.PI, 0); fg.fill(); fg.fillRect(bx - 2, by - 26, 4, 6);
-  const px = W * .14, py = top + ct * .5;
-  fg.fillStyle = '#b4532f'; fg.beginPath(); fg.moveTo(px - 16, py - 22); fg.lineTo(px + 16, py - 22); fg.lineTo(px + 12, py + 4); fg.lineTo(px - 12, py + 4); fg.fill();
-  fg.fillStyle = '#5f8f4a'; for (let i = 0; i < 6; i++) { fg.beginPath(); fg.ellipse(px + (i - 2.5) * 7, py - 34 - (i % 2) * 8, 8, 15, (i - 2.5) * .3, 0, 7); fg.fill(); }
+  if (ART.kiosk.complete && ART.kiosk.naturalWidth) fg.drawImage(ART.kiosk, m.x(0), m.y(0), 941 * m.s, 1672 * m.s);
+  else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
   STREET.win = win; STREET.top = top;
 }
 const STREET = { win: null, top: 0 };
 addEventListener('resize', () => { drawStreet(); if (walker && !walker.moving) placeWalker(false); });
 
 let walker = null;
-function figSize(c) { const H = innerHeight, h = Math.min(H * .62, innerWidth * 1.45); return { h, top: STREET.top - h * .66 }; }
+function figSize(c) { const h = Math.min(STREET.win.h * 1.45, innerWidth * 1.3); return { h, top: STREET.top - h * .7 }; }
 function placeWalker(walk) {
   const v = S.visitor; if (!v) return;
   const c = CUSTOMERS[v.cust], { h, top } = figSize(c);
