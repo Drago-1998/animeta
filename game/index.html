@@ -288,6 +288,9 @@ body.street #streetBar { display: flex; }
 .nbox.right .nface { left: auto; right: 12px; }
 .nname { position: absolute; top: -17px; left: 112px; background: #6b4428; color: var(--cream); font: 700 14px/1 var(--display); padding: 8px 12px; border-radius: 10px; white-space: nowrap; }
 .nbox.right .nname { left: auto; right: 112px; }
+/* customers are already standing in the window, so only the master gets a portrait */
+.nbox.noface .nface { display: none; }
+.nbox.noface .nname { left: 16px; right: auto; }
 .ntext { font: 700 16px/1.45 var(--body); min-height: 2.9em; }
 .nchoices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .nchoices:empty { display: none; }
@@ -1772,7 +1775,7 @@ function nextLine() {
   if (n.i >= n.lines.length) { $('novel').hidden = true; novel = null; n.done && n.done(); return; }
   const L = n.lines[n.i], box = $('nbox'), fc = $('nface');
   const hero = L.who === 'hero', c = S.visitor ? CUSTOMERS[S.visitor.cust] : null;
-  box.classList.toggle('right', !hero);
+  box.classList.toggle('right', !hero); box.classList.toggle('noface', !hero);
   const pose = hero ? L.cpose : L.pose || (L.face === 'happy' ? 'cheer' : 'sad');
   setPose(pose);
   if (!hero && c.poses) {
