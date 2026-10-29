@@ -219,11 +219,45 @@ button.chip { cursor: pointer; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font: 800 12px/1 var(--body); padding: 5px 8px; border-radius: 8px; background: #efe2c8; color: #6b5238; }
 .toast { position: sticky; bottom: 0; align-self: center; background: var(--ink); color: var(--cream); font-weight: 800; padding: 10px 14px; border-radius: 12px; }
-@media (prefers-reduced-motion: reduce) { .card, .tablet, #task.flash, #hint svg, .hero.react { animation: none !important; } }
+/* the street: looking out through the kiosk window; the gadget bench is one tap away */
+#street { position: fixed; inset: 0; z-index: 2; display: none; }
+body.street #street { display: block; }
+body.street #c, body.street #task, body.street #tools, body.street #bench, body.street #hint { display: none; }
+#street canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#walkers { position: absolute; inset: 0; overflow: hidden; }
+.walker { position: absolute; left: 50%; top: 0; cursor: pointer; will-change: transform; }
+.walker .bob { height: 100%; transform-origin: 50% 100%; }
+.walker.walking .bob { animation: bob .42s ease-in-out infinite alternate; }
+.walker img { display: block; height: 100%; width: auto; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+@keyframes bob { from { transform: translateY(0) rotate(-1.2deg); } to { transform: translateY(-9px) rotate(1.2deg); } }
+#streetBar { position: fixed; z-index: 6; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: none; gap: 8px; }
+body.street #streetBar { display: flex; }
+.pill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--orange); }
+
+/* novel-style conversation box */
+#novel { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.nbox { position: relative; max-width: 560px; margin: 0 auto; background: var(--cream); color: var(--ink); border: 3px solid #6b4428;
+  border-radius: 18px; padding: 24px 16px 14px; box-shadow: 0 16px 40px rgba(0,0,0,.5); cursor: pointer; animation: cardIn .25s ease-out; }
+.nface { position: absolute; bottom: calc(100% - 8px); left: 12px; width: 88px; height: 110px; border-radius: 16px; border: 3px solid #6b4428; background-color: #f6ecdc;
+  background-repeat: no-repeat; box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+.nface.hero-face { background-image: url("hero.webp"); background-size: 880px 110px; }
+.nface.cust-face { background-image: url("customers.webp"); background-size: 1056px 110px; }
+.nbox.right .nface { left: auto; right: 12px; }
+.nname { position: absolute; top: -17px; left: 112px; background: #6b4428; color: var(--cream); font: 700 14px/1 var(--display); padding: 8px 12px; border-radius: 10px; white-space: nowrap; }
+.nbox.right .nname { left: auto; right: 112px; }
+.ntext { font: 700 16px/1.45 var(--body); min-height: 2.9em; }
+.nchoices { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.nchoices:empty { display: none; }
+.nchoices .btn { padding: 13px 16px; font-size: 14px; text-align: left; }
+.nnext { position: absolute; right: 14px; bottom: 6px; color: #8a6a45; font-size: 13px; animation: nudge 1s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .card, .tablet, #task.flash, #hint svg, .hero.react, .walker.walking .bob, .nnext { animation: none !important; } }
 </style>
 
 <div id="bg"></div>
 <canvas id="c"></canvas>
+<div id="street"><canvas id="streetBg"></canvas><div id="walkers"></div><canvas id="streetFg"></canvas></div>
 
 <div id="hud">
   <div class="chip"><span class="coin"></span><span id="money">0</span></div>
@@ -264,6 +298,9 @@ button.chip { cursor: pointer; }
   </div>
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
+<div id="streetBar"><button class="pill main" id="toBench">К верстаку</button></div>
+<div id="novel" hidden><div class="nbox" id="nbox" role="dialog" aria-live="polite"><div class="nface" id="nface" aria-hidden="true"></div><div class="nname" id="nname"></div>
+  <div class="ntext" id="ntext"></div><div class="nchoices" id="nchoices"></div><div class="nnext" id="nnext" aria-hidden="true">▼</div></div></div>
 <div id="ghost"></div>
 
 <div class="overlay sheet" id="sheet" hidden></div>
@@ -480,12 +517,18 @@ const DISCOVER = {
 };
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
-  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, story: 'Дарил её внуку в девяносто первом.', thanks: 'Как новенькая! Внук будет счастлив.' },
-  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, story: 'Купил на барахолке за 300 рублей.', thanks: 'Огонь! Пойду рекорды ставить.' },
-  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
-  { name: 'Ваня', who: 'ученик второго класса', face: 6, story: 'Папа сказал, что она сломалась навсегда. Это правда?', thanks: 'Ура, работает! Спасибо!' },
-  { name: 'Лёва', who: 'музыкант', face: 8, story: 'Хочу записывать с неё восьмибитные звуки для альбома.', thanks: 'Вот это звук! Будет хит.' },
-  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, story: 'Редкая расцветка, мне нужна в идеальном состоянии.', thanks: 'Безупречно. Я ещё вернусь.' },
+  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', story: 'Дарил её внуку в девяносто первом.',
+    more: 'Внук вырос, а приставку хранит. Я сам паяльник держать умею, но тут глаза уже не те.', leave: 'Зайду, как будет готово. Спасибо, сынок!', thanks: 'Как новенькая! Внук будет счастлив.' },
+  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', story: 'Купил на барахолке за 300 рублей.',
+    more: 'Продавец клялся, что работает. Я все карманные на неё потратил!', leave: 'Только не потеряйте её, ладно?', thanks: 'Огонь! Пойду рекорды ставить.' },
+  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, fig: 'business', story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.',
+    more: 'Мне её подарил отец, когда я была в пятом классе. Хочу, чтобы она снова работала.', leave: 'Хорошо. Позвоните… то есть, я сама зайду.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
+  { name: 'Ваня', who: 'ученик второго класса', face: 6, fig: 'kid', story: 'Папа сказал, что она сломалась навсегда. Это правда?',
+    more: 'Я её не ронял! Ну… почти не ронял.', leave: 'Я буду каждый день приходить и смотреть!', thanks: 'Ура, работает! Спасибо!' },
+  { name: 'Лёва', who: 'музыкант', face: 8, fig: 'hipster', story: 'Хочу записывать с неё восьмибитные звуки для альбома.',
+    more: 'У неё особенный писк. Новые так не умеют — я проверял.', leave: 'Без неё альбом не допишу. Жду!', thanks: 'Вот это звук! Будет хит.' },
+  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, fig: 'collector', story: 'Редкая расцветка, мне нужна в идеальном состоянии.',
+    more: 'В коллекции таких две на весь город. Вторая у меня уже есть.', leave: 'Надеюсь на вашу аккуратность.', thanks: 'Безупречно. Я ещё вернусь.' },
 ];
 const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
 const SELL_PRICE = 70;
@@ -496,13 +539,14 @@ const DELIVERY = { part: 20, device: 25 };
 const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
-    orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false };
+    orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
+    mode: 'street', visitor: null, nextVisit: 0, ready: [] };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
 if (!S || !Array.isArray(S.box)) S = newGame();
 function migrate() {
-  S.shelf = S.shelf || []; S.deliveries = S.deliveries || [];
+  S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.mode = S.mode || 'street';
   [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
@@ -513,7 +557,7 @@ const item = (type, cond = 'ok', fresh = false, variant = 0) => ({ id: S.uid++, 
 const pick1 = a => a[Math.floor(Math.random() * a.length)];
 
 function makeOrder() {
-  const first = S.ordersDone === 0 && !S.orders.length && !S.job && !S.shelf.length;
+  const first = S.ordersDone === 0 && !S.job && !S.shelf.length && !S.ready.length;
   const cust = S.nextCustomer++ % CUSTOMERS.length;
   let faults = [];
   if (first) faults = ['battery'];
@@ -542,7 +586,6 @@ function makeOffer() {
     price: 6 + okCount * 3 + Math.floor(Math.random() * 6), seller: pick1(SELLERS), variant: Math.floor(Math.random() * VARIANTS.length) };
 }
 function ensureListings() {
-  while (S.orders.length < 3) S.orders.push(makeOrder());
   while (S.offers.length < 3) S.offers.push(makeOffer());
 }
 function makeJob(kind, src) {
@@ -704,9 +747,10 @@ function situation() {
   const j = J();
   if (onMat) return ['Коврик: ' + PARTS[onMat.it.type].name, matHint()];
   if (!j) {
-    if (S.shelf.length) return ['Мастерская', 'На полке ждут приставки — открой Склад в планшете.'];
-    if (S.deliveries.length) return ['Мастерская', 'Курьер уже едет. Пока можно посмотреть заказы.'];
-    return ['Мастерская', S.orders.length ? 'Открой планшет и возьми заказ.' : 'Новых заказов пока нет.'];
+    if (S.visitor) return ['Верстак', 'У окошка ждёт клиент.'];
+    if (S.shelf.length) return ['Верстак', 'На полке ждут приставки — планшет → Склад → «На стол».'];
+    if (S.deliveries.length) return ['Верстак', 'Курьер уже едет.'];
+    return ['Верстак', 'Пусто. Клиенты подходят к окошку сами.'];
   }
   const title = jobTitle(j);
   if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Переверни приставку, чтобы её разобрать.'];
@@ -778,6 +822,7 @@ function renderTray() {
 function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'); $('tabMoney').textContent = S.money.toLocaleString('ru-RU'); }
 function renderActions() {
   const j = J(), el = $('benchActions'), html = [];
+  html.push(`<button class="pill" id="windowBtn">К окошку${S.visitor ? '<span class="dot"></span>' : ''}</button>`);
   if (j) {
     html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
     html.push('<button class="pill" id="shelfBtn">На полку</button>');
@@ -785,17 +830,18 @@ function renderActions() {
   }
   const sig = html.join('');
   if (el.dataset.sig !== sig) { el.innerHTML = sig; el.dataset.sig = sig; }
-  $('tabletDot').hidden = !(!j && (S.orders.length || S.shelf.length));
+  $('tabletDot').hidden = !(!j && S.shelf.length);
 }
 $('benchActions').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || busy) return;
   initAudio();
+  if (b.id === 'windowBtn') setMode('street');
   if (b.id === 'flipBtn') flip();
   if (b.id === 'shelfBtn') shelve();
   if (b.id === 'finishBtn') askFinishDonor();
 });
 
-const uiOpen = () => !$('sheet').hidden || !$('tablet').hidden || !$('card').hidden;
+const uiOpen = () => !$('sheet').hidden || !$('tablet').hidden || !$('card').hidden || !$('novel').hidden;
 function sparkle(x, y, n = 10, hot) {
   for (let i = 0; i < n; i++) {
     const s = document.createElement('div'); s.className = 'spark' + (hot ? ' hot' : '');
@@ -1179,32 +1225,38 @@ async function powerTest() {
   }
   face($('hero'), 'laughing');
   await wait(.5); busy = false;
-  if (j.kind === 'order') finishOrder(); else offerSale();
+  if (j.kind === 'order') markReady(); else offerSale();
 }
 function star(on) {
   return `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" fill="${on ? '#e7b04a' : '#d9c7a3'}" stroke="${on ? '#a8701c' : '#c4ad84'}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 }
-function finishOrder() {
-  const j = J(), o = j.order, c = CUSTOMERS[o.cust];
+// the owner comes back to the window to collect it (and pay)
+function markReady() {
+  const j = J(), o = j.order;
   const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 90 + 60 * o.faults.length;
-  const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1, tip = [0, 0, 10, 20][stars];
-  const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
-  const total = o.pay + tip;
+  const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1;
+  S.ready.push({ id: j.id, job: j, secs, stars, tip: [0, 0, 10, 20][stars], at: Date.now() + 5000 });
+  S.job = null; save(); clearDevice();
+  if (!S.visitor) S.nextVisit = Math.min(S.nextVisit || Infinity, Date.now() + 6000);
+  refreshHint(true); say('Готово! ' + CUSTOMERS[o.cust].name + ' скоро зайдёт за ней к окошку.', 'proud');
+}
+function showPaid(r, then) {
+  const o = r.job.order, c = CUSTOMERS[o.cust], total = o.pay + r.tip;
+  const mm = Math.floor(r.secs / 60) + ':' + String(r.secs % 60).padStart(2, '0');
   const card = $('card');
   card.innerHTML = `<div class="card" role="dialog" aria-label="Заказ выполнен">
     <div class="eyebrow" style="text-align:center">Заказ выполнен</div>
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>Починено!</h2>
-    <div class="stars">${star(stars > 0)}${star(stars > 1)}${star(stars > 2)}</div>
-    <div class="who"><div class="ava" style="background-position-x:${-(c.face + 1) * 48}px"></div><p class="quote">«${esc(c.thanks)}» — ${esc(c.name)}</p></div>
-    <div class="rows"><div><span>Время работы</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
-      <div><span>Чаевые за скорость</span><span>+${tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
-    <button class="btn" id="next">К заказам</button></div>`;
+    <div class="stars">${star(r.stars > 0)}${star(r.stars > 1)}${star(r.stars > 2)}</div>
+    <div class="rows"><div><span>${esc(c.name)}</span><span></span></div><div><span>Время работы</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
+      <div><span>Чаевые за скорость</span><span>+${r.tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
+    <button class="btn" id="next">Дальше</button></div>`;
   card.hidden = false;
-  face($('heroBig'), ['relieved', 'happy', 'proud'][stars - 1]);
-  S.job = null; S.ordersDone++; ensureListings(); save();
+  face($('heroBig'), ['relieved', 'happy', 'proud'][r.stars - 1]);
+  S.ready = S.ready.filter(x => x !== r); S.ordersDone++; save();
   flyCoins(total);
-  $('next').onclick = () => { sfx.pop(); card.hidden = true; clearDevice(); refreshHint(true); openTablet(S.shelf.length ? 'store' : 'orders'); };
+  $('next').onclick = () => { sfx.pop(); card.hidden = true; then && then(); };
 }
 function offerSale() {
   const card = $('card');
@@ -1322,13 +1374,15 @@ function renderTablet() {
   const body = $('tabBody'), now = Date.now();
   let h = '';
   if (tab === 'orders') {
-    h += '<p class="note">Клиенты пришлют приставку курьером — она приедет на полку. Деталь, которой нет, купи в магазине или сними с б/у.</p>';
-    S.orders.forEach(o => {
-      const c = CUSTOMERS[o.cust];
+    h += '<p class="note">Клиенты сами подходят к окошку киоска. Здесь — приставки, которые они тебе оставили.</p>';
+    const rows = [...(J() && J().kind === 'order' ? [[J(), 'на верстаке']] : []), ...S.shelf.filter(j => j.kind === 'order').map(j => [j, 'на полке']),
+      ...S.ready.map(r => [r.job, 'готова — ждёт хозяина'])];
+    if (!rows.length) h += '<p class="note">Пока ничего. Загляни к окошку — может, кто-то уже ждёт.</p>';
+    rows.forEach(([j, where]) => {
+      const c = CUSTOMERS[j.order.cust];
       h += `<div class="row"><div class="top"><div class="ava" style="background-position-x:${-c.face * 48}px"></div>
-        <div class="meta"><b>${esc(c.name)}</b><span>${esc(c.who)}</span></div>${price(o.pay)}</div>
-        <p class="quote">«${esc(c.story)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
-        <button class="btn" data-take="${o.id}">Взять — курьер привезёт за ${DELIVERY.device} с</button></div>`;
+        <div class="meta"><b>${esc(c.name)}</b><span>${where}</span></div>${price(j.order.pay)}</div>
+        <p class="quote">«${j.order.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
     });
   } else if (tab === 'market') {
     h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
@@ -1385,13 +1439,7 @@ function renderTablet() {
 $('tabBody').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   initAudio();
-  if (b.dataset.take) {
-    const o = S.orders.find(x => x.id === +b.dataset.take); if (!o) return;
-    S.orders = S.orders.filter(x => x !== o); ensureListings();
-    const first = !S.ordersDone && !S.shelf.length && !J() && !S.deliveries.length;
-    deliver({ kind: 'job', job: makeJob('order', o) }, first ? 8 : DELIVERY.device, 'приставка от ' + CUSTOMERS[o.cust].name);
-    sfx.coin(); renderTablet(); toast('Курьер уже едет за приставкой');
-  } else if (b.dataset.buyoff) {
+  if (b.dataset.buyoff) {
     const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || S.money < o.price) return;
     S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings();
     deliver({ kind: 'job', job: makeJob('donor', o) }, DELIVERY.device, 'б/у Pocket Pal');
@@ -1435,13 +1483,13 @@ function frame(now) {
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
-  if ((slow += dt) > .5) { slow = 0; checkDeliveries(); }
-  renderer.render(scene, camera);
+  if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); }
+  if (S.mode !== 'street') renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 // automated playtests open the page with #test to read where parts are on screen
-if (location.hash === '#test') window.__retro = { at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(objs.get('power')),
+if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now: () => { S.nextVisit = Date.now(); }, at: slot => toScreen(device, K.pose[slot]), power: () => toScreen(objs.get('power')),
   pt: (x, y, z) => toScreen(device, new V3(x, y, z)), joint: () => toScreen(onMat.obj.getObjectByName('joint')), state: () => S,
   rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
   grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o)); }); return out; } };
@@ -1452,9 +1500,223 @@ function start(data) {
   try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
   ensureListings(); save();
   face($('hero'), 'happy');
-  buildJobScene(); renderTray(); renderMoney(); renderCourier(); refreshHint(true);
+  buildJobScene(); renderTray(); renderMoney(); renderCourier(); drawStreet(); refreshHint(true);
+  if (S.visitor) placeWalker(false);
+  setMode(S.mode);
   requestAnimationFrame(frame);
-  if (!S.seen) { S.seen = true; save(); say('Привет! Я мастер. Заказы приходят на планшет.', 'happy'); setTimeout(() => { if (!J() && !uiOpen()) openTablet('orders'); }, 1600); }
+  if (!S.seen) {
+    S.seen = true; S.mode = 'street'; save(); setMode('street');
+    setTimeout(() => talk(INTRO, () => { S.nextVisit = Date.now() + 1500; save(); }), 900);
+  } else if (!S.visitor && !S.nextVisit) S.nextVisit = Date.now() + 4000;
+}
+
+/* ---------- the street: kiosk window, customers who walk up, novel-style talks ---------- */
+const INTRO = [
+  { who: 'hero', face: 'happy', text: 'Привет! Это мой киоск. Чиню старую электронику прямо на улице.' },
+  { who: 'hero', face: 'excited', text: 'Клиенты подходят к окошку сами. Выслушаю, возьму приставку — и за верстак.' },
+  { who: 'hero', face: 'focused', text: 'Запчасти и б/у приставки на разбор заказываю через планшет — их привозит курьер.' },
+  { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
+];
+function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+function drawStreet() {
+  const dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+  const [bg, fg] = [$('streetBg'), $('streetFg')].map(c => { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return g; });
+  const win = { x: W * .05, y: H * .12, w: W * .9, h: H * .62 }, top = win.y + win.h, horizon = H * .6, r = seeded(7);
+  // evening sky
+  let gr = bg.createLinearGradient(0, 0, 0, horizon);
+  gr.addColorStop(0, '#1d2846'); gr.addColorStop(.5, '#6a4b78'); gr.addColorStop(1, '#f1a35e');
+  bg.fillStyle = gr; bg.fillRect(0, 0, W, horizon);
+  gr = bg.createRadialGradient(W * .3, horizon, 10, W * .3, horizon, W * .6); gr.addColorStop(0, 'rgba(255,214,150,.55)'); gr.addColorStop(1, 'rgba(255,214,150,0)');
+  bg.fillStyle = gr; bg.fillRect(0, 0, W, horizon);
+  // two rows of buildings with lit windows
+  [[.2, .34, '#4a3d5e', .5], [.28, .5, '#30283f', .7]].forEach(([hmin, hmax, col, lit]) => {
+    for (let x = -10; x < W; ) {
+      const w = 40 + r() * 70, h = H * (hmin + r() * (hmax - hmin));
+      bg.fillStyle = col; bg.fillRect(x, horizon - h, w, h);
+      for (let wy = horizon - h + 10; wy < horizon - 14; wy += 16) for (let wx = x + 7; wx < x + w - 10; wx += 14)
+        if (r() < lit * .5) { bg.fillStyle = `rgba(255,${200 + (r() * 40 | 0)},120,${.55 + r() * .4})`; bg.fillRect(wx, wy, 7, 9); }
+      x += w + 2;
+    }
+  });
+  // road and pavement
+  bg.fillStyle = '#463f4d'; bg.fillRect(0, horizon, W, H * .06);
+  bg.fillStyle = '#f2d69a'; for (let x = 0; x < W; x += 46) bg.fillRect(x, horizon + H * .028, 24, 3);
+  gr = bg.createLinearGradient(0, horizon + H * .06, 0, H); gr.addColorStop(0, '#a08b76'); gr.addColorStop(1, '#6f5d4e');
+  bg.fillStyle = gr; bg.fillRect(0, horizon + H * .06, W, H);
+  bg.strokeStyle = 'rgba(40,28,20,.35)'; bg.lineWidth = 1.5;
+  for (let y = horizon + H * .06, k = 8; y < H; y += k, k *= 1.35) { bg.beginPath(); bg.moveTo(0, y); bg.lineTo(W, y); bg.stroke(); }
+  for (let i = -8; i <= 8; i++) { bg.beginPath(); bg.moveTo(W / 2 + i * 30, horizon + H * .06); bg.lineTo(W / 2 + i * 140, H); bg.stroke(); }
+  // street lamp with a warm halo
+  const lx = W * .84;
+  bg.fillStyle = '#2a2430'; bg.fillRect(lx - 3, H * .22, 6, horizon + H * .1 - H * .22);
+  gr = bg.createRadialGradient(lx, H * .22, 4, lx, H * .22, 120); gr.addColorStop(0, 'rgba(255,225,160,.8)'); gr.addColorStop(1, 'rgba(255,225,160,0)');
+  bg.fillStyle = gr; bg.fillRect(lx - 130, H * .22 - 130, 260, 260);
+  bg.fillStyle = '#fff1c9'; bg.beginPath(); bg.arc(lx, H * .22, 9, 0, 7); bg.fill();
+
+  // kiosk wall around the window
+  fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd');
+  fg.strokeStyle = 'rgba(0,0,0,.18)'; fg.lineWidth = 2;
+  for (let x = 0; x < W; x += 34) { fg.beginPath(); fg.moveTo(x, 0); fg.lineTo(x, win.y); fg.moveTo(x, top); fg.lineTo(x, H); fg.stroke(); }
+  // striped awning just outside the glass
+  const ah = Math.min(56, win.h * .12), sw = 30;
+  for (let x = win.x, i = 0; x < win.x + win.w; x += sw, i++) {
+    fg.fillStyle = i % 2 ? '#f2e3c6' : '#c4432c'; fg.fillRect(x, win.y, Math.min(sw, win.x + win.w - x), ah);
+    fg.beginPath(); fg.arc(x + sw / 2, win.y + ah, sw / 2, 0, Math.PI); fg.fill();
+  }
+  fg.fillStyle = 'rgba(0,0,0,.18)'; fg.fillRect(win.x, win.y + ah + sw / 2, win.w, 6);
+  // glass sheen and the frame
+  gr = fg.createLinearGradient(win.x, win.y, win.x + win.w, win.y + win.h); gr.addColorStop(0, 'rgba(255,255,255,.08)'); gr.addColorStop(.4, 'rgba(255,255,255,0)'); gr.addColorStop(.7, 'rgba(255,255,255,.05)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  fg.fillStyle = gr; fg.fillRect(win.x, win.y, win.w, win.h);
+  fg.strokeStyle = '#7a4e2c'; fg.lineWidth = 12; fg.strokeRect(win.x - 6, win.y - 6, win.w + 12, win.h + 12);
+  fg.strokeStyle = '#a0703f'; fg.lineWidth = 2; fg.strokeRect(win.x, win.y, win.w, win.h);
+  // paper sign taped to the glass
+  fg.save(); fg.translate(win.x + 14, win.y + ah + 26); fg.rotate(-.05);
+  fg.fillStyle = '#f6ecd6'; fg.fillRect(0, 0, 132, 66); fg.fillStyle = 'rgba(230,200,120,.8)'; fg.fillRect(50, -6, 32, 12);
+  fg.fillStyle = '#3a2b1f'; fg.font = `700 13px ${FONT}`; fg.fillText('РЕМОНТ', 10, 24); fg.font = '800 11px Nunito, Arial'; fg.fillText('ретро-электроники', 10, 42); fg.fillText('за один день ★', 10, 57);
+  fg.restore();
+  // counter
+  const ct = H * .05;
+  gr = fg.createLinearGradient(0, top, 0, top + ct); gr.addColorStop(0, '#c99058'); gr.addColorStop(1, '#a8743f');
+  fg.fillStyle = gr; fg.fillRect(0, top, W, ct);
+  fg.fillStyle = '#e0ad72'; fg.fillRect(0, top, W, 3);
+  fg.fillStyle = '#5e3b22'; fg.fillRect(0, top + ct, W, H - top - ct);
+  fg.strokeStyle = 'rgba(0,0,0,.22)'; for (let y = top + ct + 26; y < H; y += 26) { fg.beginPath(); fg.moveTo(0, y); fg.lineTo(W, y); fg.stroke(); }
+  // service bell and a little plant on the counter
+  const bx = W * .8, by = top + ct * .45;
+  fg.fillStyle = '#5a4a3a'; fg.fillRect(bx - 22, by - 3, 44, 6);
+  gr = fg.createLinearGradient(bx - 18, 0, bx + 18, 0); gr.addColorStop(0, '#f6d27a'); gr.addColorStop(.5, '#fff1c0'); gr.addColorStop(1, '#c99a3a');
+  fg.fillStyle = gr; fg.beginPath(); fg.arc(bx, by - 3, 18, Math.PI, 0); fg.fill(); fg.fillRect(bx - 2, by - 26, 4, 6);
+  const px = W * .14, py = top + ct * .5;
+  fg.fillStyle = '#b4532f'; fg.beginPath(); fg.moveTo(px - 16, py - 22); fg.lineTo(px + 16, py - 22); fg.lineTo(px + 12, py + 4); fg.lineTo(px - 12, py + 4); fg.fill();
+  fg.fillStyle = '#5f8f4a'; for (let i = 0; i < 6; i++) { fg.beginPath(); fg.ellipse(px + (i - 2.5) * 7, py - 34 - (i % 2) * 8, 8, 15, (i - 2.5) * .3, 0, 7); fg.fill(); }
+  STREET.win = win; STREET.top = top;
+}
+const STREET = { win: null, top: 0 };
+addEventListener('resize', () => { drawStreet(); if (walker && !walker.moving) placeWalker(false); });
+
+let walker = null;
+function figSize(c) { const H = innerHeight, h = Math.min(H * .62, innerWidth * 1.45); return { h, top: STREET.top - h * .66 }; }
+function placeWalker(walk) {
+  const v = S.visitor; if (!v) return;
+  const c = CUSTOMERS[v.cust], { h, top } = figSize(c);
+  if (!walker) {
+    walker = document.createElement('div'); walker.className = 'walker';
+    walker.innerHTML = `<div class="bob"><img alt="${esc(c.name)}" src="people/${c.fig}.webp"></div>`;
+    walker.addEventListener('click', () => { if (S.mode === 'street' && v === S.visitor && !walker.moving && $('novel').hidden) converse(); });
+    $('walkers').appendChild(walker);
+  }
+  walker.style.height = h + 'px'; walker.style.top = top + 'px';
+  if (!walk) { walker.style.transform = 'translateX(-50%)'; return Promise.resolve(); }
+  walker.moving = true; walker.classList.add('walking');
+  const from = innerWidth * .5 + h * .4 + 40;
+  return walker.animate([{ transform: `translateX(${from}px)` }, { transform: 'translateX(-50%)' }], { duration: 2600, easing: 'cubic-bezier(.3,.6,.4,1)' }).finished
+    .then(() => { walker.style.transform = 'translateX(-50%)'; walker.moving = false; walker.classList.remove('walking'); });
+}
+function walkAway() {
+  const el = walker; walker = null; if (!el) return;
+  el.classList.add('walking'); el.moving = true;
+  el.animate([{ transform: 'translateX(-50%)' }, { transform: `translateX(${-innerWidth * .5 - el.offsetHeight * .4 - 60}px)` }], { duration: 2400, easing: 'cubic-bezier(.5,0,.7,.6)', fill: 'forwards' })
+    .finished.then(() => el.remove());
+}
+function streetTick() {
+  if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden) return;
+  const now = Date.now(), due = S.ready.find(r => r.at <= now);
+  const open = (J() && J().kind === 'order' ? 1 : 0) + S.shelf.filter(j => j.kind === 'order').length + S.ready.length;
+  if (due) S.visitor = { kind: 'pickup', id: due.id, cust: due.job.order.cust };
+  else if (open < 3) { const o = makeOrder(); S.visitor = { kind: 'order', order: o, cust: o.cust }; }
+  else { S.nextVisit = now + 15000; return; }
+  S.nextVisit = 0; save();
+  placeWalker(true).then(() => { if (S.mode === 'street' && $('novel').hidden && uiClosed()) converse(); });
+  sfx.bell(); buzz(40);
+  if (S.mode !== 'street') notice('К окошку подошёл клиент: ' + CUSTOMERS[S.visitor.cust].name);
+  renderActions(); refreshHint();
+}
+const uiClosed = () => $('sheet').hidden && $('tablet').hidden && $('card').hidden;
+function setMode(m) {
+  S.mode = m; save();
+  document.body.classList.toggle('street', m === 'street');
+  if (m === 'street') { if (onMat) closeMat(); setHint(null); if (S.visitor && walker && !walker.moving && $('novel').hidden && uiClosed()) setTimeout(converse, 400); }
+  renderActions(); refreshHint(true);
+}
+$('toBench').addEventListener('click', () => { initAudio(); sfx.tick(); setMode('bench'); });
+
+/* a conversation: lines with a speaker, a face and optional choices */
+let novel = null, typer = 0;
+function talk(lines, done) { novel = { lines, i: -1, done }; $('novel').hidden = false; nextLine(); }
+function nextLine() {
+  const n = novel; if (!n) return;
+  n.i++;
+  if (n.i >= n.lines.length) { $('novel').hidden = true; novel = null; n.done && n.done(); return; }
+  const L = n.lines[n.i], box = $('nbox'), fc = $('nface');
+  const hero = L.who === 'hero', c = S.visitor ? CUSTOMERS[S.visitor.cust] : null;
+  box.classList.toggle('right', !hero);
+  fc.className = 'nface ' + (hero ? 'hero-face' : 'cust-face');
+  fc.style.backgroundPositionX = hero ? (-FACES.indexOf(L.face) * 88) + 'px' : (-(c.face + (L.face === 'happy' ? 1 : 0)) * 88) + 'px';
+  $('nname').textContent = hero ? 'Мастер' : c.name;
+  $('nchoices').innerHTML = ''; $('nnext').hidden = true;
+  const t = $('ntext'); t.textContent = ''; n.full = L.text; n.typing = true;
+  let k = 0; clearInterval(typer);
+  typer = setInterval(() => {
+    k += 2; t.textContent = L.text.slice(0, k); if (k % 6 === 0) tone(hero ? 520 : 380, .03, 'square', .02);
+    if (k >= L.text.length) finishTyping();
+  }, 30);
+}
+function finishTyping() {
+  const n = novel; if (!n || !n.typing) return;
+  clearInterval(typer); n.typing = false; $('ntext').textContent = n.full;
+  const L = n.lines[n.i];
+  n.shown = performance.now();
+  if (L.choices) $('nchoices').innerHTML = L.choices.map((ch, i) => `<button class="btn${i ? ' alt' : ''}" data-ch="${i}">${esc(ch.label)}</button>`).join('');
+  else $('nnext').hidden = false;
+}
+$('nbox').addEventListener('click', e => {
+  initAudio();
+  const n = novel; if (!n) return;
+  const b = e.target.closest('[data-ch]');
+  if (b && performance.now() - n.shown < 450) return; // a stray second tap must not pick an answer
+  if (b) { const ch = n.lines[n.i].choices[+b.dataset.ch]; sfx.tick(); $('novel').hidden = true; novel = null; ch.act(); return; }
+  if (n.typing) return finishTyping();
+  if (n.lines[n.i].choices) return;
+  nextLine();
+});
+
+function converse() {
+  const v = S.visitor; if (!v || novel) return;
+  const c = CUSTOMERS[v.cust];
+  if (v.kind === 'pickup') {
+    const r = S.ready.find(x => x.id === v.id);
+    if (!r) { S.visitor = null; save(); walkAway(); return; }
+    const total = r.job.order.pay + r.tip;
+    return talk([
+      { who: 'cust', face: 'upset', text: 'Здравствуйте! Ну как, получилось?' },
+      { who: 'hero', face: 'proud', text: 'Готово — работает как новенькая. Всё проверил.' },
+      { who: 'cust', face: 'happy', text: c.thanks },
+      { who: 'cust', face: 'happy', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` },
+    ], () => showPaid(r, () => leave(true)));
+  }
+  const o = v.order;
+  const decide = { who: 'hero', face: 'focused', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
+    { label: `Беру в работу · ${o.pay}`, act: () => talk([{ who: 'cust', face: 'happy', text: 'Вот она. ' + c.leave }], () => accept(o)) },
+    { label: 'Расскажите подробнее', act: () => talk([{ who: 'cust', face: 'upset', text: c.more }, { who: 'hero', face: 'thinking', text: 'Понятно. Что ж…' }, decide]) },
+    { label: 'Сейчас не возьмусь', act: () => talk([{ who: 'cust', face: 'upset', text: 'Жаль… Поищу другого мастера.' }], () => leave(false)) },
+  ] };
+  talk([
+    { who: 'cust', face: 'upset', text: 'Здравствуйте! ' + c.story },
+    { who: 'cust', face: 'upset', text: o.faults.map(f => FAULTS[f].hint).join(' ') },
+    { who: 'hero', face: 'thinking', text: 'Дайте-ка взгляну…' },
+    decide,
+  ]);
+}
+function accept(o) {
+  const j = makeJob('order', o);
+  if (J()) { S.shelf.push(j); save(); notice('Верстак занят — приставка ждёт на полке.'); }
+  else { S.shelf.push(j); putOnBench(j); notice('Приставка уже на верстаке.'); }
+  leave(true);
+}
+function leave(ok) {
+  S.visitor = null; S.nextVisit = Date.now() + (ok ? 15000 : 9000) + Math.random() * 12000; save();
+  walkAway(); renderActions(); refreshHint(true);
+  if (ok && S.mode === 'street' && J() && !J().worked && !J().opened) say('Приставка на верстаке — жми «К верстаку».', 'happy');
 }
 // labels on the model are painted once, so wait for the faces they use (but never block the game on them)
 const fontsReady = document.fonts && document.fonts.load
