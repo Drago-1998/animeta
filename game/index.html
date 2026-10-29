@@ -53,9 +53,15 @@ body.mat #bg::after { background: radial-gradient(ellipse 70% 50% at 50% 50%, rg
 button.chip { cursor: pointer; }
 .coin { width: 18px; height: 18px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 35% 35%, #ffe08a, var(--mustard) 55%, #a8701c); box-shadow: inset 0 0 0 2px rgba(120,70,10,.35); }
-#tabletBtn, #courier { font: 800 14px/1 var(--body); }
-#tabletBtn svg, #courier svg { width: 18px; height: 18px; flex: none; }
-#tabletBtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); margin-left: -3px; }
+#courier { font: 800 14px/1 var(--body); }
+#courier svg { width: 18px; height: 18px; flex: none; }
+/* scene switch: window, bench, computer */
+#nav { padding: 3px; gap: 2px; }
+#nav button { appearance: none; border: 0; position: relative; width: 42px; height: 32px; border-radius: 16px; background: none; color: var(--muted); cursor: pointer;
+  display: grid; place-items: center; }
+#nav button svg { width: 20px; height: 20px; }
+#nav button[aria-current="true"] { background: var(--mustard); color: var(--ink); }
+#nav .dot { position: absolute; top: 2px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 0 2px #2a1a10; }
 #courier { color: var(--mustard); }
 #snd { margin-left: auto; width: 38px; padding: 0; justify-content: center; }
 #snd svg { width: 18px; height: 18px; }
@@ -111,7 +117,7 @@ button.chip { cursor: pointer; }
 .pill svg { width: 18px; height: 18px; }
 .pill.main { background: var(--mustard); color: var(--ink); border: 0; height: 46px; padding: 0 26px; font: 700 15px/1 var(--display); }
 #tray {
-  display: flex; gap: 8px; align-items: stretch; padding: 8px; border-radius: 18px;
+  display: flex; gap: 8px; align-items: stretch; justify-content: space-between; padding: 8px; border-radius: 18px;
   background: rgba(58, 38, 24, .9); border: 1px solid var(--line);
   box-shadow: inset 0 2px 0 rgba(255,255,255,.05), 0 10px 30px rgba(0,0,0,.35);
 }
@@ -122,16 +128,29 @@ button.chip { cursor: pointer; }
 .slotbtn span { font-size: 11px; font-weight: 800; color: var(--muted); }
 .slotbtn svg { width: 26px; height: 26px; }
 .slotbtn.empty { opacity: .45; }
-#trayItems { flex: 1 1 auto; min-width: 0; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-#trayItems::-webkit-scrollbar { display: none; }
-#trayItems:empty::after { content: "Снятые детали лягут сюда"; align-self: center; margin: auto; color: var(--muted); font-weight: 700; font-size: 13px; text-align: center; padding: 0 6px; }
+.trayNote { flex: 1 1 auto; min-width: 0; align-self: center; color: var(--muted); font-weight: 700; font-size: 13px; line-height: 1.3; text-align: center; padding: 0 4px; }
+/* removed parts simply lie on the desk around the gadget */
+#desk { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+body.street #desk, body.mat #desk, body.pc #desk { display: none; }
+.dpart { appearance: none; position: absolute; left: 0; top: 0; width: 68px; height: 68px; margin: -34px 0 0 -34px; border: 0; padding: 0; background: none;
+  pointer-events: auto; cursor: grab; touch-action: none; transition: transform .15s; }
+.dpart img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; filter: drop-shadow(0 6px 4px rgba(0,0,0,.5)); }
+.dpart .badge { bottom: -6px; }
+.dpart.lift { transform: scale(1.15) translateY(-6px); z-index: 2; transition: none; }
+.dpart.pop { animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+@keyframes pop { from { transform: scale(.3); opacity: 0; } }
 .part { flex: none; width: 76px; height: 76px; border-radius: 12px; background: #eadcc3; position: relative; cursor: grab; touch-action: none;
   border: 0; padding: 0; box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
 .part img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: block; }
 .badge { position: absolute; left: 4px; right: 4px; bottom: 4px; border-radius: 6px; padding: 2px 4px;
   font: 800 10px/1.2 var(--body); color: #fff; text-align: center; letter-spacing: .02em; }
 .badge.dirty { background: #8a5a2b; } .badge.broken { background: var(--red); } .badge.loose { background: #8b5bb0; } .badge.fresh { background: var(--green); }
-#boxBtn svg { width: 28px; height: 28px; }
+#boxBtn { background: linear-gradient(#c9955a, #a6743f); border-color: #7a5128; color: #3a2410; }
+#boxBtn span { color: #3a2410; }
+#boxBtn svg { width: 30px; height: 30px; }
+.boxcard { max-height: 82%; }
+.boxhead { display: flex; align-items: center; justify-content: space-between; }
+.boxbody { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 
 #ghost { position: fixed; z-index: 40; left: 0; top: 0; width: 84px; height: 84px; margin: -42px 0 0 -42px; pointer-events: none;
   border-radius: 14px; background: rgba(234,220,195,.85); box-shadow: 0 10px 30px rgba(0,0,0,.45); display: none; }
@@ -154,7 +173,7 @@ button.chip { cursor: pointer; }
 
 /* cards and sheets */
 /* one row that is exactly the overlay's inner height, so `height: 100%` on the tablet or a card is a real limit */
-.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr);
+.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-bottom, 0px) + 12px);
   background: rgba(20,10,4,.55); backdrop-filter: blur(3px); }
@@ -191,20 +210,24 @@ button.chip { cursor: pointer; }
 .state { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 8px; font: 800 12px/1.2 var(--body); color: #fff; background: #7d8a5c; }
 .state.dirty { background: #8a5a2b; } .state.broken { background: var(--red); } .state.loose { background: #8b5bb0; }
 
-/* tablet */
-#tablet { z-index: 30; background: rgba(15,8,3,.6); }
-.tablet { box-sizing: border-box; width: min(430px, 100%); height: min(780px, 100%); background: #1f1c1a; border-radius: 30px; padding: 12px;
-  box-shadow: 0 30px 70px rgba(0,0,0,.6), inset 0 0 0 2px #3a3530; display: flex; animation: cardIn .3s cubic-bezier(.2,1.2,.4,1); }
-.screen { flex: 1; min-width: 0; background: var(--paper); color: var(--ink); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
-.screen header { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
-.screen header b { font: 700 16px/1 var(--display); flex: 1; }
-.bal { display: inline-flex; align-items: center; gap: 6px; font: 700 15px/1 var(--display); font-variant-numeric: tabular-nums; }
-.x { appearance: none; border: 0; width: 36px; height: 36px; border-radius: 50%; background: #e3d5bb; cursor: pointer; font: 700 18px/1 var(--display); color: var(--ink); }
-.tabs { display: flex; gap: 4px; margin: 0 12px; padding: 4px; border-radius: 14px; background: #e3d5bb; }
-.tabs button { appearance: none; border: 0; flex: 1; min-width: 0; padding: 9px 2px; border-radius: 10px; background: none; cursor: pointer;
-  font: 800 13px/1 var(--body); color: #6b5238; }
-.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-#tabBody { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+/* the computer: its own scene — the monitor fills the screen, the browser lives inside its glass */
+#tablet { position: fixed; inset: 0; z-index: 8; background: #1d140e; }
+#pcBg { position: absolute; inset: 0; width: 100%; height: 100%; }
+body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.pc #street, body.pc #streetBar, body.pc #matBar { display: none !important; }
+.screen { position: absolute; left: 36px; right: 36px; top: calc(env(safe-area-inset-top, 0px) + 96px); bottom: 24%;
+  background: #c3c0b6; color: var(--ink); display: flex; flex-direction: column; overflow: hidden; padding: 3px; border-radius: 4px; }
+.screen header { display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 9px; background: linear-gradient(90deg, #0a246a, #3a6ea5); color: #fff; }
+.screen header b { font: 800 13px/1 var(--body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bal { display: inline-flex; align-items: center; gap: 6px; font: 700 13px/1 var(--display); font-variant-numeric: tabular-nums; }
+.x { appearance: none; border: 2px outset #eee; width: 28px; height: 24px; border-radius: 2px; background: #c3c0b6; cursor: pointer; font: 700 16px/1 var(--display); color: var(--ink); padding: 0; }
+.addr { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 4px 2px 5px; padding: 5px 8px; background: #fff; border: 2px inset #e0ddd5;
+  font: 700 12px/1 ui-monospace, Menlo, monospace; color: #333; }
+.addr::before { content: "Адрес  "; font: 800 12px/1 var(--body); color: #555; }
+.tabs { display: flex; gap: 2px; padding: 0 2px; }
+.tabs button { appearance: none; border: 2px outset #eee; border-bottom: 0; flex: 1; min-width: 0; padding: 7px 2px 6px; border-radius: 5px 5px 0 0; background: #b5b1a6; cursor: pointer;
+  font: 800 12px/1 var(--body); color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); padding-top: 9px; margin-top: -2px; }
+#tabBody { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; background: var(--paper); border: 2px inset #e0ddd5; }
 .note { font-weight: 700; color: #7a6040; font-size: 13px; line-height: 1.4; }
 .sec { font: 700 13px/1 var(--display); color: #6b5238; margin-top: 4px; }
 .row { background: #fffaf0; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 0 rgba(0,0,0,.06); }
@@ -252,7 +275,7 @@ body.street #streetBar { display: flex; }
 .nchoices .btn { padding: 13px 16px; font-size: 14px; text-align: left; }
 .nnext { position: absolute; right: 14px; bottom: 6px; color: #8a6a45; font-size: 13px; animation: nudge 1s ease-in-out infinite; }
 @keyframes nudge { 50% { transform: translateY(3px); } }
-@media (prefers-reduced-motion: reduce) { .card, .tablet, #task.flash, #hint svg, .hero.react, .walker.walking .bob, .nnext { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .card, .dpart.pop, #task.flash, #hint svg, .hero.react, .walker.walking .bob, .nnext { animation: none !important; } }
 </style>
 
 <div id="bg"></div>
@@ -261,10 +284,11 @@ body.street #streetBar { display: flex; }
 
 <div id="hud">
   <div class="chip"><span class="coin"></span><span id="money">0</span></div>
-  <button class="chip" id="tabletBtn" aria-label="Открыть планшет">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10 18.5h4" stroke-linecap="round"/></svg>
-    Планшет<span class="dot" id="tabletDot" hidden></span>
-  </button>
+  <div class="chip" id="nav" role="toolbar" aria-label="Куда пойти">
+    <button data-go="street" aria-label="Окошко"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="15" rx="1.5"/><path d="M3 9h18M12 9v10"/><path d="M3 4l2-2h14l2 2"/></svg><span class="dot" id="dotStreet" hidden></span></button>
+    <button data-go="bench" aria-label="Верстак"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.5a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 0-2-2z"/></svg></button>
+    <button data-go="pc" aria-label="Компьютер"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5"/></svg><span class="dot" id="dotPc" hidden></span></button>
+  </div>
   <button class="chip" id="courier" hidden aria-label="Доставки в пути">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l3 3v4h-7z"/><circle cx="6" cy="17.5" r="1.8" fill="currentColor"/><circle cx="17" cy="17.5" r="1.8" fill="currentColor"/></svg>
     <span id="courierEta"></span>
@@ -290,10 +314,10 @@ body.street #streetBar { display: flex; }
   <div id="tray">
     <button class="slotbtn" id="cupScrew" data-kind="screw" aria-label="Винты корпуса"></button>
     <button class="slotbtn" id="cupBscrew" data-kind="bscrew" aria-label="Винтики платы"></button>
-    <div id="trayItems"></div>
-    <button class="slotbtn" id="boxBtn" aria-label="Склад">
-      <svg viewBox="0 0 32 32" fill="none" stroke="#e7b04a" stroke-width="2" stroke-linejoin="round"><path d="M4 11l12-6 12 6v12l-12 6-12-6z"/><path d="M4 11l12 6 12-6M16 17v12"/></svg>
-      <span>Склад</span>
+    <div class="trayNote">Снятые детали лежат на столе. Тащи их обратно на приставку.</div>
+    <button class="slotbtn" id="boxBtn" aria-label="Коробка с деталями">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#3a2410" stroke-width="2" stroke-linejoin="round"><path d="M4 11l12-6 12 6v12l-12 6-12-6z"/><path d="M4 11l12 6 12-6M16 17v12M10 8l12 6"/></svg>
+      <span>Коробка</span>
     </button>
   </div>
 </div>
@@ -301,19 +325,24 @@ body.street #streetBar { display: flex; }
 <div id="streetBar"><button class="pill main" id="toBench">К верстаку</button></div>
 <div id="novel" hidden><div class="nbox" id="nbox" role="dialog" aria-live="polite"><div class="nface" id="nface" aria-hidden="true"></div><div class="nname" id="nname"></div>
   <div class="ntext" id="ntext"></div><div class="nchoices" id="nchoices"></div><div class="nnext" id="nnext" aria-hidden="true">▼</div></div></div>
+<div id="desk"></div>
 <div id="ghost"></div>
 
 <div class="overlay sheet" id="sheet" hidden></div>
-<div class="overlay" id="tablet" hidden>
-  <div class="tablet" role="dialog" aria-label="Планшет"><div class="screen">
-    <header><b>Мастерская</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Закрыть планшет">×</button></header>
+<div id="tablet" hidden><canvas id="pcBg"></canvas>
+  <div class="screen" id="pcScreen" role="dialog" aria-label="Компьютер">
+    <header><b>Интернет-Навигатор — Ретро-Ремонт</b><span class="bal"><span class="coin"></span><span id="tabMoney">0</span></span><button class="x" id="tabClose" aria-label="Выйти из-за компьютера">×</button></header>
+    <div class="addr" id="addr"></div>
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="orders">Заказы</button><button role="tab" data-tab="market">Барахолка</button>
-      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="store">Склад</button>
+      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="post">Посылки</button>
     </div>
     <div id="tabBody"></div>
-  </div></div>
+  </div>
 </div>
+<div class="overlay sheet" id="boxSheet" hidden><div class="card boxcard" role="dialog" aria-label="Коробка">
+  <div class="boxhead"><h3>Коробка</h3><button class="x" id="boxClose" aria-label="Закрыть коробку">×</button></div>
+  <div class="boxbody" id="boxBody"></div></div></div>
 <div class="overlay" id="card" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -388,10 +417,10 @@ function resize() {
   const w = innerWidth, h = innerHeight, a = w / h;
   renderer.setSize(w, h, false);
   camera.aspect = a;
-  const needH = Math.max(4.9 / 0.5, (3.6 / 0.8) / a);
+  const needH = Math.max(4.9 / 0.42, (3.6 / 0.62) / a); // leave room on the desk for removed parts
   camera.position.set(0, 0, needH / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))));
   camera.lookAt(0, 0, 0);
-  camera.setViewOffset(w, h, 0, 0.03 * h, w, h);
+  camera.setViewOffset(w, h, 0, -0.025 * h, w, h);
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -546,7 +575,7 @@ let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
 if (!S || !Array.isArray(S.box)) S = newGame();
 function migrate() {
-  S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.mode = S.mode || 'street';
+  S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.nextCustomer = S.nextCustomer || 0; S.mode = S.mode || 'street';
   [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
@@ -748,7 +777,7 @@ function situation() {
   if (onMat) return ['Коврик: ' + PARTS[onMat.it.type].name, matHint()];
   if (!j) {
     if (S.visitor) return ['Верстак', 'У окошка ждёт клиент.'];
-    if (S.shelf.length) return ['Верстак', 'На полке ждут приставки — планшет → Склад → «На стол».'];
+    if (S.shelf.length) return ['Верстак', 'На полке ждут приставки — открой коробку на столе → «На стол».'];
     if (S.deliveries.length) return ['Верстак', 'Курьер уже едет.'];
     return ['Верстак', 'Пусто. Клиенты подходят к окошку сами.'];
   }
@@ -815,14 +844,48 @@ function badge(it) {
   if (it.fresh) return '<span class="badge fresh">новая</span>';
   return '';
 }
+// where the gadget sits on screen, so parts put down on the desk keep clear of it
+function deviceRect() {
+  const { w, h, d } = PocketPal.size; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  if (!J()) { const c = toScreen(holder); return { x0: c.x, y0: c.y, x1: c.x, y1: c.y }; }
+  for (const x of [-w / 2, w / 2]) for (const y of [-h / 2, h / 2]) for (const z of [-d, d]) {
+    const p = toScreen(device, new V3(x, y, z)); x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+  }
+  return { x0, y0, x1, y1 };
+}
+function freeSpot() {
+  const W = innerWidth, H = innerHeight, r = deviceRect(), cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2;
+  const top = $('task').getBoundingClientRect().bottom + 40, bottom = $('tray').getBoundingClientRect().top - 84;
+  const tools = $('tools').getBoundingClientRect(), taken = S.tray.filter(x => x.pos).map(x => ({ x: x.pos.x * W, y: x.pos.y * H }));
+  const spots = [];
+  for (let y = top; y <= bottom; y += 66) for (let x = 40; x <= W - 40; x += 66) {
+    if (x > r.x0 - 30 && x < r.x1 + 30 && y > r.y0 - 30 && y < r.y1 + 30) continue;
+    if (x > tools.left - 30 && y > tools.top - 30 && y < tools.bottom + 30) continue;
+    if (taken.some(t => Math.hypot(t.x - x, t.y - y) < 56)) continue;
+    spots.push({ x, y, d: Math.hypot((x - cx) * .7, y - cy) });
+  }
+  spots.sort((a, b) => a.d - b.d);
+  const p = spots[0] || { x: 60 + Math.random() * (W - 160), y: bottom - Math.random() * 40 };
+  return { x: p.x / W, y: p.y / H };
+}
 function renderTray() {
-  $('trayItems').innerHTML = S.tray.map(it => `<button class="part" data-id="${it.id}" aria-label="${esc(PARTS[it.type].name)}"><img alt="" src="${thumb(it)}">${badge(it)}</button>`).join('');
+  const desk = $('desk'), have = new Set();
+  S.tray.forEach(it => {
+    if (!it.pos) { it.pos = freeSpot(); save(); }
+    have.add(String(it.id));
+    let el = desk.querySelector(`.dpart[data-id="${it.id}"]`);
+    if (!el) { el = document.createElement('button'); el.className = 'dpart pop'; el.dataset.id = it.id; desk.appendChild(el); }
+    const sig = [it.type, it.cond, it.fresh, it.variant].join('|');
+    if (el.dataset.sig !== sig) { el.innerHTML = `<img alt="" src="${thumb(it)}">${badge(it)}`; el.dataset.sig = sig; el.setAttribute('aria-label', PARTS[it.type].name); }
+    el.style.left = it.pos.x * innerWidth + 'px'; el.style.top = it.pos.y * innerHeight + 'px';
+  });
+  desk.querySelectorAll('.dpart').forEach(el => { if (!have.has(el.dataset.id)) el.remove(); });
   renderCup();
 }
+addEventListener('resize', () => renderTray());
 function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'); $('tabMoney').textContent = S.money.toLocaleString('ru-RU'); }
 function renderActions() {
   const j = J(), el = $('benchActions'), html = [];
-  html.push(`<button class="pill" id="windowBtn">К окошку${S.visitor ? '<span class="dot"></span>' : ''}</button>`);
   if (j) {
     html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
     html.push('<button class="pill" id="shelfBtn">На полку</button>');
@@ -830,18 +893,17 @@ function renderActions() {
   }
   const sig = html.join('');
   if (el.dataset.sig !== sig) { el.innerHTML = sig; el.dataset.sig = sig; }
-  $('tabletDot').hidden = !(!j && S.shelf.length);
+  renderNav();
 }
 $('benchActions').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || busy) return;
   initAudio();
-  if (b.id === 'windowBtn') setMode('street');
   if (b.id === 'flipBtn') flip();
   if (b.id === 'shelfBtn') shelve();
   if (b.id === 'finishBtn') askFinishDonor();
 });
 
-const uiOpen = () => !$('sheet').hidden || !$('tablet').hidden || !$('card').hidden || !$('novel').hidden;
+const uiOpen = () => !$('sheet').hidden || !$('tablet').hidden || !$('card').hidden || !$('novel').hidden || !$('boxSheet').hidden;
 function sparkle(x, y, n = 10, hot) {
   for (let i = 0; i < n; i++) {
     const s = document.createElement('div'); s.className = 'spark' + (hot ? ' hot' : '');
@@ -976,15 +1038,16 @@ async function releasePart(d) {
 async function removePart(slot) {
   const j = J(), o = objs.get(slot), it = j.slots[slot];
   busy = true; objs.delete(slot); j.slots[slot] = null; if (slot === 'cover') j.opened = true;
-  S.tray.push(it); save();
+  it.pos = freeSpot(); S.tray.push(it); save();
   sfx.whoosh(); buzz(20);
-  const from = o.position.clone(), to = new V3(from.x * .3, -6, -2.2), r0 = o.rotation.z;
-  await tween(.45, k => { o.position.lerpVectors(from, to, k); o.rotation.z = r0 + k * .5; o.scale.setScalar(1 - k * .5); }, ease.in);
+  // fly to the free spot on the desk, then lie there as a flat picture
+  const at = pointerLocal({ clientX: it.pos.x * innerWidth, clientY: it.pos.y * innerHeight }, o.position.z) || new V3(o.position.x * .3, -6, o.position.z);
+  const from = o.position.clone(), r0 = o.rotation.z;
+  await tween(.45, k => { o.position.lerpVectors(from, at, k); o.rotation.z = r0 + k * .5; o.scale.setScalar(1 - k * .55); }, ease.in);
   device.remove(o);
   renderTray(); busy = false;
   const dsc = DISCOVER[it.type] && DISCOVER[it.type][it.cond];
   if (dsc) say(dsc[0], dsc[1]); else say(PARTS[it.type].name + ' — на столе.', 'focused');
-  const el = document.querySelector(`.part[data-id="${it.id}"]`); if (el) el.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   refreshHint();
 }
 
@@ -1014,9 +1077,8 @@ function installScrew(kind, slot) {
 /* dropping things from the bench onto the device */
 function dropOnDevice(x, y, what) {
   const j = J();
-  if (!j) return say('На столе нет приставки. Возьми её с полки: планшет → Склад.', 'thinking');
-  const c = toScreen(device), over = Math.abs(x - c.x) < innerWidth * .42 && y < innerHeight - 110;
-  if (!over) return;
+  if (!j) return say('На столе нет приставки. Возьми её с полки: коробка на столе → «На стол».', 'thinking');
+  if (!overDevice(x, y)) return;
   if (j.side === 'front') return say('Переверни приставку — детали ставят сзади.', 'thinking');
   if (what.kind) {
     let best = null, bd = 70;
@@ -1033,6 +1095,10 @@ function dropOnDevice(x, y, what) {
   if (it.cond === 'loose') return refuseNoShake('Сначала припаяй провод: нажми на плату → «На коврик».');
   if (!canInstall(slot)) return refuseDrop(slot);
   installPart(it, slot);
+}
+function overDevice(x, y) {
+  if (!J()) return false;
+  const r = deviceRect(); return x > r.x0 - 20 && x < r.x1 + 20 && y > r.y0 - 20 && y < r.y1 + 20;
 }
 function refuseNoShake(text) { sfx.nope(); buzz(20); say(text, 'worried'); }
 function refuseDrop(slot) {
@@ -1056,28 +1122,38 @@ function benchMove(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
   if (!b.moving && Math.hypot(e.clientX - b.x0, e.clientY - b.y0) > 10) {
     b.moving = true;
-    ghost.className = b.what.kind ? 'screw' : '';
-    ghost.innerHTML = b.what.kind ? screwIcon(b.what.kind === 'screw') : `<img alt="" src="${thumb(b.what.item)}">`;
-    ghost.style.display = 'block'; sfx.tick();
+    if (b.what.item) { b.el.classList.remove('pop'); b.el.classList.add('lift'); }
+    else { ghost.className = 'screw'; ghost.innerHTML = screwIcon(b.what.kind === 'screw'); ghost.style.display = 'block'; }
+    sfx.tick();
   }
-  if (b.moving) ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`;
+  if (!b.moving) return;
+  if (b.what.item) { b.el.style.left = e.clientX + 'px'; b.el.style.top = (e.clientY - 30) + 'px'; }
+  else ghost.style.transform = `translate(${e.clientX}px, ${e.clientY - 30}px)`;
 }
 function benchUp(e) {
   const b = benchDrag; if (!b || e.pointerId !== b.id) return;
   benchDrag = null; ghost.style.display = 'none';
-  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат на складе.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
-  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат на складе.', 'thinking');
-  dropOnDevice(e.clientX, e.clientY - 30, b.what);
+  if (!b.moving) { if (b.what.item) openItem(b.what.item); else if (!S.cup[b.what.kind]) say('Чашка пустая. Винты лежат в коробке.', 'thinking'); else say('Перетащи винт в отверстие.', 'focused'); return; }
+  if (b.what.kind && !S.cup[b.what.kind]) return say('Чашка пустая. Винты лежат в коробке.', 'thinking');
+  const x = e.clientX, y = e.clientY - 30;
+  if (b.what.item) {
+    b.el.classList.remove('lift');
+    // dropped on the gadget: try to fit it; anywhere else it just stays where it was put down
+    if (overDevice(x, y)) { dropOnDevice(x, y, b.what); if (S.tray.includes(b.what.item)) renderTray(); return; }
+    b.what.item.pos = { x: Math.min(Math.max(x, 34), innerWidth - 34) / innerWidth, y: Math.min(Math.max(y, 120), innerHeight - 140) / innerHeight };
+    save(); renderTray(); sfx.tick(); return;
+  }
+  dropOnDevice(x, y, b.what);
 }
-$('trayItems').addEventListener('pointerdown', e => {
-  const el = e.target.closest('.part'); if (!el) return;
+$('desk').addEventListener('pointerdown', e => {
+  const el = e.target.closest('.dpart'); if (!el) return;
   const it = S.tray.find(x => x.id === +el.dataset.id); if (it) benchDown(e, { item: it }, el);
 });
 ['cupScrew', 'cupBscrew'].forEach(id => $(id).addEventListener('pointerdown', e => benchDown(e, { kind: $(id).dataset.kind }, $(id))));
 addEventListener('pointermove', benchMove);
 addEventListener('pointerup', benchUp);
-addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag = null; ghost.style.display = 'none'; } });
-$('boxBtn').addEventListener('click', () => { initAudio(); openTablet('store'); });
+addEventListener('pointercancel', e => { if (benchDrag && e.pointerId === benchDrag.id) { benchDrag.el.classList.remove('lift'); benchDrag = null; ghost.style.display = 'none'; renderTray(); } });
+$('boxBtn').addEventListener('click', () => { initAudio(); openBox(); });
 
 /* ---------- a part on the bench: mat, store, bin ---------- */
 function openItem(it) {
@@ -1090,7 +1166,7 @@ function openItem(it) {
     ${unique ? '<p>Это крышка приставки с этой наклейкой — её ставят обратно на корпус.</p>' : ''}
     <div class="btns">
       <button class="btn${it.cond === 'ok' || it.cond === 'broken' ? ' alt' : ''}" data-a="mat">На коврик: ${work.toLowerCase()}</button>
-      ${unique ? '' : '<button class="btn alt" data-a="box">Убрать на склад</button>'}
+      ${unique ? '' : '<button class="btn alt" data-a="box">Убрать в коробку</button>'}
       ${unique ? '' : '<button class="btn danger" data-a="bin">Выбросить</button>'}
       <button class="btn alt" data-a="close">Закрыть</button>
     </div></div>`;
@@ -1100,7 +1176,7 @@ function openItem(it) {
     sh.hidden = true; sh.onclick = null;
     if (!a) return;
     if (a.dataset.a === 'mat') openMat(it);
-    if (a.dataset.a === 'box') { S.tray = S.tray.filter(x => x.id !== it.id); S.box.push(it); save(); renderTray(); say(P.name + ' — на складе.', 'happy'); }
+    if (a.dataset.a === 'box') { S.tray = S.tray.filter(x => x.id !== it.id); delete it.pos; S.box.push(it); save(); renderTray(); say(P.name + ' — в коробке.', 'happy'); }
     if (a.dataset.a === 'bin') { S.tray = S.tray.filter(x => x.id !== it.id); save(); renderTray(); sfx.whoosh(); say(P.name + ' — в мусорке.', 'determined'); }
   };
 }
@@ -1302,7 +1378,7 @@ async function shelve() {
   await tween(.35, k => holder.scale.setScalar(Math.max(.01, 1 - k)), ease.in);
   j.worked = (j.worked || 0) + (Date.now() - j.started);
   S.shelf.push(j); S.job = null; save(); clearDevice(); holder.scale.setScalar(1);
-  busy = false; refreshHint(true); say('Отложил на полку. Вернуть — планшет → Склад.', 'happy');
+  busy = false; refreshHint(true); say('Отложил на полку. Вернуть — коробка на столе → «На стол».', 'happy');
 }
 function deliver(what, secs, label) {
   S.deliveries.push({ id: S.uid++, eta: Date.now() + secs * 1000, what, label }); save(); renderCourier();
@@ -1313,8 +1389,9 @@ function arrive(d) {
   if (w.kind === 'screws') S.boxScrews[w.k] += w.n;
   if (w.kind === 'job') S.shelf.push(w.job);
   save(); sfx.bell(); buzz(60);
-  notice('Курьер привёз: ' + d.label + (w.kind === 'job' ? ' — на полке' : ' — на складе'));
+  notice('Курьер привёз: ' + d.label + (w.kind === 'job' ? ' — на полке' : ' — в коробке'));
   if (!$('tablet').hidden) renderTablet();
+  if (!$('boxSheet').hidden) renderBox();
   refreshHint();
 }
 let lastCourierSig = '';
@@ -1330,15 +1407,15 @@ function checkDeliveries() {
   const now = Date.now(), due = S.deliveries.filter(d => d.eta <= now);
   if (due.length) { S.deliveries = S.deliveries.filter(d => d.eta > now); due.forEach(arrive); }
   renderCourier();
-  if (!$('tablet').hidden && tab === 'store' && S.deliveries.length) document.querySelectorAll('[data-eta]').forEach(el => { el.textContent = mmss(+el.dataset.eta - now); });
+  if (!$('tablet').hidden && tab === 'post' && S.deliveries.length) document.querySelectorAll('[data-eta]').forEach(el => { el.textContent = mmss(+el.dataset.eta - now); });
 }
-$('courier').addEventListener('click', () => { initAudio(); openTablet('store'); });
+$('courier').addEventListener('click', () => { initAudio(); openTablet('post'); });
 function askFinishDonor() {
   const sh = $('sheet');
   const inside = PART_SLOTS.filter(s => s !== 'cover' && s !== 'shell' && filled(s)).length;
   sh.innerHTML = `<div class="card" role="dialog" aria-label="Разобрать до конца">
     <h3>Закончить разбор?</h3>
-    <p>Снятые детали и винты из чашки уйдут на склад, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
+    <p>Снятые детали и винты из чашки уйдут в коробку, корпус с крышкой — в утиль.${inside ? ` Детали, которые остались внутри (${inside}), уйдут вместе с корпусом.` : ''}</p>
     <div class="btns"><button class="btn" data-a="ok">Закончить</button><button class="btn alt" data-a="no">Отмена</button></div></div>`;
   sh.hidden = false;
   sh.onclick = ev => {
@@ -1348,20 +1425,99 @@ function askFinishDonor() {
     S.tray.filter(x => x.type !== 'cover').forEach(x => S.box.push(x));
     S.tray = [];
     S.boxScrews.screw += S.cup.screw; S.boxScrews.bscrew += S.cup.bscrew; S.cup = { screw: 0, bscrew: 0 };
-    S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали на складе. Стол свободен.', 'happy');
+    S.job = null; save(); clearDevice(); renderTray(); refreshHint(true); say('Детали в коробке. Стол свободен.', 'happy');
   };
 }
 
-/* ---------- tablet ---------- */
-let tab = 'orders', toastTimer = 0;
-function openTablet(t) { tab = t || tab; $('tablet').hidden = false; renderTablet(); sfx.tick(); }
-$('tabletBtn').addEventListener('click', () => { initAudio(); openTablet(); });
-$('tabClose').addEventListener('click', () => { $('tablet').hidden = true; refreshHint(); });
-$('tablet').addEventListener('click', e => { if (e.target === $('tablet')) { $('tablet').hidden = true; refreshHint(); } });
+/* ---------- the computer: a scene of its own ---------- */
+let tab = 'orders', toastTimer = 0, toastHost = null;
+function openTablet(t) {
+  tab = t || tab; if (onMat) closeMat(); $('boxSheet').hidden = true;
+  $('tablet').hidden = false; document.body.classList.add('pc'); drawPC(); renderTablet(); renderNav(); sfx.tick();
+}
+function closePC() { $('tablet').hidden = true; document.body.classList.remove('pc'); renderNav(); refreshHint(); }
+function go(m) {
+  initAudio();
+  if (m === 'pc') return $('tablet').hidden && openTablet();
+  const wasPc = !$('tablet').hidden; if (wasPc) closePC();
+  if (m !== S.mode || wasPc) { sfx.tick(); setMode(m); }
+}
+$('nav').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+$('tabClose').addEventListener('click', () => go(S.mode));
+function renderNav() {
+  const here = !$('tablet').hidden ? 'pc' : S.mode;
+  document.querySelectorAll('#nav [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === here)));
+  $('dotStreet').hidden = !(S.visitor && here !== 'street');
+  $('dotPc').hidden = true;
+}
+// prototype art: a beige CRT on the desk, close enough that its glass fills the phone
+function drawPC() {
+  const c = $('pcBg'), dpr = Math.min(devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+  c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sr = $('pcScreen').getBoundingClientRect();
+  let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2f3d3a'); gr.addColorStop(1, '#1d2624');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,255,255,.035)'; for (let x = 0; x < W; x += 22) g.fillRect(x, 0, 11, H);
+  const deskY = sr.bottom + 70;
+  gr = g.createLinearGradient(0, deskY, 0, H); gr.addColorStop(0, '#7a4f2e'); gr.addColorStop(1, '#4e311c');
+  g.fillStyle = gr; g.fillRect(0, deskY, W, H - deskY);
+  // the monitor case around the glass
+  const m = { x: sr.left - 26, y: sr.top - 26, w: sr.width + 52, h: sr.height + 80 };
+  g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.roundRect ? g.roundRect(m.x + 4, m.y + 10, m.w, m.h, 22) : g.rect(m.x + 4, m.y + 10, m.w, m.h); g.fill();
+  gr = g.createLinearGradient(0, m.y, 0, m.y + m.h); gr.addColorStop(0, '#e6dec8'); gr.addColorStop(1, '#c4b996');
+  g.fillStyle = gr; g.beginPath(); g.roundRect ? g.roundRect(m.x, m.y, m.w, m.h, 22) : g.rect(m.x, m.y, m.w, m.h); g.fill();
+  g.fillStyle = '#2b2a28'; g.beginPath(); g.roundRect ? g.roundRect(sr.left - 8, sr.top - 8, sr.width + 16, sr.height + 16, 10) : g.rect(sr.left - 8, sr.top - 8, sr.width + 16, sr.height + 16); g.fill();
+  g.fillStyle = '#8a8068'; g.font = '800 11px Nunito, Arial'; g.fillText('ЭЛЕКТРОН-2000', m.x + 26, m.y + m.h - 22);
+  g.fillStyle = '#5fd36a'; g.shadowColor = '#5fd36a'; g.shadowBlur = 8; g.beginPath(); g.arc(m.x + m.w - 30, m.y + m.h - 26, 5, 0, 7); g.fill(); g.shadowBlur = 0;
+  g.fillStyle = '#b3a988'; for (let i = 0; i < 5; i++) g.fillRect(m.x + m.w - 110 + i * 12, m.y + m.h - 30, 7, 7);
+  // sticky notes on the case
+  [['пароль:\nretro90', '#ffe27a', m.x + m.w - 70, m.y - 12, .08], ['позвонить\nкурьеру', '#9fe3c4', m.x - 6, m.y + 30, -.1]].forEach(([t, col, x, y, rot]) => {
+    g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = col; g.fillRect(0, 0, 64, 44);
+    g.fillStyle = '#3a2b1f'; g.font = '800 10px Nunito, Arial'; t.split('\n').forEach((l, i) => g.fillText(l, 6, 17 + i * 13)); g.restore();
+  });
+  // keyboard and mouse on the desk
+  const ky = Math.max(m.y + m.h + 14, H - 96), kw = W * .74;
+  g.fillStyle = '#cfc6aa'; g.beginPath(); g.roundRect ? g.roundRect(W * .06, ky, kw, 70, 10) : g.rect(W * .06, ky, kw, 70); g.fill();
+  g.fillStyle = '#e7dfc9'; for (let r = 0; r < 4; r++) for (let k = 0; k < 13; k++) g.fillRect(W * .06 + 10 + k * (kw - 20) / 13, ky + 8 + r * 15, (kw - 20) / 13 - 3, 11);
+  g.fillStyle = '#d8cfb4'; g.beginPath(); g.ellipse(W * .9, ky + 34, 18, 26, 0, 0, 7); g.fill();
+  g.strokeStyle = '#3a3a3a'; g.lineWidth = 2; g.beginPath(); g.moveTo(W * .9, ky + 8); g.quadraticCurveTo(W * .9, ky - 30, W * .7, m.y + m.h); g.stroke();
+}
+addEventListener('resize', () => { if (!$('tablet').hidden) drawPC(); });
 document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; renderTablet(); sfx.tick(); } });
 function toast(text) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = text;
-  $('tabBody').appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 1800);
+  (toastHost || $('tabBody')).appendChild(t); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 1800);
+}
+
+/* ---------- the box on the desk: postponed gadgets, screws and spare parts ---------- */
+function openBox() { if (busy || onMat) return; $('boxSheet').hidden = false; renderBox(); sfx.tick(); }
+function closeBox() { $('boxSheet').hidden = true; refreshHint(); }
+$('boxClose').addEventListener('click', closeBox);
+$('boxSheet').addEventListener('click', e => { if (e.target === $('boxSheet')) closeBox(); });
+function renderBox() {
+  let h = '<div class="sec">Полка</div>';
+  if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные приставки и привезённые б/у ждут здесь.</p>';
+  S.shelf.forEach(j => {
+    const removed = PART_SLOTS.filter(s => !j.slots[s]).length;
+    h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
+      <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}` : 'собрана'}</span></div></div>
+      <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
+  });
+  h += '<div class="sec">Винты</div>';
+  ['screw', 'bscrew'].forEach(k => {
+    h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
+      <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. в коробке · ${S.cup[k]} в чашке</span></div></div>
+      <button class="btn alt" data-cup="${k}" ${S.boxScrews[k] ? '' : 'disabled'}>Высыпать в чашку</button></div>`;
+  });
+  h += '<div class="sec">Детали</div>';
+  if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине на компьютере или разбери б/у приставку.</p>';
+  S.box.forEach(it => {
+    h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
+      <div class="meta"><b>${esc(PARTS[it.type].name)}${it.type === 'shell' ? ', ' + VARIANTS[it.variant || 0].name : ''}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
+      <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
+  });
+  $('boxBody').innerHTML = h;
 }
 const price = n => `<span class="price"><span class="coin"></span>${n}</span>`;
 const SHOP = [
@@ -1371,11 +1527,12 @@ const SHOP = [
 function renderTablet() {
   renderMoney();
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  $('addr').textContent = { orders: 'http://www.retro-remont.ru/zakazy', market: 'http://www.baraholka.ru/pristavki', shop: 'http://www.zapchasti-opt.ru/', post: 'http://www.kurier-ekspress.ru/track' }[tab];
   const body = $('tabBody'), now = Date.now();
   let h = '';
   if (tab === 'orders') {
     h += '<p class="note">Клиенты сами подходят к окошку киоска. Здесь — приставки, которые они тебе оставили.</p>';
-    const rows = [...(J() && J().kind === 'order' ? [[J(), 'на верстаке']] : []), ...S.shelf.filter(j => j.kind === 'order').map(j => [j, 'на полке']),
+    const rows = [...(J() && J().kind === 'order' ? [[J(), 'на верстаке']] : []), ...S.shelf.filter(j => j.kind === 'order').map(j => [j, 'на полке в коробке']),
       ...S.ready.map(r => [r.job, 'готова — ждёт хозяина'])];
     if (!rows.length) h += '<p class="note">Пока ничего. Загляни к окошку — может, кто-то уже ждёт.</p>';
     rows.forEach(([j, where]) => {
@@ -1393,7 +1550,7 @@ function renderTablet() {
         <button class="btn" data-buyoff="${o.id}" ${S.money < o.price ? 'disabled' : ''}>Купить на разбор</button></div>`;
     });
   } else if (tab === 'shop') {
-    h += `<p class="note">Новые запчасти. Курьер привезёт их на склад за ${DELIVERY.part} с.</p>`;
+    h += `<p class="note">Новые запчасти. Курьер привезёт их в коробку за ${DELIVERY.part} с.</p>`;
     SHOP.forEach(s => {
       const P = PARTS[s.type], cost = P.price, label = s.type === 'shell' ? `${P.name}, ${VARIANTS[s.variant].name}` : P.name;
       h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
@@ -1406,39 +1563,19 @@ function renderTablet() {
         <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Заказать</button></div>`;
     });
   } else {
-    if (S.deliveries.length) {
-      h += '<div class="sec">В пути</div>';
-      [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
-        h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : 'приедет на склад'}</span></div>
-          <span class="eta" data-eta="${d.eta}">${mmss(d.eta - now)}</span></div></div>`;
-      });
-    }
-    h += '<div class="sec">Полка</div>';
-    if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные приставки и привезённые заказы ждут здесь.</p>';
-    S.shelf.forEach(j => {
-      const removed = PART_SLOTS.filter(s => !j.slots[s]).length;
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
-        <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}` : 'собрана'}</span></div></div>
-        <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
-    });
-    h += '<div class="sec">Склад</div>';
-    ['screw', 'bscrew'].forEach(k => {
-      h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
-        <div class="meta"><b>${SCREW[k].name}</b><span>${S.boxScrews[k]} шт. на складе · ${S.cup[k]} в чашке</span></div></div>
-        <button class="btn alt" data-cup="${k}" ${S.boxScrews[k] ? '' : 'disabled'}>Высыпать в чашку</button></div>`;
-    });
-    if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине или разбери б/у приставку.</p>';
-    S.box.forEach(it => {
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
-        <div class="meta"><b>${esc(PARTS[it.type].name)}${it.type === 'shell' ? ', ' + VARIANTS[it.variant || 0].name : ''}</b><span>${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
-        <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
+    h += '<p class="note">Курьерская служба. Посылки приезжают прямо в киоск: детали — в коробку, приставки — на полку.</p>';
+    if (!S.deliveries.length) h += '<p class="note">Сейчас в пути ничего нет.</p>';
+    [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
+      h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : 'приедет в коробку'}</span></div>
+        <span class="eta" data-eta="${d.eta}">${mmss(d.eta - now)}</span></div></div>`;
     });
   }
   body.innerHTML = h;
 }
-$('tabBody').addEventListener('click', e => {
+function shopClick(e) {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
-  initAudio();
+  initAudio(); toastHost = e.currentTarget;
+  const renderTablet = () => { if (!$('tablet').hidden) window.__renderTablet(); if (!$('boxSheet').hidden) renderBox(); };
   if (b.dataset.buyoff) {
     const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || S.money < o.price) return;
     S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings();
@@ -1456,13 +1593,16 @@ $('tabBody').addEventListener('click', e => {
     const k = b.dataset.cup; S.cup[k] += S.boxScrews[k]; S.boxScrews[k] = 0; save(); renderCup(); renderTablet(); sfx.tick(); toast('Винты в чашке на столе');
   } else if (b.dataset.tray) {
     const it = S.box.find(x => x.id === +b.dataset.tray); if (!it) return;
-    S.box = S.box.filter(x => x !== it); S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
+    S.box = S.box.filter(x => x !== it); delete it.pos; S.tray.push(it); save(); renderTray(); renderTablet(); sfx.tick(); toast(PARTS[it.type].name + ' — на столе');
   } else if (b.dataset.bench) {
     const j = S.shelf.find(x => x.id === +b.dataset.bench); if (!j || J()) return;
-    $('tablet').hidden = true; putOnBench(j);
+    closeBox(); putOnBench(j);
   }
   save(); renderMoney();
-});
+}
+window.__renderTablet = renderTablet;
+$('tabBody').addEventListener('click', shopClick);
+$('boxBody').addEventListener('click', shopClick);
 
 /* ---------- loop ---------- */
 let last = performance.now(), clock = 0, slow = 0;
@@ -1514,7 +1654,7 @@ function start(data) {
 const INTRO = [
   { who: 'hero', face: 'happy', text: 'Привет! Это мой киоск. Чиню старую электронику прямо на улице.' },
   { who: 'hero', face: 'excited', text: 'Клиенты подходят к окошку сами. Выслушаю, возьму приставку — и за верстак.' },
-  { who: 'hero', face: 'focused', text: 'Запчасти и б/у приставки на разбор заказываю через планшет — их привозит курьер.' },
+  { who: 'hero', face: 'focused', text: 'Запчасти и б/у приставки на разбор заказываю на компьютере — их привозит курьер.' },
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
 function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
@@ -1631,12 +1771,12 @@ function streetTick() {
   if (S.mode !== 'street') notice('К окошку подошёл клиент: ' + CUSTOMERS[S.visitor.cust].name);
   renderActions(); refreshHint();
 }
-const uiClosed = () => $('sheet').hidden && $('tablet').hidden && $('card').hidden;
+const uiClosed = () => $('sheet').hidden && $('tablet').hidden && $('card').hidden && $('boxSheet').hidden;
 function setMode(m) {
   S.mode = m; save();
   document.body.classList.toggle('street', m === 'street');
-  if (m === 'street') { if (onMat) closeMat(); setHint(null); if (S.visitor && walker && !walker.moving && $('novel').hidden && uiClosed()) setTimeout(converse, 400); }
-  renderActions(); refreshHint(true);
+  if (m === 'street') { if (onMat) closeMat(); $('boxSheet').hidden = true; setHint(null); if (S.visitor && walker && !walker.moving && $('novel').hidden && uiClosed()) setTimeout(converse, 400); }
+  renderActions(); refreshHint(true); renderTray();
 }
 $('toBench').addEventListener('click', () => { initAudio(); sfx.tick(); setMode('bench'); });
 
