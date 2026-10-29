@@ -82,6 +82,8 @@ button.chip { cursor: pointer; }
 #taskTitle { font: 700 15px/1.25 var(--display); text-wrap: balance; }
 #taskSub { margin-top: 3px; color: var(--muted); font-weight: 700; font-size: 14px; line-height: 1.3; }
 #task.flash { animation: flash .45s; }
+#task { transition: opacity .3s, transform .3s; }
+#task.gone { opacity: 0; transform: translateY(-12px); pointer-events: none; }
 @keyframes flash { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
 .hero { flex: none; width: 48px; height: 60px; border-radius: 11px; background: #f6ecdc url("hero.webp") 0 0 / 480px 60px no-repeat;
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
@@ -131,7 +133,8 @@ button.chip { cursor: pointer; }
 .cups { display: flex; gap: 8px; }
 /* box and bin take parts dragged onto them */
 .slotbtn.drop { transition: transform .15s, box-shadow .15s; }
-.slotbtn.drop.hot { transform: scale(1.12); box-shadow: 0 0 0 3px var(--mustard); }
+.slotbtn.drop.hot, #tools button.hot { transform: scale(1.12); box-shadow: 0 0 0 3px var(--mustard); }
+#tools button { transition: transform .15s, box-shadow .15s; }
 #binBtn.hot { box-shadow: 0 0 0 3px var(--red); }
 .trayNote { flex: 1 1 auto; min-width: 0; align-self: center; color: var(--muted); font-weight: 700; font-size: 13px; line-height: 1.3; text-align: center; padding: 0 4px; }
 /* removed parts simply lie on the desk around the gadget */
@@ -324,7 +327,7 @@ body.street #streetBar { display: flex; }
   <div class="chip"><span class="coin"></span><span id="money">0</span></div>
   <div class="chip" id="nav" role="toolbar" aria-label="Куда пойти">
     <button data-go="street" aria-label="Окошко"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="15" rx="1.5"/><path d="M3 9h18M12 9v10"/><path d="M3 4l2-2h14l2 2"/></svg><span class="dot" id="dotStreet" hidden></span></button>
-    <button data-go="bench" aria-label="Верстак"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.5a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 0-2-2z"/></svg></button>
+    <button data-go="bench" aria-label="Верстак"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14h20M4 14v7M20 14v7"/><rect x="5" y="8.5" width="5" height="5.5" rx="1" fill="currentColor" fill-opacity=".25"/><path d="M15 14V9l3-4"/><path d="M15.5 3.5l4.5 2.5-2 1.5z" fill="currentColor"/></svg></button>
     <button data-go="pc" aria-label="Компьютер"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8M12 16v5"/></svg><span class="dot" id="dotPc" hidden></span></button>
   </div>
   <button class="chip" id="courier" hidden aria-label="Доставки в пути">
@@ -342,9 +345,8 @@ body.street #streetBar { display: flex; }
 <div id="cursor"></div>
 
 <div id="tools" role="toolbar" aria-label="Инструменты">
-  <button data-tool="hand" aria-pressed="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15V7a2 2 0 0 1 4 0v7M15 13V5a2 2 0 0 1 4 0v9M19 13V7a2 2 0 0 1 4 0v10a9 9 0 0 1-9 9h-1a8 8 0 0 1-6.6-3.5L4 18a2 2 0 0 1 3-2.6l4 3.6"/></svg>Рука</button>
-  <button data-tool="brush" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4l6 6-9 9-6-6z"/><path d="M13 13l6 6-2 2c-1 4-5 7-11 7 1-6 4-10 7-11z"/><path d="M8 24l3-3"/></svg>Кисть</button>
-  <button data-tool="iron" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 28l7-7"/><path d="M10 22l3 3"/><path d="M12 20l10-10 4 4-10 10z"/><path d="M22 10l4-6 2 2-6 4"/></svg>Паяльник</button>
+  <button data-tool="brush" id="toolBrush" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4l6 6-9 9-6-6z"/><path d="M13 13l6 6-2 2c-1 4-5 7-11 7 1-6 4-10 7-11z"/><path d="M8 24l3-3"/></svg>Кисть</button>
+  <button data-tool="iron" id="toolIron" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 28l7-7"/><path d="M10 22l3 3"/><path d="M12 20l10-10 4 4-10 10z"/><path d="M22 10l4-6 2 2-6 4"/></svg>Паяльник</button>
 </div>
 
 <div id="bench">
@@ -392,6 +394,7 @@ body.street #streetBar { display: flex; }
 <div class="overlay" id="card" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
 <script src="pocket-pal.js"></script>
 <script>
 (() => {
@@ -507,15 +510,56 @@ function drawScreen(phase) {
   }
   screenTex.needsUpdate = true;
 }
+// dirt textures: organic blobs with soft edges, painted in layers; each kind has a few variants
+function blob(g, cx, cy, R, rnd, lumps = 5) {
+  const k = Array.from({ length: lumps }, (_, i) => [1 + i, (rnd() - .5) * .5 / (1 + i * .5), rnd() * 7]);
+  g.beginPath();
+  for (let i = 0; i <= 64; i++) {
+    const t = i / 64 * Math.PI * 2, r = R * (1 + k.reduce((a, [f, amp, ph]) => a + amp * Math.sin(f * t + ph), 0));
+    i ? g.lineTo(cx + Math.cos(t) * r, cy + Math.sin(t) * r) : g.moveTo(cx + Math.cos(t) * r, cy + Math.sin(t) * r);
+  }
+  g.closePath();
+}
+function softEdge(g, w, h) {
+  g.globalCompositeOperation = 'destination-in';
+  const gr = g.createRadialGradient(w / 2, h / 2, w * .3, w / 2, h / 2, w * .5); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
+}
 const GRIME = {
-  crust: (g, w, h, n = 70) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .75, r = (10 + Math.random() * 26) * w / 256;
-    g.fillStyle = ['rgba(150,210,175,.92)', 'rgba(230,240,225,.92)', 'rgba(90,160,130,.88)', 'rgba(200,230,200,.92)'][i % 4]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
-  stain: (g, w, h, n = 40) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .7, y = h / 2 + (Math.random() - .5) * h * .6, r = (14 + Math.random() * 34) * w / 256;
-    g.fillStyle = i % 3 ? 'rgba(92,52,24,.6)' : 'rgba(60,32,14,.65)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
-  juice: (g, w, h, n = 46) => { for (let i = 0; i < n; i++) { const x = w / 2 + (Math.random() - .5) * w * .75, y = h / 2 + (Math.random() - .5) * h * .7, r = (10 + Math.random() * 30) * w / 256;
-    g.fillStyle = i % 3 ? 'rgba(150,62,90,.6)' : 'rgba(205,140,40,.6)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } },
+  // corrosion on the board: crusty teal-white crystals
+  crust: (g, w, h, rnd) => {
+    for (let i = 0; i < 9; i++) { blob(g, w * (.3 + rnd() * .4), h * (.3 + rnd() * .4), w * (.1 + rnd() * .14), rnd); g.fillStyle = `rgba(${70 + rnd() * 40 | 0},${140 + rnd() * 40 | 0},${120 + rnd() * 30 | 0},.75)`; g.fill(); }
+    for (let i = 0; i < 260; i++) {
+      const a = rnd() * 7, d = Math.pow(rnd(), .7) * w * .36, x = w / 2 + Math.cos(a) * d, y = h / 2 + Math.sin(a) * d, r = (1 + rnd() * 4.5) * w / 256;
+      g.fillStyle = ['rgba(225,240,228,.95)', 'rgba(160,215,190,.9)', 'rgba(95,170,140,.9)', 'rgba(250,250,240,.95)'][i % 4];
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+    softEdge(g, w, h);
+  },
+  // dried water / coffee: a translucent pool with a darker tide-line rim
+  stain: (g, w, h, rnd) => {
+    for (let ring = 0; ring < 3; ring++) {
+      blob(g, w / 2 + (rnd() - .5) * w * .08, h / 2 + (rnd() - .5) * h * .08, w * (.36 - ring * .08), rnd, 6);
+      g.fillStyle = `rgba(110,64,28,${.3 + ring * .1})`; g.fill();
+      g.lineWidth = w * (.018 - ring * .004); g.strokeStyle = 'rgba(70,38,14,.55)'; g.stroke();
+    }
+    for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(80,44,18,.35)'; g.beginPath(); g.arc(w * (.15 + rnd() * .7), h * (.15 + rnd() * .7), (1 + rnd() * 3) * w / 256, 0, 7); g.fill(); }
+    softEdge(g, w, h);
+  },
+  // spilt juice: sticky purple-orange splash with drips and glossy highlights
+  juice: (g, w, h, rnd) => {
+    blob(g, w / 2, h * .45, w * .3, rnd, 7); g.fillStyle = 'rgba(140,30,80,.85)'; g.fill();
+    for (let i = 0; i < 9; i++) { const a = rnd() * 7, d = w * (.25 + rnd() * .15); g.beginPath(); g.arc(w / 2 + Math.cos(a) * d, h * .45 + Math.sin(a) * d, (4 + rnd() * 10) * w / 256, 0, 7); g.fillStyle = 'rgba(150,35,85,.85)'; g.fill(); }
+    for (let i = 0; i < 3; i++) { const x = w * (.38 + rnd() * .24), y = h * .5, l = h * (.15 + rnd() * .2), r = (5 + rnd() * 5) * w / 256;
+      g.fillStyle = 'rgba(140,30,80,.85)'; g.fillRect(x - r, y, r * 2, l); g.beginPath(); g.arc(x, y + l, r * 1.4, 0, 7); g.fill(); }
+    blob(g, w * .47, h * .42, w * .16, rnd, 5); g.fillStyle = 'rgba(225,140,35,.7)'; g.fill();
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(w * .42, h * .36, w * .06, w * .025, -.5, 0, 7); g.fill();
+    g.beginPath(); g.arc(w * .58, h * .5, w * .015, 0, 7); g.fill();
+    softEdge(g, w, h);
+  },
 };
 const grimeTex = {};
+function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
 const shadowTex = canvasTex(128, 128, (g) => {
   const gr = g.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
@@ -756,9 +800,30 @@ let K = null, powerHit = null;
 const objs = new Map(); // slot → 3D object currently installed
 const J = () => S.job;
 
-function grime(kind) {
-  if (!grimeTex[kind]) grimeTex[kind] = canvasTex(256, 256, (g, w, h) => GRIME[kind](g, w, h));
-  return grimeTex[kind];
+function grime(kind, n = 0) {
+  const k = kind + n % 3;
+  if (!grimeTex[k]) grimeTex[k] = canvasTex(256, 256, (g, w, h) => GRIME[kind](g, w, h, seeded(17 + n % 3 * 101 + kind.length * 7)));
+  return grimeTex[k];
+}
+// a stain projected onto the part's own meshes, so it follows the surface and stops at its edges
+function decalOn(o, sp, i) {
+  const pos = [], nor = [], uv = [], at = new V3(sp.x, sp.y, sp.z), rot = new THREE.Euler(0, sp.front ? 0 : Math.PI, Math.random() * Math.PI * 2);
+  o.updateMatrixWorld(true);
+  // a deep projector reaches whatever surface lies there; faces turned away from it (the far side) are dropped
+  const facing = sp.front ? 1 : -1;
+  o.traverse(m => {
+    if (!m.isMesh || m.name === 'grime' || !m.geometry.attributes.position) return;
+    const d = new THREE.DecalGeometry(m, at, rot, new V3(sp.w * 1.45, sp.h * 1.45, .6)); // generous: the part's own edges clip it
+    const P = d.attributes.position.array, N = d.attributes.normal.array, U = d.attributes.uv.array;
+    for (let t = 0; t < P.length / 9; t++) {
+      if ((N[t * 9 + 2] + N[t * 9 + 5] + N[t * 9 + 8]) * facing < .6) continue;
+      pos.push(...P.subarray(t * 9, t * 9 + 9)); nor.push(...N.subarray(t * 9, t * 9 + 9)); uv.push(...U.subarray(t * 6, t * 6 + 6));
+    }
+  });
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: grime(sp.kind, i), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
 }
 // a part in its condition; colour-dependent parts (housing, cover) come from their own colour's kit
 function makePart(kitOf, it) {
@@ -767,10 +832,9 @@ function makePart(kitOf, it) {
   const o = kit.make[it.type]({ swollen: it.type === 'battery' && c === 'broken', fresh: it.fresh, cracked: (it.type === 'lcd' || it.type === 'shell') && c === 'broken',
     burnt: (it.type === 'speaker' || it.type === 'pcb') && c === 'broken', loose: it.type === 'pcb' && c === 'loose',
     scratched: it.type === 'bezel' && c === 'broken', worn: it.type === 'buttons' && c === 'broken', broken: it.type === 'dial' && c === 'broken' });
-  if (c === 'dirty') (kit.spots[it.type] || []).forEach(sp => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(sp.w, sp.h), new THREE.MeshBasicMaterial({ map: grime(sp.kind), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-    if (!sp.front) m.rotation.y = Math.PI;
-    m.position.set(sp.x, sp.y, sp.z); m.name = 'grime'; m.userData.dirt = 1; o.add(m);
+  if (c === 'dirty') (kit.spots[it.type] || []).forEach((sp, i) => {
+    const m = decalOn(o, sp, i); if (!m) return;
+    m.name = 'grime'; m.userData.dirt = 1; o.add(m);
   });
   if (c === 'loose') {
     const j = new THREE.Mesh(new THREE.SphereGeometry(.05, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: 0xff7a1a, emissiveIntensity: .6 }));
@@ -879,8 +943,9 @@ function face(el, name) {
   el.classList.remove('react'); void el.offsetWidth; el.classList.add('react');
 }
 let sayUntil = 0;
+const coaching = () => S.ordersDone < 1; // the first order is the tutorial: hints stay on screen
 function say(text, mood) {
-  $('taskSub').textContent = text; sayUntil = performance.now() + 4200;
+  $('taskSub').textContent = text; sayUntil = performance.now() + 4200; $('task').classList.remove('gone');
   if (mood) face($('hero'), mood);
   const t = $('task'); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
 }
@@ -910,6 +975,7 @@ function refreshHint(force) {
   const [title, sub] = situation();
   $('taskTitle').textContent = title;
   if (force || performance.now() > sayUntil) $('taskSub').textContent = sub;
+  $('task').classList.toggle('gone', !coaching() && performance.now() > sayUntil);
   tutorial();
   renderActions();
 }
@@ -939,12 +1005,12 @@ function tutorial() {
 
 /* ---------- tools ---------- */
 let tool = 'hand';
+// on the mat a tap picks the tool (a second tap puts it down); at the bench a part is dragged onto a tool
 $('tools').addEventListener('click', e => {
   const b = e.target.closest('[data-tool]'); if (!b) return;
-  initAudio(); tool = b.dataset.tool; sfx.tick();
-  document.querySelectorAll('#tools [data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  if (onMat) say(matHint(), 'focused');
-  else if (tool !== 'hand') say('Кисть и паяльник — для работы на коврике. Нажми на деталь на столе → «На коврик».', 'thinking');
+  initAudio(); sfx.tick();
+  if (!onMat) return say('Перетащи деталь на кисть, чтобы почистить, или на паяльник, чтобы припаять.', 'thinking');
+  setTool(tool === b.dataset.tool ? 'hand' : b.dataset.tool); say(matHint(), 'focused');
 });
 function setTool(t) { tool = t; document.querySelectorAll('#tools [data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.tool === t))); }
 
@@ -1082,7 +1148,6 @@ canvas.addEventListener('pointerdown', e => {
   initAudio();
   if (onMat) return matDown(e);
   const j = J(); if (!j) return;
-  if (tool !== 'hand') return say('Кисть и паяльник — для работы на коврике. Возьми «Руку», чтобы разбирать.', 'thinking');
   if (j.side === 'front') {
     if (objs.get('power') && pick(e, [powerHit, objs.get('power')])) return powerTest();
     const onDev = pick(e, [device]);
@@ -1173,6 +1238,7 @@ async function releasePart(d) {
   const o = d.obj, from = o.position.clone(), fromR = o.rotation.z;
   const dist = Math.hypot(from.x - d.start.x, from.y - d.start.y);
   const t = d.px != null && dropTarget(d.px, d.py); markDrop(null); ghost.style.display = 'none'; delete ghost.dataset.slot; d.obj.visible = true;
+  if (TOOL_OF[t]) { const it = await removePart(d.slot); return toMat(it, t); }
   if (t && !(d.slot === 'cover' && t === 'binBtn')) return removePart(d.slot, t);
   if (t) { await removePart(d.slot); return say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Положил на стол — можно убрать в коробку.', 'thinking'); }
   if (dist > 1.0) return removePart(d.slot);
@@ -1194,9 +1260,9 @@ async function removePart(slot, target) {
   device.remove(o);
   renderTray(); busy = false;
   const dsc = DISCOVER[it.type] && DISCOVER[it.type][it.cond];
-  if (target) { stowPart(it, target); if (dsc) say(dsc[0] + (target === 'boxBtn' ? ' Убрал в коробку.' : ' Выбросил.'), dsc[1]); refreshHint(); return; }
+  if (target) { stowPart(it, target); if (dsc) say(dsc[0] + (target === 'boxBtn' ? ' Убрал в коробку.' : ' Выбросил.'), dsc[1]); refreshHint(); return it; }
   if (dsc) say(dsc[0], dsc[1]); else say(PARTS[it.type].name + ' — на столе.', 'focused');
-  refreshHint();
+  refreshHint(); return it;
 }
 
 async function installPart(it, slot) {
@@ -1280,9 +1346,11 @@ function benchMove(e) {
 }
 // the box or the bin under the finger, if any
 function dropTarget(x, y) {
-  return ['boxBtn', 'binBtn'].find(id => { const r = $(id).getBoundingClientRect(); return x > r.left - 12 && x < r.right + 12 && y > r.top - 16 && y < r.bottom + 12; }) || null;
+  return ['boxBtn', 'binBtn', 'toolBrush', 'toolIron'].find(id => { const r = $(id).getBoundingClientRect(); return x > r.left - 12 && x < r.right + 12 && y > r.top - 16 && y < r.bottom + 12; }) || null;
 }
-const markDrop = t => ['boxBtn', 'binBtn'].forEach(id => $(id).classList.toggle('hot', id === t));
+const markDrop = t => ['boxBtn', 'binBtn', 'toolBrush', 'toolIron'].forEach(id => $(id).classList.toggle('hot', id === t));
+const TOOL_OF = { toolBrush: 'brush', toolIron: 'iron' };
+function toMat(it, target) { renderTray(); openMat(it); setTool(TOOL_OF[target]); say(matHint(), 'focused'); }
 function stowPart(it, target) {
   const P = PARTS[it.type];
   if (it.type === 'cover' && target === 'binBtn') { sfx.nope(); say('Крышку не выбрасывай: новую не купить, а без неё приставку не собрать. Можно убрать в коробку.', 'thinking'); return renderTray(); }
@@ -1299,7 +1367,9 @@ function benchUp(e) {
   const x = e.clientX, y = e.clientY - 30;
   if (b.what.item) {
     b.el.classList.remove('lift');
-    const t = dropTarget(e.clientX, e.clientY); if (t) return stowPart(b.what.item, t);
+    const t = dropTarget(e.clientX, e.clientY);
+    if (TOOL_OF[t]) return toMat(b.what.item, t);
+    if (t) return stowPart(b.what.item, t);
     // dropped on the gadget: try to fit it; anywhere else it just stays where it was put down
     if (overDevice(x, y)) { dropOnDevice(x, y, b.what); if (S.tray.includes(b.what.item)) renderTray(); return; }
     b.what.item.pos = { x: Math.min(Math.max(x, 34), innerWidth - 34) / innerWidth, y: Math.min(Math.max(y, 120), innerHeight - 140) / innerHeight };
@@ -1348,9 +1418,9 @@ function openItem(it) {
 let onMat = null;
 function matHint() {
   const it = onMat.it;
-  if (it.cond === 'dirty') return tool === 'brush' ? 'Три грязь кисточкой. Рукой поверни деталь — грязь есть и с другой стороны.' : 'Возьми кисточку справа и три грязь.';
+  if (it.cond === 'dirty') return tool === 'brush' ? 'Три грязь кисточкой. Чтобы повернуть деталь, веди пальцем мимо неё — грязь есть и с другой стороны.' : 'Возьми кисточку справа и три грязь.';
   if (it.cond === 'loose') return tool === 'iron' ? 'Прижми паяльник к светящейся точке и подержи.' : 'Возьми паяльник справа и припаяй провод к контакту.';
-  return 'Покрути деталь рукой и рассмотри со всех сторон.';
+  return 'Покрути деталь пальцем и рассмотри со всех сторон.';
 }
 function openMat(it) {
   onMat = { it, pivot: new THREE.Group(), spin: null };
@@ -1380,6 +1450,7 @@ $('matDone').addEventListener('click', () => { initAudio(); sfx.tick(); closeMat
 const cursor = $('cursor');
 function matDown(e) {
   const m = onMat; m.down = { x: e.clientX, y: e.clientY, rx: m.pivot.rotation.x, ry: m.pivot.rotation.y };
+  m.turn = tool === 'hand' || !pick(e, [m.pivot]);
   canvas.setPointerCapture(e.pointerId);
   if (tool !== 'hand') { cursor.className = tool === 'iron' ? 'iron' : ''; cursor.style.display = 'block'; moveCursor(e); }
   if (tool === 'brush' && m.it.cond !== 'dirty') say(m.it.cond === 'loose' ? 'Грязи нет — тут нужен паяльник.' : 'Она и так чистая.', 'thinking');
@@ -1395,14 +1466,14 @@ function moveCursor(e) { cursor.style.transform = `translate(${e.clientX}px, ${e
 function matMove(e) {
   const m = onMat; if (!m.down) return;
   if (tool !== 'hand') moveCursor(e);
-  if (tool === 'hand') {
+  if (m.turn) {
     m.pivot.rotation.y = m.down.ry + (e.clientX - m.down.x) * .012;
     m.pivot.rotation.x = Math.max(-1.4, Math.min(1.4, m.down.rx + (e.clientY - m.down.y) * .012));
   } else if (tool === 'brush' && m.it.cond === 'dirty') {
     const d = Math.hypot(e.clientX - (m.lx ?? e.clientX), e.clientY - (m.ly ?? e.clientY)); m.lx = e.clientX; m.ly = e.clientY;
     const h = pick(e, [m.pivot]);
     if (h && h.object.name === 'grime' && h.object.userData.dirt > 0 && d) {
-      const g = h.object; g.userData.dirt -= d * (has('brush') ? .012 : .006); g.material.opacity = Math.max(0, g.userData.dirt) * .85 + .15;
+      const g = h.object; g.userData.dirt -= d * (has('brush') ? .012 : .006); g.material.opacity = Math.max(0, g.userData.dirt) * .8 + .2;
       m.scrub = (m.scrub || 0) + d; if (m.scrub > 40) { m.scrub = 0; sfx.scrub(); buzz(3); }
       if (g.userData.dirt <= 0) { g.visible = false; const p = toScreen(g); sparkle(p.x, p.y, 10); sfx.shine(); matCheck(); }
     }
@@ -1411,12 +1482,12 @@ function matMove(e) {
     if (Math.hypot(p.x - e.clientX, p.y - e.clientY) > 70) m.solder = null;
   }
 }
-function matUp() { const m = onMat; m.down = null; m.lx = m.ly = undefined; m.solder = null; cursor.style.display = 'none'; }
+function matUp() { const m = onMat; m.down = null; m.turn = false; m.lx = m.ly = undefined; m.solder = null; cursor.style.display = 'none'; }
 function matCheck() {
   const m = onMat; if (!m) return;
   let left = 0; m.obj.traverse(o => { if (o.name === 'grime' && o.visible) left++; });
   if (m.it.cond === 'dirty' && !left) matFixed('Чисто! Как новая.');
-  else if (m.it.cond === 'dirty') say(`Ещё ${left} ${left === 1 ? 'пятно' : left < 5 ? 'пятна' : 'пятен'}. Поверни деталь рукой — посмотри с другой стороны.`, 'focused');
+  else if (m.it.cond === 'dirty') say(`Ещё ${left} ${left === 1 ? 'пятно' : left < 5 ? 'пятна' : 'пятен'}. Поверни деталь — веди пальцем мимо неё.`, 'focused');
 }
 function matFixed(text) {
   const m = onMat; m.it.cond = 'ok'; save(); sfx.shine(); buzz(40);
@@ -1916,7 +1987,7 @@ const INTRO = [
   { who: 'hero', face: 'focused', text: 'Соседи заходят к окошку сами, а остальные заказы приходят через интернет — на компьютере.' },
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
-function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+
 // the window scene: the street picture, then the customers, then the kiosk interior with the window cut out
 function drawStreet() {
   const bg = paintCanvas($('streetBg')), fg = paintCanvas($('streetFg')), m = coverMap(), W = innerWidth, H = innerHeight;
