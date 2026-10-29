@@ -256,6 +256,8 @@ body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.p
 .row img.th { width: 56px; height: 56px; border-radius: 12px; background: #eadcc3; object-fit: contain; flex: none; }
 .row .btn { padding: 12px 16px; font-size: 14px; }
 .row .eta { font: 700 14px/1 var(--display); color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .eta.late { color: var(--red); }
+.ava.nick { background: #3a6ea5; color: #fff; display: grid; place-items: center; font: 700 22px/1 var(--display); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font: 800 12px/1 var(--body); padding: 5px 8px; border-radius: 8px; background: #efe2c8; color: #6b5238; }
 .toast { position: sticky; bottom: 0; align-self: center; background: var(--ink); color: var(--cream); font-weight: 800; padding: 10px 14px; border-radius: 12px; }
@@ -351,7 +353,7 @@ body.street #streetBar { display: flex; }
 <div id="tablet" hidden>
   <div id="pcDesk">
     <div class="icons">
-      <button class="pcIcon" data-app="orders"><svg viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" fill="#fff" stroke="#333"/><path d="M10 10h12M10 15h12M10 20h8" stroke="#3a6ea5" stroke-width="2"/></svg><span>Заказы</span></button>
+      <button class="pcIcon" data-app="orders"><svg viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" fill="#fff" stroke="#333"/><path d="M10 10h12M10 15h12M10 20h8" stroke="#3a6ea5" stroke-width="2"/></svg><span>Заказы</span><span class="dot" id="ordersDot" hidden></span></button>
       <button class="pcIcon" data-app="market"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#3a6ea5" stroke="#123"/><path d="M4 16h24M16 4c-6 6-6 18 0 24M16 4c6 6 6 18 0 24" stroke="#bfe3ff" stroke-width="1.5" fill="none"/></svg><span>Барахолка</span></button>
       <button class="pcIcon" data-app="shop"><svg viewBox="0 0 32 32"><path d="M5 9h22l-2 14H7z" fill="#e7b04a" stroke="#5a3a10"/><path d="M11 9a5 5 0 0 1 10 0" stroke="#5a3a10" fill="none" stroke-width="2"/></svg><span>Запчасти</span></button>
       <button class="pcIcon" data-app="post"><svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="16" fill="#c9955a" stroke="#5a3a10"/><path d="M4 9l12 9 12-9" stroke="#5a3a10" fill="none"/></svg><span>Посылки</span><span class="dot" id="postDot" hidden></span></button>
@@ -601,13 +603,15 @@ const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
     orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
-    mode: 'street', visitor: null, nextVisit: 0, ready: [] };
+    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null } };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
 if (!S || !Array.isArray(S.box)) S = newGame();
 function migrate() {
   S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.nextCustomer = S.nextCustomer || 0; S.mode = S.mode || 'street';
+  S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
+  S.story = S.story || { step: 0, since: 0, active: null };
   [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
@@ -617,19 +621,34 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } cat
 const item = (type, cond = 'ok', fresh = false, variant = 0) => ({ id: S.uid++, type, cond, fresh, variant });
 const pick1 = a => a[Math.floor(Math.random() * a.length)];
 
-function makeOrder() {
-  const first = S.ordersDone === 0 && !S.job && !S.shelf.length && !S.ready.length;
-  const cust = S.nextCustomer++ % CUSTOMERS.length;
-  let faults = [];
-  if (first) faults = ['battery'];
-  else {
-    const n = 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 2 && Math.random() < .35 ? 1 : 0), used = new Set();
-    Object.keys(FAULTS).sort(() => Math.random() - .5).forEach(f => {
-      const slot = FAULTS[f].slot || f;
-      if (faults.length < n && !used.has(slot)) { faults.push(f); used.add(slot); }
-    });
-  }
-  return { id: S.uid++, cust, faults, pay: 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0), variant: Math.floor(Math.random() * VARIANTS.length) };
+const orderPay = faults => 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0);
+// who an order is for: a story character at the window, or a nickname from the internet
+const whoOf = o => o.nick || CUSTOMERS[o.cust].name;
+function randomFaults() {
+  const n = 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 3 && Math.random() < .35 ? 1 : 0), used = new Set(), faults = [];
+  Object.keys(FAULTS).sort(() => Math.random() - .5).forEach(f => {
+    const slot = FAULTS[f].slot || f;
+    if (faults.length < n && !used.has(slot)) { faults.push(f); used.add(slot); }
+  });
+  return faults;
+}
+/* orders from the internet: the courier brings the gadget and takes it back; late repairs are paid half */
+const NICKS = ['Kolya_95', 'retro_lena', 'Дмитрий, Самара', 'pixel_masha', 'Сергей Палыч', 'olga.k', 'gamer2001', 'Анна из Твери', 'dendy_fan', 'Миша_Владивосток', 'vovan_spb', 'Катя_М'];
+const WEB_NOTES = ['Нашла на антресолях, хочу подарить сыну.', 'Коллекционирую, нужна рабочая.', 'Детство вспомнил — почините, пожалуйста!', 'Отправлю почтой, верните побыстрее.',
+  'Купил на авито, продавец обманул.', 'Память об отце, очень прошу аккуратно.', 'Хочу пройти игру, которую не прошёл в 10 лет.', 'Внук уронил, я в расстройстве.'];
+function makeWebOrder() {
+  const faults = randomFaults();
+  // no two open orders from the same person, or with the same story
+  const open = [...S.web, ...[S.job, ...S.shelf, ...S.deliveries.map(d => d.what.job)].filter(j => j && j.order).map(j => j.order)];
+  const free = (list, k) => list.filter(x => !open.some(o => o[k] === x));
+  return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, pay: Math.round(orderPay(faults) * .9), variant: Math.floor(Math.random() * VARIANTS.length),
+    mins: 3 + Math.round(faults.length * 1.5) };
+}
+function ensureWeb() {
+  const now = Date.now();
+  if (S.web.length >= 4 || now < S.webNext) return;
+  S.web.push(makeWebOrder()); S.webNext = now + 25000 + Math.random() * 25000; S.webSeen = false; save(); renderNav();
+  if (!$('tablet').hidden && tab === 'orders') renderTablet();
 }
 function makeOffer() {
   const roll = (...p) => { let r = Math.random(); for (const [c, w] of p) { if ((r -= w) < 0) return c; } return 'ok'; };
@@ -659,7 +678,7 @@ function makeJob(kind, src) {
   ['screw_4', 'screw_3'].slice(0, missing).forEach(s => { slots[s] = null; delete tight[s]; });
   return { id: S.uid++, kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: 0, variant: src.variant };
 }
-const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + CUSTOMERS[j.order.cust].name : 'Б/у Pocket Pal, ' + VARIANTS[j.variant].name;
+const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + whoOf(j.order) : 'Б/у Pocket Pal, ' + VARIANTS[j.variant].name;
 
 /* ---------- kits: one per body colour, shared by everything built in that colour ---------- */
 const kits = {}, thumbKits = {};
@@ -1363,10 +1382,32 @@ function markReady() {
   const j = J(), o = j.order;
   const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 90 + 60 * o.faults.length;
   const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1;
+  if (o.nick) return shipOut(j, secs, stars);
   S.ready.push({ id: j.id, job: j, secs, stars, tip: [0, 0, 10, 20][stars], at: Date.now() + 5000 });
   S.job = null; save(); clearDevice();
   if (!S.visitor) S.nextVisit = Math.min(S.nextVisit || Infinity, Date.now() + 6000);
   refreshHint(true); say('Готово! ' + CUSTOMERS[o.cust].name + ' скоро зайдёт за ней к окошку.', 'proud');
+}
+function shipOut(j, secs, stars) {
+  const o = j.order, late = o.deadline && Date.now() > o.deadline;
+  const tip = late ? 0 : [0, 0, 5, 10][stars], total = late ? Math.round(o.pay / 2) : o.pay + tip;
+  S.job = null; S.ordersDone++; S.story.since++; save(); clearDevice();
+  const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  const card = $('card');
+  card.innerHTML = `<div class="card" role="dialog" aria-label="Заказ отправлен">
+    <div class="eyebrow" style="text-align:center">Курьер забрал посылку</div>
+    <div class="hero big" id="heroBig" aria-hidden="true"></div>
+    <h2>${late ? 'Опоздали…' : 'Отправлено!'}</h2>
+    <div class="stars">${star(!late && stars > 0)}${star(!late && stars > 1)}${star(!late && stars > 2)}</div>
+    <div class="rows"><div><span>${esc(o.nick)}</span><span></span></div><div><span>Время работы</span><span>${mm}</span></div>
+      <div><span>Оплата</span><span>${late ? Math.round(o.pay / 2) + ' (половина)' : o.pay}</span></div>
+      ${late ? '' : `<div><span>Бонус за скорость</span><span>+${tip}</span></div>`}<div class="total"><span>Итого</span><span>${total}</span></div></div>
+    <button class="btn" id="next">Дальше</button></div>`;
+  card.hidden = false;
+  face($('heroBig'), late ? 'worried' : ['relieved', 'happy', 'proud'][stars - 1]);
+  flyCoins(total);
+  if (storyDue()) S.nextVisit = Math.min(S.nextVisit || Infinity, Date.now() + 8000);
+  $('next').onclick = () => { sfx.pop(); card.hidden = true; refreshHint(true); if (storyDue()) say('Кажется, к окошку кто-то идёт…', 'surprised'); };
 }
 function showPaid(r, then) {
   const o = r.job.order, c = CUSTOMERS[o.cust], total = o.pay + r.tip;
@@ -1382,7 +1423,9 @@ function showPaid(r, then) {
     <button class="btn" id="next">Дальше</button></div>`;
   card.hidden = false;
   face($('heroBig'), ['relieved', 'happy', 'proud'][r.stars - 1]);
-  S.ready = S.ready.filter(x => x !== r); S.ordersDone++; save();
+  S.ready = S.ready.filter(x => x !== r); S.ordersDone++;
+  if (o.story != null && S.story.active === o.story) { S.story.step = o.story + 1; S.story.since = 0; S.story.active = null; }
+  save();
   flyCoins(total);
   $('next').onclick = () => { sfx.pop(); card.hidden = true; then && then(); };
 }
@@ -1459,7 +1502,8 @@ function checkDeliveries() {
   const now = Date.now(), due = S.deliveries.filter(d => d.eta <= now);
   if (due.length) { S.deliveries = S.deliveries.filter(d => d.eta > now); due.forEach(arrive); }
   renderCourier();
-  if (!$('tablet').hidden && tab === 'post' && S.deliveries.length) document.querySelectorAll('[data-eta]').forEach(el => { el.textContent = mmss(+el.dataset.eta - now); });
+  if (!$('tablet').hidden) document.querySelectorAll('#tabBody [data-eta]').forEach(el => { const t = +el.dataset.eta - now; el.textContent = t > 0 || tab === 'post' ? mmss(t) : 'просрочен'; el.classList.toggle('late', t <= 0 && tab !== 'post'); });
+  ensureWeb();
 }
 $('courier').addEventListener('click', () => { initAudio(); openTablet('post'); });
 function askFinishDonor() {
@@ -1504,8 +1548,9 @@ function renderNav() {
   const here = !$('tablet').hidden ? 'pc' : S.mode;
   document.querySelectorAll('#nav [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === here)));
   $('dotStreet').hidden = !(S.visitor && here !== 'street');
-  $('dotPc').hidden = true;
+  $('dotPc').hidden = S.webSeen || here === 'pc';
   $('postDot').hidden = !S.deliveries.length;
+  $('ordersDot').hidden = S.webSeen;
 }
 // painted backdrops are 941×1672 portraits: cover the screen with them and map picture pixels to screen pixels
 const ART = {};
@@ -1571,15 +1616,27 @@ function renderTablet() {
   const body = $('tabBody'), now = Date.now();
   let h = '';
   if (tab === 'orders') {
-    h += '<p class="note">Клиенты сами подходят к окошку киоска. Здесь — приставки, которые они тебе оставили.</p>';
-    const rows = [...(J() && J().kind === 'order' ? [[J(), 'на верстаке']] : []), ...S.shelf.filter(j => j.kind === 'order').map(j => [j, 'на полке в коробке']),
-      ...S.ready.map(r => [r.job, 'готова — ждёт хозяина'])];
-    if (!rows.length) h += '<p class="note">Пока ничего. Загляни к окошку — может, кто-то уже ждёт.</p>';
-    rows.forEach(([j, where]) => {
-      const c = CUSTOMERS[j.order.cust];
-      h += `<div class="row"><div class="top"><div class="ava" style="${c.poses ? `background-image:url('${figSrc(c, 'neutral')}');background-size:auto 165px;background-position:50% 3px` : `background-position-x:${-c.face * 48}px`}"></div>
-        <div class="meta"><b>${esc(c.name)}</b><span>${where}</span></div>${price(j.order.pay)}</div>
-        <p class="quote">«${j.order.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
+    S.webSeen = true; renderNav();
+    h += `<p class="note">Заказы со всей страны. Курьер привезёт приставку на полку, а починенную заберёт сам. Успей до срока — опоздаешь, заплатят половину.</p>`;
+    const ava = o => o.nick ? `<div class="ava nick">${esc(o.nick[0].toUpperCase())}</div>`
+      : `<div class="ava" style="background-image:url('${figSrc(CUSTOMERS[o.cust], 'neutral')}');background-size:auto 165px;background-position:50% 3px"></div>`;
+    const due = o => o.deadline ? `<span class="eta${o.deadline < now ? ' late' : ''}" data-eta="${o.deadline}">${o.deadline < now ? 'просрочен' : mmss(o.deadline - now)}</span>` : '';
+    const rows = [...(J() && J().kind === 'order' ? [[J().order, 'на верстаке']] : []), ...S.shelf.filter(j => j.kind === 'order').map(j => [j.order, 'на полке']),
+      ...S.deliveries.filter(d => d.what.kind === 'job' && d.what.job.kind === 'order').map(d => [d.what.job.order, 'курьер везёт']),
+      ...S.ready.map(r => [r.job.order, 'готова — ждёт хозяина у окошка'])];
+    h += '<div class="sec">В работе</div>';
+    if (!rows.length) h += '<p class="note">Пока ничего. Возьми заказ ниже.</p>';
+    rows.forEach(([o, where]) => {
+      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${where}</span></div>${due(o) || price(o.pay)}</div>
+        <p class="quote">«${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
+    });
+    const busyWeb = rows.filter(([o]) => o.nick).length;
+    h += '<div class="sec">Новые заказы</div>';
+    if (!S.web.length) h += '<p class="note">Новых заказов нет. Загляни попозже.</p>';
+    S.web.forEach(o => {
+      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>срок ${o.mins} мин после заказа</span></div>${price(o.pay)}</div>
+        <p class="quote">«${esc(o.note)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
+        <button class="btn" data-web="${o.id}" ${busyWeb >= 3 ? 'disabled' : ''}>${busyWeb >= 3 ? 'Сначала закончи начатые' : 'Взять заказ'}</button></div>`;
     });
   } else if (tab === 'market') {
     h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
@@ -1616,7 +1673,12 @@ function shopClick(e) {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   initAudio(); toastHost = e.currentTarget;
   const renderTablet = () => { if (!$('tablet').hidden) window.__renderTablet(); if (!$('boxSheet').hidden) renderBox(); };
-  if (b.dataset.buyoff) {
+  if (b.dataset.web) {
+    const o = S.web.find(x => x.id === +b.dataset.web); if (!o) return;
+    S.web = S.web.filter(x => x !== o); o.deadline = Date.now() + o.mins * 60000;
+    deliver({ kind: 'job', job: makeJob('order', o) }, DELIVERY.device, 'приставка от ' + o.nick);
+    sfx.coin(); renderTablet(); toast('Заказ принят — курьер везёт приставку');
+  } else if (b.dataset.buyoff) {
     const o = S.offers.find(x => x.id === +b.dataset.buyoff); if (!o || S.money < o.price) return;
     S.money -= o.price; S.offers = S.offers.filter(x => x !== o); ensureListings();
     deliver({ kind: 'job', job: makeJob('donor', o) }, DELIVERY.device, 'б/у Pocket Pal');
@@ -1678,7 +1740,7 @@ if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now:
 function start(data) {
   if (data && data.state && data.state.box) { S = data.state; migrate(); }
   try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
-  ensureListings(); save();
+  ensureListings(); while (S.web.length < 3) S.web.push(makeWebOrder()); save();
   face($('hero'), 'happy');
   buildJobScene(); renderTray(); renderMoney(); renderCourier(); drawStreet(); refreshHint(true);
   if (S.visitor) placeWalker(false);
@@ -1691,10 +1753,53 @@ function start(data) {
 }
 
 /* ---------- the street: kiosk window, customers who walk up, novel-style talks ---------- */
+/* chapter one: the neighbourhood finds out about the kiosk, one story order at a time.
+   after: internet orders to finish since the previous chapter; faults: what is wrong with the gadget they bring */
+const C = (pose, text) => ({ who: 'cust', face: 'upset', pose, text }), M = (face, text, cpose) => ({ who: 'hero', face, text, cpose });
+const STORY = [
+  { cust: 0, after: 0, faults: ['battery'], variant: 0,
+    intro: [C('wave', 'Здравствуйте, молодой человек! Это вы тут открылись?'), M('happy', 'Я! Чиню старую электронику. Чем помочь?', 'idea'),
+      C('explain', 'Подарил внуку эту приставку в девяносто первом. Вчера нашёл на антресолях — а она молчит.')],
+    more: [C('explain', 'Внук теперь большой, Тимуром зовут. Хочу сделать ему сюрприз — пусть вспомнит, как мы вместе играли.'), M('thinking', 'Отличный сюрприз. Сделаем.', 'idea')],
+    leave: 'Вот она. Зайду, как будет готово. Спасибо, сынок!',
+    done: [C('nervous', 'Ну как, ожила моя старушка?'), M('proud', 'Как новенькая. Аккумулятор вздулся — поставил новый.', 'shock'), C('cheer', 'Вот это да! Тимур будет счастлив. Я ему про вас расскажу!')],
+    after2: [M('excited', 'Пока жду новых гостей — загляну в компьютер. Там заказы со всей страны.')] },
+  { cust: 1, after: 2, faults: ['lcd', 'buttons'], variant: 1,
+    intro: [C('wave', 'Привет! Дед сказал, вы его приставку оживили. Это правда?'), M('happy', 'Правда. А у тебя что?', 'idea'),
+      C('explain', 'Свою купил на барахолке за триста рублей. Продавец клялся, что работает…')],
+    more: [C('shy', 'Я все карманные на неё потратил. Деду не говорите, ладно?'), M('thinking', 'Могила. Посмотрим, что можно сделать.', 'idea')],
+    leave: 'Только не потеряйте её! Я после школы зайду.',
+    done: [C('nervous', 'Ну что? Ну что?!'), M('proud', 'Экран и кнопки — новые. Можно рекорды ставить.', 'shock'), C('cheer', 'Огонь! Дед был прав — вы волшебник. Расскажу всему двору!')] },
+  { cust: 3, after: 2, faults: ['pads', 'speaker'], variant: 2,
+    intro: [C('wave', 'Здравствуйте! Тимур сказал, вы чините всё-всё!'), M('happy', 'Ну, почти всё. Показывай.', 'idea'),
+      C('explain', 'Папа сказал, что она сломалась навсегда. Это правда?')],
+    more: [C('shy', 'Я её не ронял! Ну… я на неё сок пролил. Чуть-чуть.'), M('thinking', 'Сок — это поправимо. Почистим.', 'idea')],
+    leave: 'Я буду каждый день приходить и смотреть!',
+    done: [C('nervous', 'Она… живая?'), M('proud', 'Живая. Кнопки отмыл, динамик новый. Только больше никакого сока!', 'shock'), C('cheer', 'Ура! Мама не поверит! Я её сейчас приведу!')] },
+  { cust: 2, after: 3, faults: ['shell', 'bezel'], variant: 0,
+    intro: [C('wave', 'Добрый вечер. Я мама Вани — он мне все уши про вас прожужжал.'), M('happy', 'Добрый вечер! Рад, что ему понравилось.', 'idea'),
+      C('explain', 'У меня тоже есть такая. Мой первый гаджет — хочу поставить её на стол в кабинете.')],
+    more: [C('explain', 'Её подарил отец, когда я была в пятом классе. Работает, но выглядит ужасно.'), M('thinking', 'Значит, корпус и стекло. Сделаю красиво.', 'idea')],
+    leave: 'Хорошо. Позвоните… то есть, я сама зайду.',
+    done: [C('nervous', 'Ну, показывайте.'), M('proud', 'Новый корпус и стекло. Как с витрины.', 'shock'), C('cheer', 'Быстро и аккуратно. Беру вашу визитку — расскажу коллегам.')] },
+  { cust: 4, after: 3, faults: ['speaker', 'wire'], variant: 1,
+    intro: [C('wave', 'Привет! Мне в офисе дали твою визитку. Говорят, ты чинишь Pocket Pal.'), M('happy', 'Чиню. Что стряслось?', 'idea'),
+      C('explain', 'Я музыкант. Хочу записать с неё восьмибитные звуки для альбома, а она то хрипит, то выключается.')],
+    more: [C('explain', 'У неё особенный писк. Новые так не умеют — я проверял.'), M('thinking', 'Похоже, отпаялся провод и сел динамик. Сделаю.', 'idea')],
+    leave: 'Без неё альбом не допишу. Жду!',
+    done: [C('nervous', 'Ну? Пищит?'), M('proud', 'Пищит как надо. Провод припаял, динамик заменил.', 'shock'), C('cheer', 'Вот это звук! Будет хит. Позову тебя на концерт!')] },
+  { cust: 5, after: 4, faults: ['screws', 'dial', 'bezel'], variant: 2,
+    intro: [C('wave', 'Добрый вечер. Я слышал трек одного молодого музыканта — там звучит ваша работа.'), M('happy', 'Лёва? Да, было дело.', 'idea'),
+      C('explain', 'Я коллекционер. Редкая расцветка, мне нужна в идеальном состоянии.')],
+    more: [C('explain', 'В коллекции таких две на весь город. Вторая у меня уже есть. Её кто-то вскрывал до вас — неаккуратно.'), M('thinking', 'Винты, колёсико, стекло. Сделаю без единой царапины.', 'idea')],
+    leave: 'Надеюсь на вашу аккуратность.',
+    done: [C('nervous', 'Позвольте взглянуть…'), M('proud', 'Все родные винты, колёсико и стекло новые.', 'shock'), C('cheer', 'Безупречно. Я ещё вернусь — и не один.')],
+    after2: [M('excited', 'Кажется, о киоске узнал весь район. Продолжение следует!')] },
+];
 const INTRO = [
   { who: 'hero', face: 'happy', text: 'Привет! Это мой киоск. Чиню старую электронику прямо на улице.' },
-  { who: 'hero', face: 'excited', text: 'Клиенты подходят к окошку сами. Выслушаю, возьму приставку — и за верстак.' },
-  { who: 'hero', face: 'focused', text: 'Запчасти и б/у приставки на разбор заказываю на компьютере — их привозит курьер.' },
+  { who: 'hero', face: 'excited', text: 'Выслушаю, возьму приставку — и за верстак.' },
+  { who: 'hero', face: 'focused', text: 'Соседи заходят к окошку сами, а остальные заказы приходят через интернет — на компьютере.' },
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
 function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
@@ -1750,13 +1855,14 @@ function walkAway(pose) {
   el.animate([{ transform: 'translateX(-50%)' }, { transform: `translateX(${-innerWidth * .5 - el.offsetHeight * .4 - 60}px)` }], { duration: 2400, easing: 'cubic-bezier(.5,0,.7,.6)', fill: 'forwards' })
     .finished.then(() => el.remove());
 }
+// the next chapter comes to the window once enough internet orders are done since the last one
+function storyDue() { const st = STORY[S.story.step]; return st && S.story.active == null && S.story.since >= st.after ? st : null; }
 function streetTick() {
   if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden) return;
-  const now = Date.now(), due = S.ready.find(r => r.at <= now);
-  const open = (J() && J().kind === 'order' ? 1 : 0) + S.shelf.filter(j => j.kind === 'order').length + S.ready.length;
+  const now = Date.now(), due = S.ready.find(r => r.at <= now), st = storyDue();
   if (due) S.visitor = { kind: 'pickup', id: due.id, cust: due.job.order.cust };
-  else if (open < 3) { const o = makeOrder(); S.visitor = { kind: 'order', order: o, cust: o.cust }; }
-  else { S.nextVisit = now + 15000; return; }
+  else if (st) S.visitor = { kind: 'story', step: S.story.step, cust: st.cust };
+  else { S.nextVisit = now + 10000; return; }
   S.nextVisit = 0; save();
   placeWalker(true).then(() => { if (S.mode === 'street' && $('novel').hidden && uiClosed()) converse(); });
   sfx.bell(); buzz(40);
@@ -1824,13 +1930,21 @@ function converse() {
   if (v.kind === 'pickup') {
     const r = S.ready.find(x => x.id === v.id);
     if (!r) { S.visitor = null; save(); walkAway(); return; }
-    const total = r.job.order.pay + r.tip;
-    return talk([
+    const total = r.job.order.pay + r.tip, st = STORY[r.job.order.story];
+    const pay = { who: 'cust', face: 'happy', pose: 'thanks', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` };
+    return talk(st ? [...st.done, pay] : [
       { who: 'cust', face: 'upset', pose: 'nervous', text: 'Здравствуйте! Ну как, получилось?' },
       { who: 'hero', face: 'proud', cpose: 'shock', text: 'Готово — работает как новенькая. Всё проверил.' },
-      { who: 'cust', face: 'happy', pose: 'cheer', text: c.thanks },
-      { who: 'cust', face: 'happy', pose: 'thanks', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` },
-    ], () => showPaid(r, () => leave(true)));
+      { who: 'cust', face: 'happy', pose: 'cheer', text: c.thanks }, pay,
+    ], () => showPaid(r, () => { leave(true); if (st && st.after2) setTimeout(() => talk(st.after2), 900); }));
+  }
+  if (v.kind === 'story') {
+    const st = STORY[v.step], o = { id: S.uid++, cust: st.cust, story: v.step, faults: st.faults, pay: orderPay(st.faults), variant: st.variant };
+    const decide = { who: 'hero', face: 'focused', cpose: 'think', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
+      { label: `Беру в работу · ${o.pay}`, act: () => talk([{ who: 'cust', face: 'happy', pose: 'thumbs', text: st.leave }], () => { S.story.active = v.step; accept(o); }) },
+      { label: 'Расскажите подробнее', act: () => talk([...st.more, decide]) },
+    ] };
+    return talk([...st.intro, { who: 'cust', face: 'upset', pose: 'sad', text: o.faults.map(f => FAULTS[f].hint).join(' ') }, { who: 'hero', face: 'thinking', cpose: 'nervous', text: 'Дайте-ка взгляну…' }, decide]);
   }
   const o = v.order;
   const decide = { who: 'hero', face: 'focused', cpose: 'think', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
