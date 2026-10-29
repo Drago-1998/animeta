@@ -284,7 +284,7 @@ body.street #c, body.street #task, body.street #tools, body.street #bench, body.
 .walker { position: absolute; left: 50%; top: 0; cursor: pointer; will-change: transform; }
 .walker .bob { height: 100%; transform-origin: 50% 100%; }
 .walker.walking .bob { animation: bob .42s ease-in-out infinite alternate; }
-.walker img { display: block; height: 100%; width: auto; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+.walker img { display: block; height: 100%; width: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
 @keyframes bob { from { transform: translateY(0) rotate(-1.2deg); } to { transform: translateY(-9px) rotate(1.2deg); } }
 #streetBar { position: fixed; z-index: 6; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: none; gap: 8px; }
 body.street #streetBar { display: flex; }
@@ -1955,6 +1955,9 @@ function placeWalker(walk) {
     $('walkers').appendChild(walker);
   }
   walker.style.height = h + 'px'; walker.style.top = top + 'px';
+  // size the box from the picture's own proportions: some browsers squeeze an auto-width image inside an absolutely placed box
+  const img = walker.querySelector('img'), fit = () => { if (img.naturalWidth) walker.style.width = (h * img.naturalWidth / img.naturalHeight) + 'px'; };
+  img.onload = fit; fit();
   if (!walk) { walker.style.transform = 'translateX(-50%)'; return Promise.resolve(); }
   walker.moving = true; walker.classList.add('walking');
   const from = innerWidth * .5 + h * .4 + 40;
