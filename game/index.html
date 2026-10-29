@@ -217,8 +217,8 @@ body.street #desk, body.mat #desk, body.pc #desk { display: none; }
 #pcDesk { position: absolute; overflow: hidden; background: #0f7f7a; display: flex; flex-direction: column; }
 #pcDesk::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: repeating-linear-gradient(rgba(0,0,0,.12) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 50% 45%, rgba(255,255,255,.12), rgba(0,0,0,.35) 100%); }
-.icons { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); align-content: center; justify-items: center; gap: 4px 0; padding: 6px; }
-.pcIcon { appearance: none; border: 0; background: none; cursor: pointer; width: 92px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+.icons { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); align-content: center; justify-items: center; gap: 4px 0; padding: 6px; }
+.pcIcon { appearance: none; border: 0; background: none; cursor: pointer; width: 88px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px;
   color: #fff; font: 800 12px/1.15 var(--body); text-shadow: 0 1px 0 #000; position: relative; }
 .pcIcon svg { width: 34px; height: 34px; filter: drop-shadow(1px 1px 0 rgba(0,0,0,.5)); }
 .pcIcon:active span { background: #0a246a; outline: 1px dotted #fff; }
@@ -257,6 +257,11 @@ body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.p
 .row .btn { padding: 12px 16px; font-size: 14px; }
 .row .eta { font: 700 14px/1 var(--display); color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .row .eta.late { color: var(--red); }
+.bar { height: 10px; border-radius: 5px; background: #e3d5bb; overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--mustard), var(--orange)); border-radius: 5px; }
+.upic { width: 48px; height: 48px; flex: none; border-radius: 12px; background: #eadcc3; display: grid; place-items: center; }
+.upic svg { width: 32px; height: 32px; }
+.row.owned { opacity: .7; }
 .ava.nick { background: #3a6ea5; color: #fff; display: grid; place-items: center; font: 700 22px/1 var(--display); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font: 800 12px/1 var(--body); padding: 5px 8px; border-radius: 8px; background: #efe2c8; color: #6b5238; }
@@ -356,6 +361,7 @@ body.street #streetBar { display: flex; }
       <button class="pcIcon" data-app="orders"><svg viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" fill="#fff" stroke="#333"/><path d="M10 10h12M10 15h12M10 20h8" stroke="#3a6ea5" stroke-width="2"/></svg><span>Заказы</span><span class="dot" id="ordersDot" hidden></span></button>
       <button class="pcIcon" data-app="market"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#3a6ea5" stroke="#123"/><path d="M4 16h24M16 4c-6 6-6 18 0 24M16 4c6 6 6 18 0 24" stroke="#bfe3ff" stroke-width="1.5" fill="none"/></svg><span>Барахолка</span></button>
       <button class="pcIcon" data-app="shop"><svg viewBox="0 0 32 32"><path d="M5 9h22l-2 14H7z" fill="#e7b04a" stroke="#5a3a10"/><path d="M11 9a5 5 0 0 1 10 0" stroke="#5a3a10" fill="none" stroke-width="2"/></svg><span>Запчасти</span></button>
+      <button class="pcIcon" data-app="upgrades"><svg viewBox="0 0 32 32"><path d="M19 5a6 6 0 0 0-7.5 7.5L4 20l4 4 7.5-7.5A6 6 0 0 0 23 9l-3.5 3.5-3-1-1-3z" fill="#c9ccd1" stroke="#333" stroke-linejoin="round"/></svg><span>Мастерская</span><span class="dot" id="upgDot" hidden></span></button>
       <button class="pcIcon" data-app="post"><svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="16" fill="#c9955a" stroke="#5a3a10"/><path d="M4 9l12 9 12-9" stroke="#5a3a10" fill="none"/></svg><span>Посылки</span><span class="dot" id="postDot" hidden></span></button>
     </div>
     <div class="taskbar"><b>Пуск</b><span id="pcClock">00:00</span></div>
@@ -366,7 +372,7 @@ body.street #streetBar { display: flex; }
     <div class="addr" id="addr"></div>
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="orders">Заказы</button><button role="tab" data-tab="market">Барахолка</button>
-      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="post">Посылки</button>
+      <button role="tab" data-tab="shop">Магазин</button><button role="tab" data-tab="upgrades">Мастерская</button><button role="tab" data-tab="post">Посылки</button>
     </div>
     <div id="tabBody"></div>
   </div>
@@ -597,13 +603,48 @@ const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 
 const SELL_PRICE = 70;
 // courier: how long a delivery takes, in seconds
 const DELIVERY = { part: 20, device: 25 };
+/* the workshop grows: tools speed up the work, the rest widens the business; rep: the reputation level needed */
+const UPGRADES = [
+  { id: 'driver', name: 'Электроотвёртка', desc: 'Винт откручивается и закручивается за пол-оборота.', price: 150, rep: 0, icon: 'driver' },
+  { id: 'lens', name: 'Лупа с подсветкой', desc: 'На коврике подсвечивает оставшуюся грязь.', price: 100, rep: 0, icon: 'lens' },
+  { id: 'brush', name: 'Щётка с растворителем', desc: 'Грязь счищается вдвое быстрее.', price: 120, rep: 0, icon: 'brush' },
+  { id: 'station', name: 'Паяльная станция', desc: 'Пайка вдвое быстрее.', price: 200, rep: 1, icon: 'iron' },
+  { id: 'meter', name: 'Мультиметр', desc: 'При включении показывает все поломки сразу, а не только первую.', price: 250, rep: 1, icon: 'meter' },
+  { id: 'screws', name: 'Подписка на винты', desc: 'Каждые 3 минуты курьер бесплатно привозит винты.', price: 180, rep: 1, icon: 'screw' },
+  { id: 'shelf1', name: 'Полка побольше', desc: 'Одновременно до 4 интернет-заказов.', price: 200, rep: 1, icon: 'shelf' },
+  { id: 'express', name: 'Экспресс-доставка', desc: 'Курьер ездит вдвое быстрее.', price: 300, rep: 2, icon: 'truck' },
+  { id: 'ad', name: 'Объявление в газете', desc: 'Интернет-заказы появляются чаще, в списке до 6.', price: 250, rep: 2, icon: 'paper' },
+  { id: 'shelf2', name: 'Стеллаж', desc: 'Одновременно до 5 интернет-заказов.', price: 400, rep: 3, icon: 'shelf', needs: 'shelf1' },
+];
+const has = id => !!S.upg[id];
+const UPG_ICONS = {
+  driver: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><rect x="4" y="12" width="14" height="9" rx="2" fill="#e07a35"/><path d="M18 15h6l4 1.5-4 1.5h-6z" fill="#c9ccd1"/><path d="M8 21v6h5v-6"/></svg>',
+  lens: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2.4"><circle cx="13" cy="13" r="8" fill="#fff6cf"/><path d="M19 19l9 9" stroke-linecap="round"/></svg>',
+  brush: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><path d="M22 4l6 6-9 9-6-6z" fill="#e7b04a"/><path d="M13 13l6 6-2 2c-1 4-5 7-11 7 1-6 4-10 7-11z" fill="#9fd3e3"/></svg>',
+  iron: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><rect x="3" y="20" width="14" height="8" rx="2" fill="#4f8f4a"/><path d="M10 20v-4l12-10 3 3-11 11" fill="#c9ccd1"/><circle cx="7" cy="24" r="1.5" fill="#ff5a3c"/></svg>',
+  meter: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><rect x="8" y="3" width="16" height="26" rx="3" fill="#e7b04a"/><rect x="11" y="6" width="10" height="6" fill="#bfe3c4"/><circle cx="16" cy="19" r="4" fill="#fff"/></svg>',
+  screw: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#c9ccd1" stroke="#7d828a" stroke-width="2"/><path d="M10 16h12M16 10v12" stroke="#3a3d44" stroke-width="3" stroke-linecap="round"/></svg>',
+  shelf: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2"><path d="M4 4v24M28 4v24M4 11h24M4 19h24M4 27h24"/><rect x="7" y="13" width="6" height="6" fill="#4f9a90"/><rect x="17" y="5" width="7" height="6" fill="#c4963f"/></svg>',
+  truck: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><path d="M2 8h16v13H2zM18 12h6l5 5v4H18z" fill="#e07a35"/><circle cx="8" cy="23" r="3" fill="#fff"/><circle cx="23" cy="23" r="3" fill="#fff"/></svg>',
+  paper: '<svg viewBox="0 0 32 32" fill="none" stroke="#3a2b1f" stroke-width="2" stroke-linejoin="round"><path d="M4 6h20v20H7a3 3 0 0 1-3-3z" fill="#f6ecd6"/><path d="M24 10h4v13a3 3 0 0 1-3 3"/><path d="M8 11h12M8 15h12M8 19h8"/></svg>',
+};
+const webCap = () => 3 + has('shelf1') + has('shelf2');
+const courierTime = secs => secs * (has('express') ? .5 : 1);
+// reputation: stars from orders add up; each level brings pricier internet orders and opens upgrades and chapters
+const LEVELS = [{ name: 'Новичок', at: 0 }, { name: 'Мастер двора', at: 12 }, { name: 'Мастер района', at: 35 }, { name: 'Известный мастер', at: 70 }, { name: 'Легенда', at: 120 }];
+const repLevel = () => LEVELS.reduce((l, L, i) => S.rep >= L.at ? i : l, 0);
+function gainRep(n) {
+  const before = repLevel(); S.rep = Math.max(0, S.rep + n); save();
+  const after = repLevel();
+  if (after > before) setTimeout(() => { sfx.shine(); buzz(80); notice('Новый уровень репутации: ' + LEVELS[after].name + '! Открылись улучшения.'); }, 1200);
+}
 
 /* ---------- save ---------- */
 const SAVE_KEY = 'retro-repair-v2';
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 4, bscrew: 2 }, tray: [], cup: { screw: 0, bscrew: 0 },
     orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
-    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null } };
+    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null }, rep: 0, upg: {}, screwNext: 0 };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
@@ -612,6 +653,7 @@ function migrate() {
   S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.nextCustomer = S.nextCustomer || 0; S.mode = S.mode || 'street';
   S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
   S.story = S.story || { step: 0, since: 0, active: null };
+  S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0;
   [S.job, ...S.shelf].filter(Boolean).forEach(j => PART_SLOTS.forEach(t => {
     if (!(t in j.slots)) j.slots[t] = { id: S.uid++, type: t, cond: 'ok', fresh: false, variant: j.variant };
   }));
@@ -625,7 +667,7 @@ const orderPay = faults => 15 + faults.reduce((a, f) => a + FAULTS[f].pay, 0);
 // who an order is for: a story character at the window, or a nickname from the internet
 const whoOf = o => o.nick || CUSTOMERS[o.cust].name;
 function randomFaults() {
-  const n = 1 + (Math.random() < .55 ? 1 : 0) + (S.ordersDone > 3 && Math.random() < .35 ? 1 : 0), used = new Set(), faults = [];
+  const lv = repLevel(), n = 1 + (Math.random() < .5 + lv * .1 ? 1 : 0) + (lv >= 1 && Math.random() < .2 + lv * .12 ? 1 : 0), used = new Set(), faults = [];
   Object.keys(FAULTS).sort(() => Math.random() - .5).forEach(f => {
     const slot = FAULTS[f].slot || f;
     if (faults.length < n && !used.has(slot)) { faults.push(f); used.add(slot); }
@@ -641,13 +683,17 @@ function makeWebOrder() {
   // no two open orders from the same person, or with the same story
   const open = [...S.web, ...[S.job, ...S.shelf, ...S.deliveries.map(d => d.what.job)].filter(j => j && j.order).map(j => j.order)];
   const free = (list, k) => list.filter(x => !open.some(o => o[k] === x));
-  return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, pay: Math.round(orderPay(faults) * .9), variant: Math.floor(Math.random() * VARIANTS.length),
+  return { id: S.uid++, nick: pick1(free(NICKS, 'nick').length ? free(NICKS, 'nick') : NICKS), note: pick1(free(WEB_NOTES, 'note').length ? free(WEB_NOTES, 'note') : WEB_NOTES), faults, pay: Math.round(orderPay(faults) * (.9 + repLevel() * .12)), variant: Math.floor(Math.random() * VARIANTS.length),
     mins: 3 + Math.round(faults.length * 1.5) };
 }
 function ensureWeb() {
   const now = Date.now();
-  if (S.web.length >= 4 || now < S.webNext) return;
-  S.web.push(makeWebOrder()); S.webNext = now + 25000 + Math.random() * 25000; S.webSeen = false; save(); renderNav();
+  if (has('screws') && now > S.screwNext) {
+    if (S.screwNext) { S.boxScrews.screw += 4; S.boxScrews.bscrew += 2; notice('Курьер по подписке привёз винты — они в коробке.'); if (!$('boxSheet').hidden) renderBox(); }
+    S.screwNext = now + 180000; save();
+  }
+  if (S.web.length >= (has('ad') ? 6 : 4) || now < S.webNext) return;
+  S.web.push(makeWebOrder()); S.webNext = now + (25000 + Math.random() * 25000) * (has('ad') ? .55 : 1); S.webSeen = false; save(); renderNav();
   if (!$('tablet').hidden && tab === 'orders') renderTablet();
 }
 function makeOffer() {
@@ -1072,7 +1118,7 @@ function turnScrew(e) {
     let da = a - d.last; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
     const tight = j.tight[d.slot], lift = SCREW[kindOf(d.slot)].lift, home = K.pose[d.slot].z;
     o.userData.progress = (o.userData.progress || 0) + Math.abs(da); d.acc += Math.abs(da);
-    const k = Math.min(1, o.userData.progress / NEED);
+    const k = Math.min(1, o.userData.progress / (has('driver') ? NEED / 5 : NEED));
     o.rotation.z += tight ? -Math.abs(da) : Math.abs(da);
     o.position.z = tight ? home - k * lift : home - lift + k * lift;
     if (d.acc > Math.PI / 6) { d.acc = 0; sfx.tick(); buzz(4); }
@@ -1310,7 +1356,7 @@ function matMove(e) {
     const d = Math.hypot(e.clientX - (m.lx ?? e.clientX), e.clientY - (m.ly ?? e.clientY)); m.lx = e.clientX; m.ly = e.clientY;
     const h = pick(e, [m.pivot]);
     if (h && h.object.name === 'grime' && h.object.userData.dirt > 0 && d) {
-      const g = h.object; g.userData.dirt -= d * .006; g.material.opacity = Math.max(0, g.userData.dirt) * .85 + .15;
+      const g = h.object; g.userData.dirt -= d * (has('brush') ? .012 : .006); g.material.opacity = Math.max(0, g.userData.dirt) * .85 + .15;
       m.scrub = (m.scrub || 0) + d; if (m.scrub > 40) { m.scrub = 0; sfx.scrub(); buzz(3); }
       if (g.userData.dirt <= 0) { g.visible = false; const p = toScreen(g); sparkle(p.x, p.y, 10); sfx.shine(); matCheck(); }
     }
@@ -1338,7 +1384,7 @@ function solderStep(dt) {
   const p = toScreen(j);
   if (m.solder.tick > .15) { m.solder.tick = 0; sfx.sizzle(); sparkle(p.x, p.y, 3, true); buzz(5); }
   j.material.emissiveIntensity = .6 + m.solder.t;
-  if (m.solder.t > 1.4) {
+  if (m.solder.t > (has('station') ? .7 : 1.4)) {
     m.solder = null;
     // rebuild the board with the wire back on its contact
     const rot = m.pivot.rotation.clone(), sc = m.pivot.scale.clone(), off = m.obj.position.clone();
@@ -1357,18 +1403,21 @@ async function powerTest() {
   await tween(.1, k => { p.position.z = z - .05 * (1 - k); });
   if (!assembled()) { busy = false; return say('Сначала собери приставку полностью и закрути все винты.', 'thinking'); }
   const issue = DIAG.find(d => j.slots[d.slot].cond === d.cond);
+  // the multimeter lists every problem, not only the first one the power test runs into
+  const meter = issue && has('meter') && DIAG.filter(d => j.slots[d.slot].cond === d.cond).length > 1
+    ? 'Мультиметр: ' + DIAG.filter(d => j.slots[d.slot].cond === d.cond).map(d => d.text).join(' ') : null;
   const led = K.materials.led;
   if (issue && !issue.boot) {
     if (issue.blink) { for (let i = 0; i < 3; i++) { led.emissive.setHex(0xe0200c); await wait(.12); led.emissive.setHex(0); await wait(.16); } }
     else { sfx.buzz(); await wait(.3); }
-    busy = false; return say(issue.text, 'worried');
+    busy = false; return say(meter || issue.text, 'worried');
   }
   led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c);
   if (!(issue && issue.mute)) sfx.boot();
   await tween(1.5, k => drawScreen(k * 1.6), k => k);
   if (issue) {
     await wait(.4); drawScreen(-1); led.emissive.setHex(0); led.color.setHex(0x5a1510);
-    busy = false; return say(issue.text, 'worried');
+    busy = false; return say(meter || issue.text, 'worried');
   }
   face($('hero'), 'laughing');
   await wait(.5); busy = false;
@@ -1392,6 +1441,7 @@ function shipOut(j, secs, stars) {
   const o = j.order, late = o.deadline && Date.now() > o.deadline;
   const tip = late ? 0 : [0, 0, 5, 10][stars], total = late ? Math.round(o.pay / 2) : o.pay + tip;
   S.job = null; S.ordersDone++; S.story.since++; save(); clearDevice();
+  const dRep = late ? -3 : stars; gainRep(dRep);
   const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
   const card = $('card');
   card.innerHTML = `<div class="card" role="dialog" aria-label="Заказ отправлен">
@@ -1401,7 +1451,8 @@ function shipOut(j, secs, stars) {
     <div class="stars">${star(!late && stars > 0)}${star(!late && stars > 1)}${star(!late && stars > 2)}</div>
     <div class="rows"><div><span>${esc(o.nick)}</span><span></span></div><div><span>Время работы</span><span>${mm}</span></div>
       <div><span>Оплата</span><span>${late ? Math.round(o.pay / 2) + ' (половина)' : o.pay}</span></div>
-      ${late ? '' : `<div><span>Бонус за скорость</span><span>+${tip}</span></div>`}<div class="total"><span>Итого</span><span>${total}</span></div></div>
+      ${late ? '' : `<div><span>Бонус за скорость</span><span>+${tip}</span></div>`}<div><span>Репутация</span><span>${dRep > 0 ? '+' : ''}${dRep} ★</span></div>
+      <div class="total"><span>Итого</span><span>${total}</span></div></div>
     <button class="btn" id="next">Дальше</button></div>`;
   card.hidden = false;
   face($('heroBig'), late ? 'worried' : ['relieved', 'happy', 'proud'][stars - 1]);
@@ -1419,11 +1470,12 @@ function showPaid(r, then) {
     <h2>Починено!</h2>
     <div class="stars">${star(r.stars > 0)}${star(r.stars > 1)}${star(r.stars > 2)}</div>
     <div class="rows"><div><span>${esc(c.name)}</span><span></span></div><div><span>Время работы</span><span>${mm}</span></div><div><span>Ремонт</span><span>${o.pay}</span></div>
-      <div><span>Чаевые за скорость</span><span>+${r.tip}</span></div><div class="total"><span>Итого</span><span>${total}</span></div></div>
+      <div><span>Чаевые за скорость</span><span>+${r.tip}</span></div><div><span>Репутация</span><span>+${r.stars + 2} ★</span></div>
+      <div class="total"><span>Итого</span><span>${total}</span></div></div>
     <button class="btn" id="next">Дальше</button></div>`;
   card.hidden = false;
   face($('heroBig'), ['relieved', 'happy', 'proud'][r.stars - 1]);
-  S.ready = S.ready.filter(x => x !== r); S.ordersDone++;
+  S.ready = S.ready.filter(x => x !== r); S.ordersDone++; gainRep(r.stars + 2);
   if (o.story != null && S.story.active === o.story) { S.story.step = o.story + 1; S.story.since = 0; S.story.active = null; }
   save();
   flyCoins(total);
@@ -1476,7 +1528,7 @@ async function shelve() {
   busy = false; refreshHint(true); say('Отложил на полку. Вернуть — коробка на столе → «На стол».', 'happy');
 }
 function deliver(what, secs, label) {
-  S.deliveries.push({ id: S.uid++, eta: Date.now() + secs * 1000, what, label }); save(); renderCourier();
+  S.deliveries.push({ id: S.uid++, eta: Date.now() + courierTime(secs) * 1000, what, label }); save(); renderCourier();
 }
 function arrive(d) {
   const w = d.what;
@@ -1551,6 +1603,8 @@ function renderNav() {
   $('dotPc').hidden = S.webSeen || here === 'pc';
   $('postDot').hidden = !S.deliveries.length;
   $('ordersDot').hidden = S.webSeen;
+  const canBuy = UPGRADES.some(u => !has(u.id) && repLevel() >= u.rep && (!u.needs || has(u.needs)) && S.money >= u.price);
+  $('upgDot').hidden = !canBuy;
 }
 // painted backdrops are 941×1672 portraits: cover the screen with them and map picture pixels to screen pixels
 const ART = {};
@@ -1612,7 +1666,7 @@ const SHOP = [
 function renderTablet() {
   renderMoney();
   document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
-  $('addr').textContent = { orders: 'http://www.retro-remont.ru/zakazy', market: 'http://www.baraholka.ru/pristavki', shop: 'http://www.zapchasti-opt.ru/', post: 'http://www.kurier-ekspress.ru/track' }[tab];
+  $('addr').textContent = { orders: 'http://www.retro-remont.ru/zakazy', market: 'http://www.baraholka.ru/pristavki', shop: 'http://www.zapchasti-opt.ru/', post: 'http://www.kurier-ekspress.ru/track', upgrades: 'http://www.instrument-master.ru/' }[tab];
   const body = $('tabBody'), now = Date.now();
   let h = '';
   if (tab === 'orders') {
@@ -1630,13 +1684,26 @@ function renderTablet() {
       h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${where}</span></div>${due(o) || price(o.pay)}</div>
         <p class="quote">«${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
     });
-    const busyWeb = rows.filter(([o]) => o.nick).length;
+    const busyWeb = rows.filter(([o]) => o.nick).length, cap = webCap();
     h += '<div class="sec">Новые заказы</div>';
     if (!S.web.length) h += '<p class="note">Новых заказов нет. Загляни попозже.</p>';
     S.web.forEach(o => {
       h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>срок ${o.mins} мин после заказа</span></div>${price(o.pay)}</div>
         <p class="quote">«${esc(o.note)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
-        <button class="btn" data-web="${o.id}" ${busyWeb >= 3 ? 'disabled' : ''}>${busyWeb >= 3 ? 'Сначала закончи начатые' : 'Взять заказ'}</button></div>`;
+        <button class="btn" data-web="${o.id}" ${busyWeb >= cap ? 'disabled' : ''}>${busyWeb >= cap ? `Полка занята (${cap}) — закончи начатые` : 'Взять заказ'}</button></div>`;
+    });
+  } else if (tab === 'upgrades') {
+    const lv = repLevel(), next = LEVELS[lv + 1];
+    const pct = next ? Math.round((S.rep - LEVELS[lv].at) / (next.at - LEVELS[lv].at) * 100) : 100;
+    h += `<div class="row"><div class="top"><div class="meta"><b>${LEVELS[lv].name}</b><span>Репутация ${S.rep} ★${next ? ` · до «${next.name}» ещё ${next.at - S.rep}` : ' · высший уровень'}</span></div></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <p class="note">Звёзды дают за каждый заказ, за опоздание — минус 3. Чем выше репутация, тем дороже и сложнее заказы.</p></div>`;
+    h += '<div class="sec">Инструменты и улучшения</div>';
+    UPGRADES.forEach(u => {
+      const own = has(u.id), locked = lv < u.rep || (u.needs && !has(u.needs));
+      h += `<div class="row${own ? ' owned' : ''}"><div class="top"><div class="upic">${UPG_ICONS[u.icon]}</div>
+        <div class="meta"><b>${esc(u.name)}</b><span>${esc(u.desc)}</span></div>${own ? '<span class="tag">куплено</span>' : price(u.price)}</div>
+        ${own ? '' : `<button class="btn" data-upg="${u.id}" ${locked || S.money < u.price ? 'disabled' : ''}>${locked ? (lv < u.rep ? 'Нужна репутация: ' + LEVELS[u.rep].name : 'Сначала: полка побольше') : 'Купить'}</button>`}</div>`;
     });
   } else if (tab === 'market') {
     h += '<p class="note">Б/у приставки на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочую можно перепродать.</p>';
@@ -1673,7 +1740,11 @@ function shopClick(e) {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   initAudio(); toastHost = e.currentTarget;
   const renderTablet = () => { if (!$('tablet').hidden) window.__renderTablet(); if (!$('boxSheet').hidden) renderBox(); };
-  if (b.dataset.web) {
+  if (b.dataset.upg) {
+    const u = UPGRADES.find(x => x.id === b.dataset.upg); if (!u || has(u.id) || S.money < u.price || repLevel() < u.rep) return;
+    S.money -= u.price; S.upg[u.id] = true; if (u.id === 'screws') S.screwNext = Date.now() + 1000;
+    save(); sfx.coin(); sfx.shine(); renderTablet(); renderNav(); toast(u.name + ' — теперь в мастерской');
+  } else if (b.dataset.web) {
     const o = S.web.find(x => x.id === +b.dataset.web); if (!o) return;
     S.web = S.web.filter(x => x !== o); o.deadline = Date.now() + o.mins * 60000;
     deliver({ kind: 'job', job: makeJob('order', o) }, DELIVERY.device, 'приставка от ' + o.nick);
@@ -1715,6 +1786,8 @@ function frame(now) {
     if (k >= 1) { tweens.splice(i, 1); tw.res(); }
   }
   holder.rotation.y = Math.sin(clock * .6) * .04;
+  // the lit magnifier makes leftover dirt glow on the mat
+  if (onMat && has('lens')) { const k = .55 + .45 * Math.sin(clock * 5); onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) o.material.color.setRGB(1, 1, .45 + .55 * k); }); }
   holder.position.y = Math.sin(clock * 1.1) * .03;
   const bat = objs.get('battery');
   if (bat && J() && J().slots.battery && J().slots.battery.cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
@@ -1776,19 +1849,19 @@ const STORY = [
     more: [C('shy', 'Я её не ронял! Ну… я на неё сок пролил. Чуть-чуть.'), M('thinking', 'Сок — это поправимо. Почистим.', 'idea')],
     leave: 'Я буду каждый день приходить и смотреть!',
     done: [C('nervous', 'Она… живая?'), M('proud', 'Живая. Кнопки отмыл, динамик новый. Только больше никакого сока!', 'shock'), C('cheer', 'Ура! Мама не поверит! Я её сейчас приведу!')] },
-  { cust: 2, after: 3, faults: ['shell', 'bezel'], variant: 0,
+  { cust: 2, after: 3, lvl: 1, faults: ['shell', 'bezel'], variant: 0,
     intro: [C('wave', 'Добрый вечер. Я мама Вани — он мне все уши про вас прожужжал.'), M('happy', 'Добрый вечер! Рад, что ему понравилось.', 'idea'),
       C('explain', 'У меня тоже есть такая. Мой первый гаджет — хочу поставить её на стол в кабинете.')],
     more: [C('explain', 'Её подарил отец, когда я была в пятом классе. Работает, но выглядит ужасно.'), M('thinking', 'Значит, корпус и стекло. Сделаю красиво.', 'idea')],
     leave: 'Хорошо. Позвоните… то есть, я сама зайду.',
     done: [C('nervous', 'Ну, показывайте.'), M('proud', 'Новый корпус и стекло. Как с витрины.', 'shock'), C('cheer', 'Быстро и аккуратно. Беру вашу визитку — расскажу коллегам.')] },
-  { cust: 4, after: 3, faults: ['speaker', 'wire'], variant: 1,
+  { cust: 4, after: 3, lvl: 1, faults: ['speaker', 'wire'], variant: 1,
     intro: [C('wave', 'Привет! Мне в офисе дали твою визитку. Говорят, ты чинишь Pocket Pal.'), M('happy', 'Чиню. Что стряслось?', 'idea'),
       C('explain', 'Я музыкант. Хочу записать с неё восьмибитные звуки для альбома, а она то хрипит, то выключается.')],
     more: [C('explain', 'У неё особенный писк. Новые так не умеют — я проверял.'), M('thinking', 'Похоже, отпаялся провод и сел динамик. Сделаю.', 'idea')],
     leave: 'Без неё альбом не допишу. Жду!',
     done: [C('nervous', 'Ну? Пищит?'), M('proud', 'Пищит как надо. Провод припаял, динамик заменил.', 'shock'), C('cheer', 'Вот это звук! Будет хит. Позову тебя на концерт!')] },
-  { cust: 5, after: 4, faults: ['screws', 'dial', 'bezel'], variant: 2,
+  { cust: 5, after: 4, lvl: 2, faults: ['screws', 'dial', 'bezel'], variant: 2,
     intro: [C('wave', 'Добрый вечер. Я слышал трек одного молодого музыканта — там звучит ваша работа.'), M('happy', 'Лёва? Да, было дело.', 'idea'),
       C('explain', 'Я коллекционер. Редкая расцветка, мне нужна в идеальном состоянии.')],
     more: [C('explain', 'В коллекции таких две на весь город. Вторая у меня уже есть. Её кто-то вскрывал до вас — неаккуратно.'), M('thinking', 'Винты, колёсико, стекло. Сделаю без единой царапины.', 'idea')],
@@ -1856,7 +1929,7 @@ function walkAway(pose) {
     .finished.then(() => el.remove());
 }
 // the next chapter comes to the window once enough internet orders are done since the last one
-function storyDue() { const st = STORY[S.story.step]; return st && S.story.active == null && S.story.since >= st.after ? st : null; }
+function storyDue() { const st = STORY[S.story.step]; return st && S.story.active == null && S.story.since >= st.after && repLevel() >= (st.lvl || 0) ? st : null; }
 function streetTick() {
   if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden) return;
   const now = Date.now(), due = S.ready.find(r => r.at <= now), st = storyDue();
