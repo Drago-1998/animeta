@@ -587,7 +587,8 @@ const CUSTOMERS = [
   { name: 'Лёва', who: 'музыкант', face: 8, fig: 'hipster', scale: 1.05, poses: true,
     alias: { thumbs: 'relax', proud: 'relax', idea: 'guitar', shy: 'laugh', sad: 'explain', nervous: 'think', thanks: 'listen' }, story: 'Хочу записывать с неё восьмибитные звуки для альбома.',
     more: 'У неё особенный писк. Новые так не умеют — я проверял.', leave: 'Без неё альбом не допишу. Жду!', thanks: 'Вот это звук! Будет хит.' },
-  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, fig: 'collector', scale: 1.08, story: 'Редкая расцветка, мне нужна в идеальном состоянии.',
+  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, fig: 'collector', scale: 1.08, poses: true,
+    alias: { sad: 'hmm', nervous: 'mouth', thumbs: 'offer', angry: 'proud' }, story: 'Редкая расцветка, мне нужна в идеальном состоянии.',
     more: 'В коллекции таких две на весь город. Вторая у меня уже есть.', leave: 'Надеюсь на вашу аккуратность.', thanks: 'Безупречно. Я ещё вернусь.' },
 ];
 const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
@@ -1492,6 +1493,7 @@ document.querySelector('#pcDesk .icons').addEventListener('click', e => { const 
 function closePC() { $('tablet').hidden = true; document.body.classList.remove('pc'); renderNav(); refreshHint(); }
 function go(m) {
   initAudio();
+  if (!$('novel').hidden) { sfx.nope(); return notice('Сначала договори с клиентом.'); }
   if (m === 'pc') return $('tablet').hidden && openTablet();
   const wasPc = !$('tablet').hidden; if (wasPc) closePC();
   if (m !== S.mode || wasPc) { sfx.tick(); setMode(m); }
@@ -1575,7 +1577,7 @@ function renderTablet() {
     if (!rows.length) h += '<p class="note">Пока ничего. Загляни к окошку — может, кто-то уже ждёт.</p>';
     rows.forEach(([j, where]) => {
       const c = CUSTOMERS[j.order.cust];
-      h += `<div class="row"><div class="top"><div class="ava" style="background-position-x:${-c.face * 48}px"></div>
+      h += `<div class="row"><div class="top"><div class="ava" style="${c.poses ? `background-image:url('${figSrc(c, 'neutral')}');background-size:auto 165px;background-position:50% 3px` : `background-position-x:${-c.face * 48}px`}"></div>
         <div class="meta"><b>${esc(c.name)}</b><span>${where}</span></div>${price(j.order.pay)}</div>
         <p class="quote">«${j.order.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
     });
