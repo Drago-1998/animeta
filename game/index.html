@@ -808,10 +808,10 @@ function situation() {
     return ['Верстак', 'Пусто. Клиенты подходят к окошку сами.'];
   }
   const title = jobTitle(j);
-  if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Переверни приставку, чтобы её разобрать.'];
+  if (j.side === 'front') return [title, assembled() ? 'Собрана. Нажми красную кнопку питания.' : 'Поверни приставку пальцем — проведи вбок.'];
   const tight = SCREW_SLOTS.filter(s => filled(s) && j.tight[s]), loose = SCREW_SLOTS.filter(s => filled(s) && !j.tight[s]);
   if (loose.length) return [title, 'Закрути винт — крути пальцем по кругу.'];
-  if (filled('cover') && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Переверни и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
+  if (filled('cover') && tight.some(s => s.startsWith('screw'))) return [title, assembled() ? 'Всё на месте. Поверни лицом и проверь.' : 'Открути винты — крути пальцем по кругу вокруг винта.'];
   if (filled('cover')) return [title, 'Поставь винты из чашки и закрути их.'];
   return [title, 'Снимай детали, смотри, что сломано. Ставь их обратно, перетаскивая со стола.'];
 }
@@ -838,7 +838,8 @@ function setHint(kind, obj, at, dir) {
 }
 function tutorial() {
   const j = J();
-  if (!j || onMat || S.ordersDone > 0 || j.opened || j.side !== 'back' || drag) return setHint(null);
+  if (!j || onMat || S.ordersDone > 0 || j.opened || drag) return setHint(null);
+  if (j.side === 'front') return setHint('drag', device, new V3(0, 0, .4), [120, 0]);
   const tight = ['screw_1', 'screw_2', 'screw_3', 'screw_4'].find(s => filled(s) && j.tight[s]);
   if (filled('cover') && tight) return setHint('spin', objs.get(tight));
   if (filled('cover') && !SCREW_SLOTS.slice(0, 4).some(filled)) return setHint('drag', device, new V3(0, -.3, -.4), [0, -90]);
@@ -913,7 +914,6 @@ function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'
 function renderActions() {
   const j = J(), el = $('benchActions'), html = [];
   if (j) {
-    html.push(`<button class="pill" id="flipBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Перевернуть</button>`);
     html.push('<button class="pill" id="shelfBtn">На полку</button>');
     if (j.kind === 'donor') html.push('<button class="pill" id="finishBtn">Разобрать до конца</button>');
   }
@@ -924,7 +924,6 @@ function renderActions() {
 $('benchActions').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || busy) return;
   initAudio();
-  if (b.id === 'flipBtn') flip();
   if (b.id === 'shelfBtn') shelve();
   if (b.id === 'finishBtn') askFinishDonor();
 });
@@ -944,14 +943,31 @@ function sparkle(x, y, n = 10, hot) {
 let busy = false, drag = null;
 const NEED = Math.PI * 2.5;
 
-async function flip() {
-  const j = J(); if (!j || busy) return;
-  busy = true; sfx.whoosh(); setHint(null);
-  const from = device.rotation.y;
-  await tween(.8, k => { device.rotation.y = from + Math.PI * k; holder.position.z = Math.sin(k * Math.PI) * 1.0; }, ease.inOut);
-  j.side = j.side === 'back' ? 'front' : 'back';
-  device.rotation.y = j.side === 'back' ? Math.PI : 0;
-  busy = false; save(); refreshHint(true);
+/* turning the gadget with the hand: it follows the finger, then settles face or back up; a quick flick turns it over */
+function startTurn(e, onTap) {
+  drag = { type: 'turn', x0: e.clientX, last: e.clientX, t: performance.now(), v: 0, r0: device.rotation.y, moved: false, onTap };
+  canvas.setPointerCapture(e.pointerId); setHint(null);
+}
+function turnMove(e) {
+  const d = drag, now = performance.now(), dt = Math.max(1, now - d.t);
+  if (!d.moved && Math.abs(e.clientX - d.x0) < 8) return;
+  if (!d.moved) { d.moved = true; sfx.tick(); }
+  d.v = d.v * .6 + ((e.clientX - d.last) / dt) * .4; d.last = e.clientX; d.t = now;
+  device.rotation.y = d.r0 + (e.clientX - d.x0) * .011;
+  holder.position.z = Math.min(.8, Math.abs(Math.sin(device.rotation.y)) * .8);
+}
+async function endTurn(d) {
+  if (!d.moved) return d.onTap && d.onTap();
+  const j = J(), r = device.rotation.y, fling = d.v * .011 * 180; // px/ms → radians the spin would carry on
+  const target = Math.round((r + Math.max(-1.6, Math.min(1.6, fling))) / Math.PI) * Math.PI;
+  busy = true;
+  const r1 = holder.position.z;
+  await tween(.32, k => { device.rotation.y = r + (target - r) * k; holder.position.z = r1 * (1 - k); }, ease.out);
+  busy = false;
+  const side = Math.abs(Math.round(target / Math.PI)) % 2 ? 'back' : 'front';
+  device.rotation.y = side === 'back' ? Math.PI : 0; holder.position.z = 0;
+  if (side !== j.side) { j.side = side; save(); sfx.whoosh(); buzz(15); }
+  refreshHint(true);
 }
 
 function nearestScrew(e) {
@@ -977,15 +993,17 @@ canvas.addEventListener('pointerdown', e => {
   const j = J(); if (!j) return;
   if (tool !== 'hand') return say('Кисть и паяльник — для работы на коврике. Возьми «Руку», чтобы разбирать.', 'thinking');
   if (j.side === 'front') {
-    if (objs.get('power') && pick(e, [powerHit, objs.get('power')])) powerTest();
-    else if (pick(e, [device])) say('Переверни приставку, чтобы разобрать её.', 'thinking');
-    return;
+    if (objs.get('power') && pick(e, [powerHit, objs.get('power')])) return powerTest();
+    const onDev = pick(e, [device]);
+    return startTurn(e, () => { if (onDev) say('Проведи пальцем вбок, чтобы повернуть приставку.', 'thinking'); });
   }
   const s = nearestScrew(e);
   if (s) { drag = { type: 'screw', slot: s, last: null, acc: 0 }; canvas.setPointerCapture(e.pointerId); setHint(null); return; }
-  const slot = partAt(e); if (!slot) return;
+  const slot = partAt(e);
+  if (!slot) return startTurn(e);
   const b = blockers(slot);
-  if (b.length) { refuse(slot, slot === 'shell' ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'); return; }
+  // a part that cannot come off yet: a swipe turns the gadget, a tap says what is in the way
+  if (b.length) return startTurn(e, () => refuse(slot, slot === 'shell' ? 'Корпус снимают последним — сначала разбери всё, что в нём держится.' : 'Сначала ' + blockerText(b) + '.'));
   const o = objs.get(slot), at = pointerLocal(e, o.position.z); if (!at) return;
   drag = { type: 'part', slot, obj: o, start: o.position.clone(), grab: at.sub(o.position), z: o.position.z };
   canvas.setPointerCapture(e.pointerId); setHint(null); sfx.tick();
@@ -993,7 +1011,8 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   if (onMat) return matMove(e);
   if (!drag) return;
-  if (drag.type === 'screw') turnScrew(e);
+  if (drag.type === 'turn') turnMove(e);
+  else if (drag.type === 'screw') turnScrew(e);
   else if (drag.type === 'part') {
     const d = drag, at = pointerLocal(e, d.z); if (!at) return;
     d.obj.position.x = at.x - d.grab.x; d.obj.position.y = at.y - d.grab.y;
@@ -1005,6 +1024,7 @@ const endPointer = () => {
   if (onMat) return matUp();
   if (!drag) return;
   const d = drag; drag = null;
+  if (d.type === 'turn') return endTurn(d);
   if (d.type === 'part') releasePart(d);
   refreshHint();
 };
@@ -1049,7 +1069,7 @@ function screwHome(slot) {
   const j = J(), o = objs.get(slot);
   j.tight[slot] = true; o.userData.progress = 0; o.position.z = K.pose[slot].z;
   sfx.clunk(); buzz(25); save();
-  if (assembled()) say('Готово, всё собрано! Переверни и проверь кнопкой питания.', 'proud');
+  if (assembled()) say('Готово, всё собрано! Поверни лицом и проверь кнопкой питания.', 'proud');
   refreshHint();
 }
 
@@ -1105,7 +1125,7 @@ function dropOnDevice(x, y, what) {
   const j = J();
   if (!j) return say('На столе нет приставки. Возьми её с полки: коробка на столе → «На стол».', 'thinking');
   if (!overDevice(x, y)) return;
-  if (j.side === 'front') return say('Переверни приставку — детали ставят сзади.', 'thinking');
+  if (j.side === 'front') return say('Поверни приставку пальцем — детали ставят сзади.', 'thinking');
   if (what.kind) {
     let best = null, bd = 70;
     SCREW_SLOTS.filter(s => kindOf(s) === what.kind && !filled(s)).forEach(s => {
@@ -1395,7 +1415,7 @@ function putOnBench(job) {
   holder.scale.setScalar(.01);
   tween(.5, k => holder.scale.setScalar(Math.max(.01, k)), ease.back);
   sfx.pop();
-  say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. Нажми кнопку питания или переверни, чтобы открыть.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
+  say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. Нажми кнопку питания или поверни её пальцем.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
   refreshHint();
 }
 async function shelve() {
