@@ -1,0 +1,62 @@
+/* Pixel fonts for the gadgets' little LCDs: one bit per pixel, so text stays crisp when the screen is scaled up.
+   Generated from the X11 bitmap fonts koi6x10 (small) and Cronyx Helvetica Bold 11 (bold), letters cut to their ink
+   and set one pixel apart. Each glyph: its width, then its columns, each in as many base-64 digits as the cell needs, the low bit at the top row. */
+(function () {
+'use strict';
+const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const CHARS = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u0410\u0411\u0412\u0413\u0414\u0415\u0401\u0416\u0417\u0418\u0419\u041a\u041b\u041c\u041d\u041e\u041f\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042a\u042b\u042c\u042d\u042e\u042f\u0430\u0431\u0432\u0433\u0434\u0435\u0451\u0436\u0437\u0438\u0439\u043a\u043b\u043c\u043d\u043e\u043f\u0440\u0441\u0442\u0443\u0444\u0445\u0446\u0447\u0448\u0449\u044a\u044b\u044c\u044d\u044e\u044f';
+const FONTS = { small: { h: 10, base: 8, space: 3, data: 'BC+DAOAAAOFAoD+AoD+AoFAIBUD+BUAgFDEAqBUCoBGFBsCSCsBACgDAIAGACDA4BECCDCCBEA4FBUA4AQA4BUFAQAQB8AQAQDEADABAFAQAQAQAQAQCDADAFDAAgAQAIAGFA4BECCBEA4FCICED+CACAFDECiCSCSCMFBCCCCSCaBmFAwAoAkD+AgFBeCSCKCKByFB4CkCSCSBgFACDCAiAaAGFBsCSCSCSBsFAMCSCSBKA8CDMDMCHMDMEAQAoBECCFAoAoAoAoAoECCBEAoAQFAEACCyAKAEFB8CCCyCqAcFD4AkAiAkD4FCCD+CSCSBsFB8CCCCCCBEFCCD+CCCCB8FD+CSCSCSCCFD+ASASASACFB8CCCCCiBkFD+AQAQAQD+DCCD+CCFBACACCCCB+FD+AQAoBECCFD+CACACACAFD+AIAQAID+FD+AIAQAgD+FB8CCCCCCB8FD+ASASASAMFB8CCDCCCF8FD+ASAyBSCMFBMCSCSCSBkFACACD+ACACFB+CACACAB+FAOBwCABwAOFD+BAAwBAD+FDGAoAQAoDGFAGAIDwAIAGFDCCiCSCKCGDD+CCCCFAGAIAQAgDADCCCCD+FAIAEACAEAIFEAEAEAEAEADACAGAIFBACoCoCoDwFD+BQCICIBwFBwCICICIBQFBwCICIBQD+FBwCoCoCoAwFAQD8ASASAEFFQKoKoKQEIFD+AQAIAIDwDCID6CAEGAIAIIH6FD+AgAgBQCIDCCD+CAFD4AIBwAIDwFD4AQAIAIDwFBwCICICIBwFP4AwBIBIAwFAwBIBIAwP4FD4AQAIAIAQFCQCoCoCoBAFAIB+CICIBAFB4CACABAD4FAYBgCABgAYFB4CABgCAB4FCIBQAgBQCIFE4JAJAIgH4FCIDICoCYCIEAQBUCqCCBD+ECCCqBUAQFAMACAEAIAGFD4AkAiAkD4FD+CSCSCSBgFD+CSCSCSBsFD+ACACACACFGADwCMCCH+FD+CSCSCSCCFD8CVCUCVCEFDuAQD+AQDuFBECCCSCSBsFD+AgAQAID+FD8AhASAJD8FD+AQAoBECCFCAB8ACACD+FD+AIAQAID+FD+AQAQAQD+FB8CCCCCCB8FD+ACACACD+FD+ASASASAMFB8CCCCCCBEFACACD+ACACFCOBQAgAQAOFA4BED+BEA4FDGAoAQAoDGFD+CACAD+OAFAOAQAQAQD+FD+CAD+CAD+FD+CAD+CAP+FACD+CQCQBgFD+CQCQBgD+ED+CQCQBgFBECCCSCSB8FD+AQB8CCB8FCMBSAyASD+FBACoCoCoDwFB0CKCKCKByFD4CoCoCoBQED4AIAIAIFGADwCID4GAFBwCoCoCoAwFBwCqCoCqAwFDYAgD4AgDYFBQCICoCoBQFD4BAAgAQD4FD4BCAkASD4FD4AgAgBQCIFCABwAIAID4FD4AQAgAQD4FD4AgAgAgD4FBwCICICIBwFD4AIAIAID4FP4BQCICIBwFBwCICICIBQFAIAID4AIAIFE4JAJAJAH4FBwCIP+CIBwFCIBQAgBQCIFD4CACAD4OAFAYAgAgAgD4FD4CAD4CAD4FD4CAD4CAP4FAID4CgCgBAFD4CgCgBAD4ED4CgCgBAFBQCICoCoBwFD4AgBwCIBwFDQAoAoAoD4' }, bold: { h: 13, base: 11, space: 4, data: 'CAX8AX8EAAcAAcAAcAAcGAEQAf8Af8Af8Af8AEQGAIwAZ4A/8A/8AeYAMQIAIIAMcAGUALcAdoAUwAcYAIIGAOYAf8AT8AeYAeAASACAAcAAcDA/4B/8BAEDBAEB/8A/4EAAoAA4AA4AAoGACAACAAPgAPgACAACADAgAAwAAQADACAACAACACAQAAQADAeAAf8AB8GAP4Af8AQEAQEAf8AP4EAAIAAIAf8Af8GAYIAcMAWEATEAR8AQ4GAIIAYMAREAREAf8AO4GAGAAHgAF4Af8Af8AEAGAJ8AZ8AQkAQkAfkAPEGAP4Af8AREAREAfMAOIGAAEAcEAfEAD0AA8AAMGAO4Af8AREAREAf8AO4GAI4AZ8AREAREAf8AP4CAQgAQgDAgAAwgAQgFACAAHAANgAYwAQQGAFAAFAAFAAFAAFAAFAFAQQAYwANgAHAACAGAAIAAMAWEAXEAB8AA4LAHgAf4AYYAzMAnkAkkAnkAnsAkYAH4AHgIAYAAfAAHwAE8AE8AHwAfAAYAGAf8Af8AREAREAf8AO4HAP4Af8AQEAQEAQEAYMAIIHAf8Af8AQEAQEAYMAP4AHwGAf8Af8AREAREAREAQEGAf8Af8ABEABEABEAAEHAP4Af8AQEAREAZEAfMAfIHAf8Af8ABAABAABAAf8Af8CAf8Af8FAMAAcAAQAAf8AP8HAf8Af8ADwAGYAMMAYEAQAGAf8Af8AQAAQAAQAAQAIAf8Af8ADwAPAAPAADwAf8Af8HAf8Af8AB4ADgAOAAf8Af8HAP4Af8AQEAQEAQEAf8AP4HAf8Af8ABEABEABEAB8AA4HAP4Af8AQEAUEAcEA/8Av4HAf8Af8ABEABEABEAf8Ae4GAI4AZ8AREAREAfMAOIGAAEAAEAf8Af8AAEAAEHAP8Af8AQAAQAAQAAf8AP8IAAMAB8AHwAeAAeAAHwAB8AAMMAAMAB8AHwAeAAeAAHwAHwAeAAeAAHwAB8AAMIAYMAccAGwADgADgAGwAccAYMIAAMAAcAAwAfgAfgAAwAAcAAMIAYEAcEAWEATEARkAQ0AQcAQMDB/8B/8BAEDAB8A/8A+ADBAEB/8B/8GAAIAAMAAGAAGAAMAAIHBAABAABAABAABAABAABAADAAEAAMAAIGAMAAegASgASgAfgAfAGAf8Af8AQgAQgAfgAPAGAPAAfgAQgAQgAZgAJAGAPAAfgAQgAQgAf8Af8GAPAAfgASgASgAbgALADAf4Af8AAkGBPABfgBQgBQgB/gA/gGAf8Af8ABgAAgAfgAfACAfkAfkCB/kB/kGAf8Af8AHAANgAYgAQACAf8Af8IAfgAfgAAgAfgAfgAAgAfgAfAGAfgAfgABgAAgAfgAfAGAPAAfgAQgAQgAfgAPAGB/gB/gAQgAQgAfgAPAGAPAAfgAQgAQgB/gB/gDAfgAfgAAgFAJAAbgAWgAdgAJADAP4Af4AQgGAPgAfgAQAAYAAfgAfgGABgAHgAeAAeAAHgABgIAHgAfgAeAAHgAHgAeAAfgAHgFAZgAfgAGAAfgAZgGBAABHgB/gA4AAPgAHgFAYgAcgAWgATgARgEABAAf8A++AgCCA/8A/8EAgCA++Af8ABAGAAQAAYAAYAAYAAYAAIIAYAAfAAHwAE8AE8AHwAfAAYAGAf8Af8AREAREAfEAOEGAf8Af8AREAREAf8AO4GAf8Af8AAEAAEAAEAAEJAwAA4AAf8AX8AQEAQEAf8A/8AwAGAf8Af8AREAREAREAQEGAf8Af9ARFARFARFAQEMAQEAYMAMYAHwADgAf8Af8ADgAHwAMYAYMAQEGAIIAZMAREARkAf8AOYHAf8Af8APAADgAA4Af8Af8HAf8Af9APDADiAA7Af9Af8HAf8Af8ADwAGYAMMAYEAQAHAQAAf4AP8AAEAAEAf8Af8IAf8Af8ADwAPAAPAADwAf8Af8HAf8Af8ABAABAABAAf8Af8HAP4Af8AQEAQEAQEAf8AP4HAf8Af8AAEAAEAAEAf8Af8HAf8Af8ABEABEABEAB8AA4HAP4Af8AQEAQEAQEAYMAIIGAAEAAEAf8Af8AAEAAEIAQMAYcAMwAHgADgAAwAAcAAMIAH4AP8AIEAf+Af+AIEAP8AH4IAYMAccAGwADgADgAGwAccAYMIAf8Af8AQAAQAAQAAf8B/8BwAHAA8AB8ABAABAABAAf8Af8KAf8Af8AQAAQAAf8Af8AQAAQAAf8Af8LAf8Af8AQAAQAAf8Af8AQAAQAAf8B/8BwAJAAEAAEAf8Af8ARAARAARAAfAAOAJAf8Af8ARAARAARAAfAAOAAf8Af8HAf8Af8ARAARAARAAfAAOAHAIIAYMAREAREAREAf8AP4JAf8Af8AP4Af8AQEAQEAQEAf8AP4HAQ4AZ8ANEAHEADEAf8Af8GAMAAegASgASgAfgAfAGAPwAf4AQoAQoAfsAPEGAfgAfgASgASgAfgANAFAfgAfgAAgAAgAAgHAwAA/AAfgAQgAfgA/gAwAGAPAAfgASgASgAbgALAGAPAAfoASoASoAboALAIAYgAdgAHAAfgAfgAHAAdgAYgGAJAAZgASgASgAfgANAGAfgAfgAMAAGAAfgAfgGAfgAfoAMYAGYAfoAfgGAfgAfgAHAANgAYgAQAGAQAAfAAPgAAgAfgAfgGAfgAfgAHAAHAAfgAfgGAfgAfgACAACAAfgAfgGAPAAfgAQgAQgAfgAPAGAfgAfgAAgAAgAfgAfgGB/gB/gAQgAQgAfgAPAGAPAAfgAQgAQgAZgAJAGAAgAAgAfgAfgAAgAAgGBAABHgB/gA4AAPgAHgGAPAAfgB/4B/4AfgAPAFAZgAfgAGAAfgAZgHAfgAfgAQAAQAAfgB/gBwAGADgAHgAEAAEAAfgAfgIAfgAfgAQAAfgAfgAQAAfgAfgJAfgAfgAQAAfgAfgAQAAfgB/gBwAGAAgAfgAfgASAAeAAMAHAfgAfgASAAeAAMAAfgAfgFAfgAfgASAAeAAMAGAQgASgASgASgAfgAPAHAfgAfgAPAAfgAQgAfgAPAFAbAAfgAEgAfgAfg' } };
+// what the fonts lack, spelled with what they have
+const SUB = { '\u00ab': '"', '\u00bb': '"', '\u2014': '-', '\u2013': '-', '\u2026': '...', '\u2116': 'N', '\u2019': "'" };
+for (const f of Object.values(FONTS)) {
+  f.glyphs = {}; let i = 0;
+  const n = Math.ceil(f.h / 6);
+  for (const c of CHARS) {
+    const w = A.indexOf(f.data[i++]), cols = [];
+    for (let k = 0; k < w; k++) { let m = 0; for (let d = 0; d < n; d++) m = m * 64 + A.indexOf(f.data[i++]); cols.push(m); }
+    f.glyphs[c] = cols;
+  }
+  f.tints = {};
+}
+const clean = s => [...String(s)].map(c => SUB[c] || c).join('');
+// a strip of every glyph in one colour, drawn once per font and colour
+function atlas(f, color) {
+  if (f.tints[color]) return f.tints[color];
+  const cv = document.createElement('canvas'), q = cv.getContext('2d');
+  let x = 0; f.at = {};
+  for (const c of CHARS) { f.at[c] = x; x += f.glyphs[c].length + 1; }
+  cv.width = x; cv.height = f.h; q.fillStyle = color;
+  for (const c of CHARS) f.glyphs[c].forEach((m, k) => { for (let y = 0; y < f.h; y++) if (m >> y & 1) q.fillRect(f.at[c] + k, y, 1, 1); });
+  return (f.tints[color] = cv);
+}
+function width(font, s) {
+  const f = FONTS[font] || FONTS.small; let w = 0;
+  for (const c of clean(s)) w += (c === ' ' ? f.space : (f.glyphs[c] || f.glyphs['?']).length) + 1;
+  return Math.max(0, w - 1);
+}
+// draws s with its cell's top at y; align: 'left' (x is the left edge), 'center' or 'right'
+function text(q, s, x, y, color, font = 'small', align = 'left') {
+  const f = FONTS[font] || FONTS.small, str = clean(s), img = atlas(f, color);
+  let cx = Math.round(align === 'center' ? x - width(font, str) / 2 : align === 'right' ? x - width(font, str) : x);
+  for (const c of str) {
+    if (c === ' ') { cx += f.space + 1; continue; }
+    const g = f.glyphs[c] ? c : '?', w = f.glyphs[g].length;
+    q.drawImage(img, f.at[g], 0, w, f.h, cx, Math.round(y), w, f.h); cx += w + 1;
+  }
+  return cx - x;
+}
+// splits s into lines no wider than max, breaking words that are longer than a line
+function wrap(font, s, max) {
+  const out = []; let line = '';
+  for (const word of clean(s).split(/\s+/).filter(Boolean)) {
+    const t = line ? line + ' ' + word : word;
+    if (width(font, t) <= max) { line = t; continue; }
+    if (line) out.push(line);
+    line = word;
+    while (width(font, line) > max) { let k = line.length - 1; while (k > 1 && width(font, line.slice(0, k)) > max) k--; out.push(line.slice(0, k)); line = line.slice(k); }
+  }
+  if (line) out.push(line);
+  return out;
+}
+window.PixFont = { text, width, wrap, height: font => (FONTS[font] || FONTS.small).h, base: font => (FONTS[font] || FONTS.small).base };
+})();

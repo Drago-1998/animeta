@@ -729,6 +729,141 @@ function kit(opt) {
   return { make, pose, spots, joint, materials: M, size: { w: W, h: H, d: 0.62 }, testAt: pose.power };
 }
 
+/* ---------- the cartridge: «Вольтик», a one-button runner on the green LCD ---------- */
+// 128 × 96 pixels in four greens, drawn small and scaled up without smoothing. Any red button jumps (hold it to jump
+// higher), the dial pushed down drops faster. Crates and stacks on the ground, pigeons later on, nuts to collect.
+const GB = ['#a7bd73', '#86a05a', '#55703c', '#2b3d20'];
+const SPR = { // 0-3: the four greens, '.': clear
+  run1: ['....33....', '...3003...', '.33333333.', '3222222223', '3203223023', '3203223023', '3222222223', '3223333223', '3222222223', '.33333333.', '..3....3..', '.33....33.'],
+  run2: ['....33....', '...3003...', '.33333333.', '3222222223', '3203223023', '3203223023', '3222222223', '3223333223', '3222222223', '.33333333.', '...3..3...', '...33.33..'],
+  jump: ['....33....', '...3003...', '.33333333.', '3222222223', '3200220023', '3203223023', '3222222223', '3222332223', '3222222223', '.33333333.', '.3......3.', '33......33'],
+  dead: ['..........', '..........', '.33333333.', '3222222223', '3232223223', '3223222323', '3232223223', '3222222223', '3223333223', '.33333333.', '.33....33.', '..........'],
+  nut: ['..333..', '.32223.', '3220223', '3203023', '3220223', '.32223.', '..333..'],
+  bird1: ['...33.......', '..3223......', '3322223333..', '.322222222.3', '..3333333333', '...........3'],
+  bird2: ['............', '.....3333333', '33322222222.', '.3222222223.', '..33223333..', '....33......'],
+};
+function spr(q, name, x, y, flip) {
+  SPR[name].forEach((row, j) => [...row].forEach((c, i) => {
+    if (c === '.') return;
+    q.fillStyle = GB[+c]; q.fillRect(Math.round(x + (flip ? row.length - 1 - i : i)), Math.round(y + j), 1, 1);
+  }));
+}
+function app(ctx) {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 96;
+  const q = cv.getContext('2d'), F = window.PixFont, GROUND = 80, HX = 18;
+  const rec = ctx.record || { score: 0, name: '' };
+  const city = []; for (let x = 0; x < 256;) { const w = 10 + Math.random() * 16 | 0; city.push({ x, w, h: 8 + Math.random() * 20 | 0 }); x += w + 2; }
+  let state = 'title', t = 0, g; // g: the run in progress
+  const start = () => {
+    state = 'play'; t = 0;
+    g = { y: GROUND, vy: 0, ground: true, hold: false, held: 0, dist: 0, speed: 55, nuts: 0, score: 0, gap: 60, obs: [], items: [], birds: [], dead: 0, best: false, mile: 100 };
+    ctx.beep(660, .06, 'square', .04); ctx.beep(990, .1, 'square', .04, .07);
+  };
+  const jump = () => {
+    if (!g.ground) return;
+    g.vy = -150; g.ground = false; g.hold = true; g.held = 0;
+    ctx.beep(440, .12, 'square', .035, 0, 880);
+  };
+  function spawn() {
+    const d = g.dist, k = Math.random();
+    const kind = d > 700 && k < .2 ? 'tall' : d > 400 && k < .4 ? 'wide' : 'crate';
+    const w = kind === 'wide' ? 20 : 10, h = kind === 'tall' ? 19 : 10;
+    g.obs.push({ x: 132, w, h });
+    if (Math.random() < .55) g.items.push({ x: 132 + w / 2 - 3, y: GROUND - h - 16 - Math.random() * 8 | 0 });
+    if (d > 1100 && Math.random() < .3) g.birds.push({ x: 132 + 40 + Math.random() * 30, y: GROUND - 34 - Math.random() * 6 | 0 });
+    g.gap = 58 + g.speed * .55 + Math.random() * 70;
+  }
+  const hit = (ax, ay, aw, ah, bx, by, bw, bh) => ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  function step(dt) {
+    g.speed = Math.min(120, 55 + t * 1.5);
+    const dx = g.speed * dt; g.dist += dx;
+    if ((g.gap -= dx) <= 0) spawn();
+    g.obs.forEach(o => { o.x -= dx; }); g.items.forEach(o => { o.x -= dx; }); g.birds.forEach(o => { o.x -= dx * 1.25; });
+    g.obs = g.obs.filter(o => o.x > -24); g.items = g.items.filter(o => o.x > -8 && !o.got); g.birds = g.birds.filter(o => o.x > -14);
+    if (!g.ground) {
+      g.held += dt;
+      g.vy += (g.hold && g.vy < 0 && g.held < .24 ? 290 : 620) * dt; g.y += g.vy * dt;
+      if (g.y >= GROUND) { g.y = GROUND; g.vy = 0; g.ground = true; }
+    }
+    const top = g.y - 11;
+    g.items.forEach(o => { if (hit(HX + 1, top, 8, 11, o.x, o.y, 7, 7)) { o.got = true; g.nuts++; ctx.beep(1320, .05, 'square', .04); ctx.beep(1760, .09, 'square', .04, .05); } });
+    g.score = Math.floor(g.dist / 6) + g.nuts * 10;
+    if (g.score >= g.mile) { g.mile += 100; ctx.beep(1046, .05, 'square', .03); ctx.beep(1568, .07, 'square', .03, .06); }
+    const crash = g.obs.some(o => hit(HX + 2, top + 2, 6, 9, o.x + 1, GROUND - o.h + 1, o.w - 2, o.h - 1)) || g.birds.some(o => hit(HX + 2, top + 2, 6, 9, o.x + 1, o.y + 1, 10, 4));
+    if (crash) {
+      state = 'over'; g.dead = 0;
+      ctx.beep(220, .15, 'square', .05, 0, 110); ctx.beep(130, .3, 'square', .05, .14, 60);
+      if (g.score > rec.score) { rec.score = g.score; rec.name = 'ТЫ'; g.best = true; ctx.onRecord && ctx.onRecord(rec); }
+    }
+  }
+  function key(id, down) {
+    if (!['a', 'b', 'c', 'up'].includes(id)) { if (id === 'down' && down && state === 'play' && !g.ground) g.vy = Math.max(g.vy, 200); return; }
+    if (!down) { if (g) g.hold = false; return; }
+    if (state === 'title') return start();
+    if (state === 'over') { if (g.dead > .7) start(); return; }
+    jump();
+  }
+  function tick(dt) {
+    t += dt;
+    if (state === 'play') step(Math.min(dt, .05));
+    else if (state === 'over') g.dead += dt;
+  }
+  const pad = n => String(n).padStart(5, '0');
+  function crate(x, y, w, h) {
+    q.fillStyle = GB[3]; q.fillRect(x, y, w, h);
+    for (let by = y; by < y + h - 1; by += 9) for (let bx = x; bx < x + w - 1; bx += 10) {
+      q.fillStyle = GB[2]; q.fillRect(bx + 1, by + 1, 8, Math.min(8, y + h - 1 - by - 1));
+      q.fillStyle = GB[3]; for (let i = 1; i < 8; i++) { q.fillRect(bx + i, by + i, 1, 1); q.fillRect(bx + 9 - i, by + i, 1, 1); }
+    }
+  }
+  function scene(scroll) {
+    q.fillStyle = GB[0]; q.fillRect(0, 0, 128, 96);
+    q.fillStyle = GB[1]; q.beginPath(); q.arc(110, 34, 6, 0, Math.PI * 2); q.fill();
+    const off = scroll * .25 % 256;
+    city.forEach(b => [b.x - off, b.x - off + 256].forEach(x => {
+      if (x > 128 || x + b.w < 0) return;
+      q.fillStyle = GB[1]; q.fillRect(Math.round(x), GROUND - b.h, b.w, b.h);
+      q.fillStyle = GB[0]; for (let wy = GROUND - b.h + 3; wy < GROUND - 3; wy += 5) for (let wx = 2; wx < b.w - 2; wx += 4) if ((wx * 7 + wy * 3 + b.x) % 5) q.fillRect(Math.round(x) + wx, wy, 2, 2);
+    }));
+    q.fillStyle = GB[1]; q.fillRect(0, GROUND, 128, 16);
+    q.fillStyle = GB[3]; q.fillRect(0, GROUND, 128, 1);
+    q.fillStyle = GB[2]; const d = scroll % 16; for (let x = -d; x < 128; x += 16) { q.fillRect(Math.round(x), GROUND + 4, 6, 1); q.fillRect(Math.round(x + 8), GROUND + 10, 5, 1); }
+  }
+  function draw(gc, w, h) {
+    const blink = Math.floor(t * 2.5) % 2 === 0;
+    if (state === 'title') {
+      scene(t * 20);
+      F.text(q, 'ВОЛЬТИК', 64, 9, GB[3], 'bold', 'center');
+      F.text(q, 'беги и прыгай!', 64, 24, GB[2], 'small', 'center');
+      spr(q, Math.floor(t * 6) % 2 ? 'run1' : 'run2', 59, GROUND - 12);
+      if (blink) F.text(q, 'НАЖМИ КНОПКУ', 64, 46, GB[3], 'small', 'center');
+      if (rec.score) F.text(q, 'РЕКОРД ' + pad(rec.score) + (rec.name ? ' ' + rec.name : ''), 64, 84, GB[3], 'small', 'center');
+    } else {
+      scene(g.dist);
+      g.obs.forEach(o => crate(Math.round(o.x), GROUND - o.h, o.w, o.h));
+      g.items.forEach(o => spr(q, 'nut', o.x, o.y + (Math.floor(t * 4 + o.x) % 2)));
+      g.birds.forEach(o => spr(q, Math.floor(t * 8) % 2 ? 'bird1' : 'bird2', o.x, o.y));
+      const frame = state === 'over' ? 'dead' : !g.ground ? 'jump' : Math.floor(g.dist / 7) % 2 ? 'run1' : 'run2';
+      spr(q, frame, HX, Math.round(g.y) - 12);
+      F.text(q, pad(g.score), 123, 3, GB[3], 'small', 'right');
+      if (rec.score) F.text(q, 'HI ' + pad(rec.score), 5, 3, GB[2], 'small', 'left');
+      if (state === 'over') {
+        q.fillStyle = GB[3]; q.fillRect(8, 22, 112, 46); q.fillStyle = GB[0]; q.fillRect(9, 23, 110, 44);
+        F.text(q, 'ИГРА ОКОНЧЕНА', 64, 25, GB[3], 'bold', 'center');
+        F.text(q, 'СЧЁТ ' + pad(g.score), 64, 40, GB[3], 'small', 'center');
+        if (g.best) { if (blink) F.text(q, 'НОВЫЙ РЕКОРД!', 64, 51, GB[2], 'small', 'center'); }
+        else if (g.dead > .7 && blink) F.text(q, 'НАЖМИ КНОПКУ', 64, 51, GB[2], 'small', 'center');
+        if (g.dead < .12) { q.fillStyle = 'rgba(43,61,32,.55)'; q.fillRect(0, 0, 128, 96); }
+      }
+    }
+    gc.imageSmoothingEnabled = false; gc.drawImage(cv, 0, 0, w, h); gc.imageSmoothingEnabled = true;
+    gc.fillStyle = 'rgba(43,61,32,.07)';
+    for (let x = 0; x < w; x += w / 128) gc.fillRect(Math.round(x), 0, 1, h);
+    for (let y = 0; y < h; y += h / 96) gc.fillRect(0, Math.round(y), w, 1);
+  }
+  return { key, tick, draw };
+}
+
 /* ---------- the whole device, assembled (reference sheet and .glb export) ---------- */
 function build(opt) {
   const o = Object.assign({ swollen: true }, opt);
@@ -760,5 +895,16 @@ function environment(renderer) {
 
 // the geometry helpers are shared with the other gadgets (pixel-pet.js builds on them)
 const util = { rr, disc, stadium, ringShape, extrude, roundedBox, lathe, merge, canvasTex, fitText, rng, at };
-window.PocketPal = { kit, build, environment, util, size: { w: W, h: H, d: 0.62 } };
+// in use: the part of the face that fills the view, the controls (device units, the top of each) and keys for a keyboard
+const use = {
+  frame: [-1.5, -2.0, 1.5, 2.1],
+  keys: [
+    ...BUTTONS.map(([x, y], i) => ({ id: 'abc'[i], slot: 'buttons', mesh: 'button_' + 'abc'[i], at: [x, y, 0.38], r: 0.3 })),
+    { id: 'dial', slot: 'dial', mesh: 'dial_knob', at: [DIAL[0], DIAL[1], 0.4], r: 0.52, dial: true },
+    { id: 'power', slot: 'power', mesh: 'power_button_cap', at: [POWER[0], POWER[1], 0.34], r: 0.22 },
+  ],
+  lcd: ['lcd', 'lcd_panel'], screen: 'a', // a tap on the screen jumps too
+  kbd: { Space: 'a', Enter: 'a', KeyZ: 'a', KeyX: 'b', KeyC: 'c', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' },
+};
+window.PocketPal = { kit, build, environment, util, app, use, size: { w: W, h: H, d: 0.62 } };
 })();

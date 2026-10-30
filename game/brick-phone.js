@@ -92,20 +92,9 @@ function drawScreen(g, w, h, phase) {
   }
   const q = px.getContext('2d'), k = Math.min(1, phase / 0.12);
   q.fillStyle = k < 1 ? `rgb(${57 + (163 - 57) * k | 0},${66 + (196 - 66) * k | 0},${50 + (76 - 50) * k | 0})` : LCD_ON; q.fillRect(0, 0, 84, 48);
-  q.fillStyle = LCD_INK; q.textBaseline = 'alphabetic';
-  if (phase < 0.7) {
-    q.font = '900 13px Arial'; q.textAlign = 'center'; q.fillText('NORDIK', 42, 27);
-    q.font = '700 7px Arial'; q.fillText('3300', 42, 38);
-  } else {
-    // a game of snake: the border, the score, the food and the snake running along
-    q.fillRect(0, 9, 84, 1); q.fillRect(0, 47, 84, 1); q.fillRect(0, 9, 1, 39); q.fillRect(83, 9, 1, 39);
-    q.font = '700 8px Arial'; q.textAlign = 'left'; q.fillText('0012', 1, 7);
-    q.textAlign = 'right'; q.fillText('ЗМЕЙКА', 83, 7);
-    q.fillRect(60, 26, 3, 3);
-    const head = Math.floor((phase - 0.7) * 40) % 26;
-    for (let i = 0; i < 9; i++) { const c = head - i; if (c >= 0) q.fillRect(4 + c * 3, 26, 3, 3); }
-    if (phase > 1.25) { q.textAlign = 'center'; q.font = '900 9px Arial'; q.fillText('АЛЛО!', 42, 20); }
-  }
+  const F = window.PixFont;
+  if (k > .6) { F.text(q, 'NORDIK', 42, 12, LCD_INK, 'bold', 'center'); F.text(q, '3300', 42, 25, LCD_INK, 'small', 'center'); }
+  if (phase >= 0.7) F.text(q, 'Поиск сети' + '...'.slice(0, Math.floor((phase - 0.7) * 6) % 4), 8, 37, LCD_INK, 'small');
   g.imageSmoothingEnabled = false; g.drawImage(px, 0, 0, w, h); g.imageSmoothingEnabled = true;
   for (let x = 0; x < w; x += w / 84) { g.fillStyle = 'rgba(0,0,0,.05)'; g.fillRect(x, 0, 1, h); }
   for (let y = 0; y < h; y += h / 48) { g.fillStyle = 'rgba(0,0,0,.05)'; g.fillRect(0, y, w, 1); }
@@ -496,6 +485,225 @@ function kit(opt) {
   return { make, pose, spots, joint, materials: M, size: { w: W, h: H, d: FACE + BACKZ }, testAt: new T.Vector3(0, naviY, 0.5) };
 }
 
+/* ---------- the phone's own software: standby, the menu, messages and calls ---------- */
+// 84 × 48 pixels. The blue navi key does what the label above it says, C goes back, the arrows scroll, the number keys
+// dial from standby. ctx.phone brings this phone's messages, its call register and somebody who calls while it is in hand.
+const PIC = { // menu pictures and small marks, '#' is a pixel
+  mail: ['########################', '##....................##', '#.#..................#.#', '#..#................#..#', '#...#..............#...#',
+    '#....#............#....#', '#.....#..........#.....#', '#......#........#......#', '#.......#..##..#.......#', '#........##..##........#',
+    '#.......#......#.......#', '#......#........#......#', '#.....#..........#.....#', '#....#............#....#', '#...#..............#...#', '########################'],
+  calls: ['....##############....', '..##################..', '.####............####.', '####..............####', '####...########...####', '.##...##########...##.',
+    '.....###.##..##.###...', '....####.##..##.####..', '...#####........#####.', '...##################.', '...##################.', '...##################.', '....################..'],
+  env: ['#######', '##...##', '#.#.#.#', '#..#..#', '#######'],
+  in: ['....#', '...#.', '#.#..', '##...', '###..'],
+  out: ['..###', '...##', '..#.#', '.#...', '#....'],
+  missed: ['#...#', '.#.#.', '..#..', '.#.#.', '#...#'],
+  ant: ['#.#.#', '.###.', '..#..', '..#..', '..#..'],
+  bat: ['.###.', '#####', '#...#', '#####', '#...#', '#####'],
+};
+function pic(q, name, x, y, color) {
+  q.fillStyle = color;
+  PIC[name].forEach((row, j) => [...row].forEach((c, i) => { if (c === '#') q.fillRect(x + i, y + j, 1, 1); }));
+}
+function app(ctx) {
+  const cv = document.createElement('canvas'); cv.width = 84; cv.height = 48;
+  const q = cv.getContext('2d'), F = window.PixFont, ON = LCD_ON, INK = LCD_INK;
+  const data = ctx.phone || { inbox: [], calls: [] }, inbox = data.inbox, calls = data.calls;
+  const MENU = [{ title: 'Сообщения', pic: 'mail', go: 'inbox' }, { title: 'Звонки', pic: 'calls', go: 'calls' }];
+  let view = 'idle', back = 'idle', t = 0, menuI = 0, sel = 0, top = 0, line = 0, dial = '', call = null, rang = false;
+  const beep = (f, d = .05) => ctx.beep(f, d, 'square', .03);
+  const go = v => { view = v; sel = top = line = 0; };
+  const unread = () => inbox.filter(m => !m.read).length, missed = () => calls.filter(c => c.type === 'missed' && !c.seen).length;
+  // a call: incoming (ringing until answered), talking, or dialled out; it remembers the screen to go back to
+  function endCall(note) {
+    ctx.vibrate(false);
+    const dur = call.state === 'talk' ? t - call.from : 0;
+    if (call.entry && dur) call.entry.dur = mmss(dur);
+    call = { ...call, state: 'ended', note, at: t, dur };
+    beep(880, .08); beep(660, .12);
+  }
+  function key(id, down) {
+    if (!down) return;
+    if (call && call.state === 'ring') {
+      if (id === 'navi') {
+        call.state = 'talk'; call.at = call.from = t; ctx.vibrate(false); ctx.say(call.who + ': «' + call.line + '»', 'surprised', 8000);
+        call.entry = { who: call.who, type: 'in', day: 'Сегодня', when: clock(), num: call.num }; calls.unshift(call.entry);
+      }
+      else if (id === 'c') { calls.unshift({ who: call.who, type: 'missed', day: 'Сегодня', when: clock(), num: call.num, n: 1 }); endCall('Отклонён'); }
+      return;
+    }
+    if (call && (call.state === 'talk' || call.state === 'out')) { if (id === 'navi' || id === 'c') endCall(call.state === 'out' ? 'Вызов отменён' : 'Вызов завершён'); return; }
+    if (call) return;
+    // in the lists 2 and 8 scroll too, like on the real thing
+    if (view !== 'idle') id = { k2: 'up', k8: 'down' }[id] || id;
+    const n = id.startsWith('k') ? '123456789*0#'[+id.slice(1) - 1] : null;
+    if (view === 'idle') {
+      if (n) { if (dial.length < 12) dial += n; beep(1200 + '123456789*0#'.indexOf(n) * 40, .07); }
+      else if (id === 'c' && dial) dial = dial.slice(0, -1);
+      else if (id === 'navi' && dial) { call = { state: 'out', who: dial, at: t, num: dial }; calls.unshift({ who: dial, type: 'out', day: 'Сегодня', when: clock(), num: dial }); dial = ''; }
+      else if (id === 'navi') { go('menu'); menuI = 0; }
+      else if (id === 'down' && (unread() || missed())) go(unread() ? 'inbox' : 'calls');
+      return;
+    }
+    if (id === 'up' || id === 'down') {
+      const d = id === 'up' ? -1 : 1;
+      if (view === 'menu') menuI = (menuI + d + MENU.length) % MENU.length;
+      else if (view === 'inbox' || view === 'calls') { const list = view === 'inbox' ? inbox : calls; if (list.length) sel = (sel + d + list.length) % list.length; top = Math.min(Math.max(top, sel - 2), sel); }
+      else if (view === 'read') line = Math.max(0, Math.min(line + d, textLines().length - 3));
+      beep(1500, .02);
+      return;
+    }
+    if (id === 'c') {
+      ({ menu: () => go('idle'), inbox: () => { go('menu'); menuI = 0; }, calls: () => { go('menu'); menuI = 1; }, read: () => { const s = sel0; go('inbox'); sel = s; top = Math.max(0, s - 2); },
+        info: () => { const s = sel0; go('calls'); sel = s; top = Math.max(0, s - 2); } }[view] || (() => {}))();
+      beep(700, .04);
+      return;
+    }
+    if (id === 'navi') {
+      if (view === 'menu') { const m = MENU[menuI]; go(m.go); if (m.go === 'calls') calls.forEach(c => { c.seen = true; }); }
+      else if (view === 'inbox' && inbox.length) { sel0 = sel; go('read'); inbox[sel0].read = true; }
+      else if (view === 'read') { const s = sel0; go('inbox'); sel = s; top = Math.max(0, s - 2); }
+      else if (view === 'calls' && calls.length) { sel0 = sel; go('info'); }
+      else if (view === 'info') { const s = sel0; go('calls'); sel = s; top = Math.max(0, s - 2); }
+      beep(1100, .04);
+    }
+  }
+  let sel0 = 0; // the message or call being looked at
+  const textLines = () => F.wrap('small', inbox[sel0].text, 79);
+  function tick(dt) {
+    t += dt;
+    // somebody rings a few seconds after it comes back to life
+    if (!rang && data.caller && t > 6 && !call) {
+      rang = true; call = { state: 'ring', who: data.caller.who, line: data.caller.line, num: data.caller.num, at: t };
+      ctx.vibrate(true);
+    }
+    if (!call) return;
+    const k = t - call.at;
+    if (call.state === 'ring') {
+      if (Math.floor(k / 2.2) !== Math.floor((k - dt) / 2.2) || k < dt) RING.forEach(([f, d], i) => ctx.beep(f, .1, 'square', .035, d));
+      if (k > 15) { calls.unshift({ who: call.who, type: 'missed', day: 'Сегодня', when: clock(), num: call.num, n: 1 }); endCall('Непринятый вызов'); }
+    } else if (call.state === 'talk') {
+      if (k > 7) endCall('Вызов завершён');
+    } else if (call.state === 'out') {
+      if (Math.floor(k / 1.6) !== Math.floor((k - dt) / 1.6) && k < 6) ctx.beep(425, .8, 'sine', .03);
+      if (k > 6.5) endCall('Нет ответа');
+    } else if (call.state === 'ended' && k > 1.6) call = null;
+  }
+  const RING = [[1319, 0], [1568, .12], [1760, .24], [1568, .36], [1319, .48], [1175, .6], [1319, .72]];
+  const clock = () => { const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const mmss = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  // the label over the navi key
+  const soft = label => F.text(q, label, 42, 38, INK, 'small', 'center');
+  function head(title, right) {
+    F.text(q, title, 1, 0, INK, 'small');
+    if (right) F.text(q, right, 83, 0, INK, 'small', 'right');
+    q.fillStyle = INK; q.fillRect(0, 10, 84, 1);
+  }
+  function scrollbar(i, n, y0 = 12, h = 26) {
+    if (n < 2) return;
+    q.fillStyle = INK; q.fillRect(82, y0, 1, h);
+    const th = Math.max(3, Math.round(h / n)), y = y0 + Math.round((h - th) * i / (n - 1));
+    q.fillRect(81, y, 3, th);
+  }
+  function list(items, row) {
+    if (!items.length) { F.text(q, 'Пусто', 42, 20, INK, 'small', 'center'); return; }
+    items.slice(top, top + 3).forEach((it, k) => {
+      const i = top + k, y = 11 + k * 9, on = i === sel;
+      if (on) { q.fillStyle = INK; q.fillRect(0, y, 80, 9); }
+      row(it, y, on ? ON : INK);
+    });
+    scrollbar(sel, items.length);
+  }
+  const fit = (s, w) => { let r = s; while (F.width('small', r) > w && r.length > 1) r = r.slice(0, -1); return r === s ? s : r.slice(0, -1) + '…'; };
+  function idle() {
+    pic(q, 'ant', 0, 1, INK); pic(q, 'bat', 79, 1, INK);
+    q.fillStyle = INK; [[0, 32, 2], [0, 28, 3], [0, 24, 4], [0, 20, 5]].forEach(([x, y, w]) => q.fillRect(x, y, w, 2));
+    [[82, 32, 2], [81, 28, 3], [80, 24, 4]].forEach(([x, y, w]) => q.fillRect(x, y, w, 2));
+    F.text(q, clock(), 42, 0, INK, 'small', 'center');
+    if (dial) { F.text(q, dial.length > 9 ? dial.slice(-9) : dial, 42, 15, INK, 'bold', 'center'); soft('Вызов'); return; }
+    F.text(q, 'NORDIK', 42, 11, INK, 'bold', 'center');
+    const u = unread(), m = missed();
+    if (u || m) {
+      if (u) pic(q, 'env', 11, 1, INK);
+      F.text(q, u ? u + ' ' + plural(u, ['новое SMS', 'новых SMS', 'новых SMS']) : m + ' ' + plural(m, ['пропущенный', 'пропущенных', 'пропущенных']), 42, 26, INK, 'small', 'center');
+    }
+    soft('Меню');
+  }
+  function ringing() {
+    const k = t - call.at;
+    if (call.state === 'ring') {
+      if (Math.floor(k * 3) % 2) pic(q, 'calls', 31, 1, INK);
+      F.text(q, fit(call.who, 80), 42, 15, INK, 'bold', 'center');
+      F.text(q, 'вызывает', 42, 27, INK, 'small', 'center');
+      soft('Ответить');
+    } else if (call.state === 'talk') {
+      F.text(q, fit(call.who, 80), 42, 4, INK, 'bold', 'center');
+      F.text(q, mmss(k), 42, 20, INK, 'small', 'center');
+      soft('Отбой');
+    } else if (call.state === 'out') {
+      F.text(q, 'Вызов' + '...'.slice(0, Math.floor(k * 2) % 4), 2, 2, INK, 'small');
+      F.text(q, fit(call.who, 80), 42, 17, INK, 'bold', 'center');
+      soft('Отбой');
+    } else {
+      F.text(q, call.note, 42, 12, INK, 'small', 'center');
+      if (call.dur) F.text(q, mmss(call.dur), 42, 24, INK, 'small', 'center');
+    }
+  }
+  function draw(gc, w, h) {
+    q.fillStyle = ON; q.fillRect(0, 0, 84, 48);
+    if (call) ringing();
+    else if (view === 'idle') idle();
+    else if (view === 'menu') {
+      const m = MENU[menuI];
+      F.text(q, m.title, 1, 0, INK, 'bold'); F.text(q, String(menuI + 1), 79, 0, INK, 'small', 'right');
+      pic(q, m.pic, 42 - (PIC[m.pic][0].length >> 1), 15, INK);
+      scrollbar(menuI, MENU.length, 14, 22); soft('Выбрать');
+    } else if (view === 'inbox') {
+      head('Входящие', inbox.length ? (sel + 1) + '/' + inbox.length : '');
+      list(inbox, (m, y, c) => { if (!m.read) pic(q, 'env', 1, y + 2, c); F.text(q, fit(m.from, 70), 10, y - 1, c, 'small'); });
+      soft(inbox.length ? 'Читать' : '');
+    } else if (view === 'read') {
+      const m = inbox[sel0], lines = textLines();
+      head(fit(m.from, 52), m.when);
+      lines.slice(line, line + 3).forEach((l, i) => F.text(q, l, 1, 11 + i * 9, INK, 'small'));
+      if (lines.length > 3) scrollbar(line, lines.length - 2);
+      soft('Назад');
+    } else if (view === 'calls') {
+      head('Звонки', calls.length ? (sel + 1) + '/' + calls.length : '');
+      list(calls, (c, y, col) => { pic(q, c.type, 1, y + 2, col); F.text(q, fit(c.who, 58) + (c.n > 1 ? ' x' + c.n : ''), 9, y - 1, col, 'small'); });
+      soft(calls.length ? 'Подробно' : '');
+    } else if (view === 'info') {
+      const c = calls[sel0];
+      head(fit(c.who, 80));
+      F.text(q, { missed: 'Пропущенный', in: 'Входящий', out: 'Исходящий' }[c.type] + (c.n > 1 ? ' x' + c.n : ''), 1, 11, INK, 'small');
+      F.text(q, c.day + ' ' + c.when, 1, 20, INK, 'small');
+      F.text(q, c.dur ? 'Длит. ' + c.dur : c.num || '', 1, 29, INK, 'small');
+      soft('Назад');
+    }
+    gc.imageSmoothingEnabled = false; gc.drawImage(cv, 0, 0, w, h); gc.imageSmoothingEnabled = true;
+    gc.fillStyle = 'rgba(0,0,0,.05)';
+    for (let x = 0; x < w; x += w / 84) gc.fillRect(Math.round(x), 0, 1, h);
+    for (let y = 0; y < h; y += h / 48) gc.fillRect(0, Math.round(y), w, 1);
+  }
+  return { key, tick, draw };
+}
+const plural = (n, f) => f[n % 10 === 1 && n % 100 !== 11 ? 0 : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2];
+// in use: the screen, the navi pad and the first row of keys fill the view; the C key and the arrows share the pad with the navi key
+const use = {
+  frame: [-1.08, -0.85, 1.08, 2.45],
+  keys: [
+    { id: 'navi', slot: 'phKeys', mesh: 'key_navi', at: [0, NAV.top - NAV.sag - 0.11, 0.5], r: 0.2 },
+    { id: 'c', slot: 'phKeys', mesh: 'navi_pad', at: [-0.42, 0.14, 0.46], r: 0.17, tilt: [0, -0.1] },
+    { id: 'up', slot: 'phKeys', mesh: 'navi_pad', at: [0.42, 0.21, 0.46], r: 0.11, tilt: [-0.07, 0.1] },
+    { id: 'down', slot: 'phKeys', mesh: 'navi_pad', at: [0.42, 0.06, 0.46], r: 0.11, tilt: [0.07, 0.1] },
+    ...KEYS.map((k, i) => ({ id: 'k' + (i + 1), slot: 'phKeys', mesh: 'key_' + (i + 1), at: [k.x, k.y, 0.46], r: 0.21 })),
+    { id: 'power', slot: 'phShell', mesh: 'power_key', at: [0, H / 2 - 0.02, 0.12], r: 0.2, push: [0, -0.03, 0] },
+  ],
+  lcd: ['phLcd', 'lcd_panel'],
+  kbd: { Enter: 'navi', Space: 'navi', Backspace: 'c', Escape: 'c', ArrowUp: 'up', ArrowDown: 'down',
+    ...Object.fromEntries('1234567890'.split('').flatMap(d => { const id = 'k' + (d === '0' ? 11 : +d); return [['Digit' + d, id], ['Numpad' + d, id]]; })) },
+};
+
 /* ---------- the whole phone, assembled (reference sheet) ---------- */
 function build(opt) {
   const k = kit(opt || {}), root = new T.Group(); root.name = 'nordik_3300';
@@ -504,5 +712,5 @@ function build(opt) {
   return { root, materials: k.materials, kit: k };
 }
 
-window.BrickPhone = { kit, build, drawScreen };
+window.BrickPhone = { kit, build, drawScreen, app, use };
 })();

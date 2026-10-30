@@ -560,6 +560,134 @@ function kit(opt) {
   return { make, pose, spots, joint, materials: M, size: { w: 2 * EGG.a, h: TOP + 1.17 - (EGG.cy - EGG.b), d: 2 * FRONT }, testAt: new T.Vector3(KEYS[1][0], KEYS[1][1], 0.55) };
 }
 
+/* ---------- the pet itself: feed it, play with it, clean up after it ---------- */
+// 32 × 24 dots. A feeds, B starts a round of «left or right?» (then A guesses left, C right), C cleans up or pets it.
+// Food and joy (four dots each, along the top) run down as time passes; at zero the pet sulks and calls for attention.
+const EYES = { open: ['#..##..##..#', '#..##..##..#'], blink: ['#..........#', '#..##..##..#'], left: ['#.##..##...#', '#.##..##...#'],
+  right: ['#...##..##.#', '#...##..##.#'], happy: ['#..##..##..#', '#.#..##..#.#'] };
+const MOUTH = { smile: ['#...#..#...#', '#....##....#'], open: ['#...####...#', '#...#..#...#'], sad: ['#....##....#', '#...#..#...#'] };
+const DOTS = {
+  apple: ['..#..', '.##..', '#####', '#####', '.###.'], poop: ['..#..', '.##..', '.###.', '#####'],
+  food: ['.#.', '###', '###'], heart: ['#.#', '###', '.#.'], ball: ['.#.', '#.#', '.#.'], spark: ['#.#', '.#.', '#.#'],
+  left: ['..#', '.##', '###', '.##', '..#'], right: ['#..', '##.', '###', '##.', '#..'], ask: ['###', '..#', '.##', '...', '.#.'],
+  bang: ['#', '#', '#', '.', '#'], note: ['.##', '.#.', '.#.', '##.', '##.'], big: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'],
+};
+function petRows(eyes, mouth) {
+  const r = SPRITES.pet.slice();
+  [r[3], r[4]] = EYES[eyes]; [r[6], r[7]] = MOUTH[mouth];
+  return r;
+}
+function app(ctx) {
+  const ON = LCD_GREEN, INK = LCD_INK;
+  let t = 0, x = 10, dir = 1, stepT = 0, food = 1, joy = 1, poop = false, poopAt = 0, act = null, call = 0, blinkT = 2;
+  const chirp = (f, d = .05, when = 0) => ctx.beep(f, d, 'square', .025, when);
+  const happy = () => { chirp(2093); chirp(2637, .05, .08); chirp(3136, .08, .16); };
+  const nope = () => { chirp(880, .1); chirp(660, .14, .12); };
+  function key(id, down) {
+    if (!down) return;
+    if (act && act.kind === 'guess' && act.stage === 'ask') {
+      if (id === 'a' || id === 'c') {
+        const look = Math.random() < .5 ? 'left' : 'right', won = (id === 'a') === (look === 'left');
+        act = { kind: 'guess', stage: 'show', look, won, at: t };
+        if (won) { joy = Math.min(4, joy + 1); happy(); } else nope();
+      } else if (id === 'b') act = null;
+      return;
+    }
+    if (act) return;
+    if (id === 'a') {
+      if (food >= 4) { act = { kind: 'full', at: t }; nope(); return; }
+      act = { kind: 'eat', at: t }; chirp(1760, .06);
+    } else if (id === 'b') {
+      act = { kind: 'guess', stage: 'ask', at: t }; chirp(2349, .05); chirp(2349, .05, .1);
+    } else if (id === 'c') {
+      if (poop) { act = { kind: 'clean', at: t }; chirp(1568, .2); }
+      else { act = { kind: 'pet', at: t }; happy(); }
+    }
+  }
+  function tick(dt) {
+    t += dt;
+    // hunger and boredom creep up; a meal comes out the other end a while later
+    if (Math.floor(t / 20) !== Math.floor((t - dt) / 20)) food = Math.max(0, food - 1);
+    if (Math.floor(t / 26) !== Math.floor((t - dt) / 26)) joy = Math.max(0, joy - 1);
+    if (poopAt && t > poopAt) { poop = true; poopAt = 0; chirp(1046, .06); }
+    if ((food === 0 || joy === 0) && t - call > 10) { call = t; chirp(3136, .06); chirp(3136, .06, .12); chirp(3136, .06, .24); }
+    if (act) {
+      const k = t - act.at;
+      if (act.kind === 'eat' && k > .5 && k < 2.3 && Math.floor(k / .6) !== Math.floor((k - dt) / .6)) chirp(1318, .03);
+      if (act.kind === 'eat' && k > 2.6) { food = Math.min(4, food + 1); happy(); if (!poop && !poopAt && Math.random() < .6) poopAt = t + 8 + Math.random() * 8; act = null; }
+      else if (act.kind === 'full' && k > 1.2) act = null;
+      else if (act.kind === 'guess' && act.stage === 'ask' && k > 8) act = null;
+      else if (act.kind === 'guess' && act.stage === 'show' && k > 1.8) act = null;
+      else if (act.kind === 'clean' && k > 1.2) { poop = false; act = null; happy(); }
+      else if (act.kind === 'pet' && k > 1.4) act = null;
+      return;
+    }
+    // it potters about
+    if ((stepT += dt) > .55) {
+      stepT = 0;
+      if (Math.random() < .25) dir = -dir;
+      x = Math.max(3, Math.min(poop ? 11 : 17, x + dir));
+      if (x === 3 || x === (poop ? 11 : 17)) dir = -dir;
+    }
+    if ((blinkT -= dt) < -.15) blinkT = 2 + Math.random() * 3;
+  }
+  function draw(g, w, h) {
+    const px = Math.floor(w / 32);
+    g.fillStyle = ON; g.fillRect(0, 0, w, h);
+    for (let gx = 0; gx < w; gx += px) { g.fillStyle = 'rgba(39,49,29,.05)'; g.fillRect(gx, 0, 1, h); }
+    for (let gy = 0; gy < h; gy += px) { g.fillStyle = 'rgba(39,49,29,.05)'; g.fillRect(0, gy, w, 1); }
+    const dots = (rows, cx, cy, color = INK, flip = false) => {
+      g.fillStyle = color;
+      rows.forEach((row, j) => [...row].forEach((c, i) => { if (c === '#') g.fillRect((cx + (flip ? row.length - 1 - i : i)) * px, (cy + j) * px, px - 1, px - 1); }));
+    };
+    const faint = 'rgba(39,49,29,.22)';
+    // food and joy along the top
+    dots(DOTS.food, 1, 0); for (let i = 0; i < 4; i++) dots(['#'], 5 + i * 2, 1, i < food ? INK : faint);
+    dots(DOTS.heart, 18, 0); for (let i = 0; i < 4; i++) dots(['#'], 22 + i * 2, 1, i < joy ? INK : faint);
+    const k = act ? t - act.at : 0, sad = food === 0 || joy === 0;
+    let eyes = blinkT < 0 ? 'blink' : 'open', mouth = sad ? 'sad' : 'smile', px0 = x, py0 = 8, flip = false;
+    let legend = [DOTS.food, DOTS.ball, DOTS.spark];
+    if (!act && Math.floor(t * 2) % 2) py0 = 7;
+    if (act && act.kind === 'eat') {
+      // the apple drops in beside it and goes in three bites
+      px0 = 6; const fall = Math.min(1, k / .4), bites = Math.min(3, Math.floor(Math.max(0, k - .5) / .6));
+      if (bites < 3) dots(DOTS.apple.map(r => r.slice(0, 5 - bites * 2 > 0 ? 5 - bites * 2 : 0) || '.'), 20, Math.round(4 + fall * 10));
+      eyes = 'right'; mouth = k > .5 && Math.floor(k / .3) % 2 ? 'open' : 'smile';
+    } else if (act && act.kind === 'full') {
+      flip = Math.floor(k * 8) % 2 === 1; eyes = flip ? 'left' : 'right'; mouth = 'sad';
+    } else if (act && act.kind === 'guess') {
+      px0 = 10;
+      if (act.stage === 'ask') { dots(DOTS.ask, 15, 3); eyes = 'open'; mouth = 'smile'; legend = [DOTS.left, null, DOTS.right]; }
+      else {
+        eyes = act.look; mouth = act.won ? 'open' : 'sad';
+        if (act.won) { py0 = Math.floor(k * 6) % 2 ? 6 : 8; dots(DOTS.heart, act.look === 'left' ? 4 : 25, 5 - Math.floor(k * 2)); }
+      }
+    } else if (act && act.kind === 'clean') {
+      // a sweep from the right takes the mess away
+      const sx = Math.round(30 - k / 1.2 * 20);
+      if (sx > 23) dots(DOTS.poop, 23, 15);
+      g.fillStyle = INK; for (let yy = 12; yy < 20; yy++) g.fillRect(sx * px, yy * px, px - 1, px - 1);
+    } else if (act && act.kind === 'pet') {
+      eyes = 'happy'; mouth = 'open'; dots(DOTS.note, x + 13 > 28 ? x - 4 : x + 13, 5 - Math.floor(k * 2));
+    }
+    if (poop && !(act && act.kind === 'clean')) {
+      dots(DOTS.poop, 23, 15);
+      if (Math.floor(t * 2) % 2) dots(['#.#'], 24, 12); else dots(['.#.#'], 23, 13);
+    }
+    if (sad && !act && Math.floor(t * 1.5) % 2) dots(DOTS.bang, px0 + 13 > 29 ? px0 - 2 : px0 + 13, 7);
+    dots(petRows(eyes, mouth), px0, py0, INK, flip);
+    legend.forEach((d, i) => d && dots(d, [1, 14, 28][i], d.length > 3 ? 19 : 21));
+  }
+  return { key, tick, draw };
+}
+// in use: the screen and the three keys under it fill the view
+const use = {
+  frame: [-1.3, -1.95, 1.3, 0.7],
+  keys: KEYS.map(([x, y], i) => ({ id: 'abc'[i], slot: 'petKeys', mesh: 'key_' + 'abc'[i], at: [x, y, 0.55], r: 0.28 })),
+  lcd: ['petLcd', 'lcd_panel'],
+  kbd: { KeyA: 'a', ArrowLeft: 'a', Digit1: 'a', KeyB: 'b', Space: 'b', Enter: 'b', ArrowDown: 'b', Digit2: 'b', KeyC: 'c', ArrowRight: 'c', Digit3: 'c' },
+};
+
 /* ---------- the whole toy, assembled (reference sheet) ---------- */
 function build(opt) {
   const k = kit(opt || {}), root = new T.Group(); root.name = 'pixel_pet';
@@ -569,5 +697,5 @@ function build(opt) {
   return { root, materials: k.materials, kit: k };
 }
 
-window.PixelPet = { kit, build, drawScreen, sprite };
+window.PixelPet = { kit, build, drawScreen, sprite, app, use };
 })();

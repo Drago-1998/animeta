@@ -141,6 +141,11 @@ button.chip { cursor: pointer; }
 #desk { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
 #desk.dragging { z-index: 6; } /* a part being carried passes over the tray, onto the box or the bin */
 body.street #desk, body.mat #desk, body.pc #desk { display: none; }
+/* a working gadget in use: it comes up close, the bench steps aside, «Готово» waits below */
+body.use #bench, body.use #tools, body.use #desk { display: none; }
+#useBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; justify-content: center; pointer-events: none;
+  padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 14px); }
+#useBar > * { pointer-events: auto; }
 .dpart { appearance: none; position: absolute; left: 0; top: 0; width: 68px; height: 68px; margin: -34px 0 0 -34px; border: 0; padding: 0; background: none;
   pointer-events: auto; cursor: grab; touch-action: none; transition: transform .15s; }
 .dpart img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; filter: drop-shadow(0 6px 4px rgba(0,0,0,.5)); }
@@ -239,7 +244,7 @@ body.street #desk, body.mat #desk, body.pc #desk { display: none; }
   background: #c3c0b6; border-top: 2px solid #fff; font: 800 11px/1 var(--body); color: #222; }
 .taskbar b { border: 2px outset #eee; padding: 2px 6px; font: 800 11px/1 var(--body); }
 .taskbar span { border: 1px inset #eee; padding: 3px 6px; font-variant-numeric: tabular-nums; }
-body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.pc #street, body.pc #streetBar, body.pc #matBar { display: none !important; }
+body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.pc #street, body.pc #streetBar, body.pc #matBar, body.pc #useBar { display: none !important; }
 .screen { position: absolute; z-index: 2; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
   top: calc(env(safe-area-inset-top, 0px) + 60px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   background: #c3c0b6; color: var(--ink); display: flex; flex-direction: column; overflow: hidden; padding: 3px; border: 2px outset #eee;
@@ -281,7 +286,7 @@ body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.p
 /* the street: looking out through the kiosk window; the gadget bench is one tap away */
 #street { position: fixed; inset: 0; z-index: 2; display: none; }
 body.street #street { display: block; }
-body.street #c, body.street #task, body.street #tools, body.street #bench, body.street #hint { display: none; }
+body.street #c, body.street #task, body.street #tools, body.street #bench, body.street #hint, body.street #useBar { display: none; }
 #street canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #walkers { position: absolute; inset: 0; overflow: hidden; }
 .walker { position: absolute; left: 50%; top: 0; cursor: pointer; will-change: transform; }
@@ -359,6 +364,7 @@ body.street #streetBar { display: flex; }
   </div>
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
+<div id="useBar" hidden><button class="pill main" id="useDone">Готово</button></div>
 <div id="streetBar"><button class="pill main" id="toBench">К верстаку</button></div>
 <div id="novel" hidden><div class="nbox" id="nbox" role="dialog" aria-live="polite"><div class="nface" id="nface" aria-hidden="true"></div><div class="nname" id="nname"></div>
   <div class="ntext" id="ntext"></div><div class="nchoices" id="nchoices"></div><div class="nnext" id="nnext" aria-hidden="true">▼</div></div></div>
@@ -395,6 +401,7 @@ body.street #streetBar { display: flex; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js"></script>
+<script src="pixfont.js"></script>
 <script src="pocket-pal.js"></script>
 <script src="pixel-pet.js"></script>
 <script src="brick-phone.js"></script>
@@ -462,19 +469,21 @@ scene.add(new THREE.HemisphereLight(0xfff1dc, 0x3a2414, .5));
 const key = new THREE.DirectionalLight(0xffd59a, .75); key.position.set(-5, 6, 9); scene.add(key);
 const fill = new THREE.DirectionalLight(0x9fb7ff, .3); fill.position.set(6, -2, 5); scene.add(fill);
 const holder = new THREE.Group(); scene.add(holder);
-holder.rotation.x = -0.3;
 const device = new THREE.Group(); holder.add(device);
 const mat = new THREE.Group(); scene.add(mat); // the cleaning mat: one part, alone, turnable
+const rest = { x: 0, y: 0, rx: -.3 }; // where the holder sits; a gadget in use comes up close
+let using = null, viewH = 1; // the working gadget being played with; the height of the view at the gadget, in units
 
 function resize() {
   const w = innerWidth, h = innerHeight, a = w / h;
   renderer.setSize(w, h, false);
   camera.aspect = a;
   const needH = Math.max(4.9 / 0.42, (3.6 / 0.62) / a); // leave room on the desk for removed parts
-  camera.position.set(0, 0, needH / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))));
+  camera.position.set(0, 0, needH / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))); viewH = needH;
   camera.lookAt(0, 0, 0);
   camera.setViewOffset(w, h, 0, -0.025 * h, w, h);
   camera.updateProjectionMatrix();
+  if (using) { const v = useView(); rest.x = v.x; rest.y = v.y; rest.rx = v.rx; holder.scale.setScalar(v.s); }
 }
 addEventListener('resize', resize); resize();
 
@@ -513,7 +522,7 @@ function drawPalScreen(g, w, h, phase) {
     const y = Math.min(phase, 1) * 86;
     g.font = `700 30px ${FONT}`; g.fillText('POCKET', w / 2, y - 6);
     g.font = `700 30px ${FONT}`; g.fillText('PAL', w / 2, y + 30);
-    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('НАЖМИ СТАРТ', w / 2, 165); g.globalAlpha = 1; }
+    if (phase > 1.2) { g.font = `600 15px ${FONT}`; g.globalAlpha = Math.min(1, (phase - 1.2) * 3); g.fillText('PP-90', w / 2, 165); g.globalAlpha = 1; }
     for (let i = 0; i < h; i += 3) { g.fillStyle = 'rgba(43,61,32,.07)'; g.fillRect(0, i, w, 1); }
   }
 }
@@ -777,6 +786,7 @@ const DEVICES = {
       : c.pcb === 'dirty' ? 'Побывала в воде' : c.speaker === 'broken' ? 'Нет звука' : c.pcb !== 'ok' ? 'Не включается' : 'Потёртая',
     notes: ['Нашла на антресолях, хочу подарить сыну.', 'Коллекционирую, нужна рабочая.', 'Детство вспомнил — почините, пожалуйста!', 'Отправлю почтой, верните побыстрее.',
       'Купил на авито, продавец обманул.', 'Память об отце, очень прошу аккуратно.', 'Хочу пройти игру, которую не прошёл в 10 лет.', 'Внук уронил, я в расстройстве.'],
+    usage: 'Работает! Красная кнопка — прыжок, подержи — прыгнешь выше. Наиграешься — «Готово».',
     screen: (g, w, h, p) => drawPalScreen(g, w, h, p), lib: () => PocketPal },
   phone: { id: 'phone', name: 'Nordik', model: '3300', noun: ['трубка', 'трубку', 'трубки'], variants: PHONE_VARIANTS,
     parts: ['phShell', 'phPcb', 'phLcd', 'phEar', 'phKeys', 'phFront', 'phBatt', 'phCover'], screws: ['screw_1', 'screw_2', 'screw_3', 'screw_4'],
@@ -794,6 +804,7 @@ const DEVICES = {
     notes: ['Это мой первый телефон — хочу снова с него позвонить.', 'Бабушкина трубка, она с ней не расстаётся.', 'Беру в походы — аккумулятор держит неделю.',
       'Хочу поиграть в змейку, как на переменах.', 'Уронил с пятого этажа — выжила, но не включается.', 'Купил «неубиваемую», а она убилась.', 'Собираю цветные панели.'],
     licence: { price: 350, rep: 1, blurb: 'Тот самый неубиваемый кнопочный телефон. Сменные цветные панели, резиновая клавиатура, аккумулятор на неделю. Заказы дороже, чем на питомцев.' },
+    usage: 'Работает! Синяя кнопка — выбрать, C — назад, стрелки — листать. Почитай SMS и звонки.',
     screen: (g, w, h, p) => BrickPhone.drawScreen(g, w, h, p), lib: () => BrickPhone },
   pet: { id: 'pet', name: 'Pixel Pet', model: 'PX-97', noun: ['игрушка', 'игрушку', 'игрушки'], variants: PET_VARIANTS,
     parts: ['petShell', 'petLens', 'petKeys', 'petLcd', 'petPcb', 'petBuzzer', 'petCell', 'petDoor', 'petBack', 'petChain'],
@@ -811,6 +822,7 @@ const DEVICES = {
     notes: ['Мой питомец прожил 12 лет — хочу продолжить!', 'Нашла в старом рюкзаке, хочу оживить.', 'Подарок для дочки, она таких никогда не видела.',
       'Собираю Pixel Pet всех цветов.', 'Пищал на уроках — теперь молчит.', 'Батарейка протекла, всё позеленело.', 'Брат в детстве уронил с балкона.'],
     licence: { price: 200, rep: 0, blurb: 'Электронный питомец на цепочке. Простой и быстрый ремонт: батарейка, пищалка, кнопки. Заказы дешевле, зато их много.' },
+    usage: 'Работает! Питомец проснулся: A — покормить, B — поиграть, C — убрать.',
     screen: (g, w, h, p) => PixelPet.drawScreen(g, w, h, p), lib: () => PixelPet },
 };
 const devOf = x => DEVICES[(x && x.dev) || 'pal'];
@@ -1020,6 +1032,7 @@ function place(slot) {
   return o;
 }
 function clearDevice() {
+  stopUse();
   while (device.children.length) device.remove(device.children[0]);
   objs.clear(); K = null; powerHit = null;
 }
@@ -1129,8 +1142,8 @@ function face(el, name) {
 }
 let sayUntil = 0;
 const coaching = () => S.ordersDone < 1; // the first order is the tutorial: hints stay on screen
-function say(text, mood) {
-  $('taskSub').textContent = text; sayUntil = performance.now() + 4200; $('task').classList.remove('gone');
+function say(text, mood, ms = 4200) {
+  $('taskSub').textContent = text; sayUntil = performance.now() + ms; $('task').classList.remove('gone');
   if (mood) face($('hero'), mood);
   const t = $('task'); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
 }
@@ -1150,6 +1163,7 @@ function situation() {
   }
   const title = jobTitle(j);
   const dv = DV();
+  if (using) return [title, dv.usage];
   if (j.side === 'front') {
     if (assembled()) return [title, dv.test.hint];
     // a gadget with parts that come off from the front: say so when one of them is free now
@@ -1169,7 +1183,7 @@ function refreshHint(force) {
   const [title, sub] = situation();
   $('taskTitle').textContent = title;
   if (force || performance.now() > sayUntil) $('taskSub').textContent = sub;
-  $('task').classList.toggle('gone', !coaching() && performance.now() > sayUntil);
+  $('task').classList.toggle('gone', !using && !coaching() && performance.now() > sayUntil);
   tutorial();
   renderActions();
 }
@@ -1189,7 +1203,7 @@ function setHint(kind, obj, at, dir) {
 }
 function tutorial() {
   const j = J();
-  if (!j || onMat || S.ordersDone > 0 || j.opened || drag) return setHint(null);
+  if (!j || onMat || using || S.ordersDone > 0 || j.opened || drag) return setHint(null);
   if (j.side === 'front') return setHint('drag', device, new V3(0, 0, .4), [120, 0]);
   const dv = DV(), caseScrews = dv.screws.filter(s => kindOf(s) === 'screw'), tight = caseScrews.find(s => filled(s) && j.tight[s]);
   if (filled(dv.cover) && tight) return setHint('spin', objs.get(tight));
@@ -1264,7 +1278,7 @@ addEventListener('resize', () => renderTray());
 function renderMoney() { $('money').textContent = S.money.toLocaleString('ru-RU'); $('tabMoney').textContent = S.money.toLocaleString('ru-RU'); }
 function renderActions() {
   const j = J(), el = $('benchActions'), html = [];
-  if (j) {
+  if (j && !using) {
     html.push('<button class="pill" id="shelfBtn">На полку</button>');
     if (j.kind === 'donor') html.push('<button class="pill" id="finishBtn">Разобрать до конца</button>');
   }
@@ -1342,6 +1356,7 @@ canvas.addEventListener('pointerdown', e => {
   if (busy || uiOpen() || drag) return;
   initAudio();
   if (onMat) return matDown(e);
+  if (using) return useDown(e);
   const j = J(); if (!j) return;
   if (j.side === 'front') { const tm = testMesh(); if (tm && pick(e, [powerHit, tm])) return powerTest(); }
   const s = nearestScrew(e);
@@ -1375,7 +1390,8 @@ canvas.addEventListener('pointermove', e => {
     d.obj.rotation.z = (d.obj.position.x - d.start.x) * -.06;
   }
 });
-const endPointer = () => {
+const endPointer = e => {
+  if (using) return useUp(e);
   if (onMat) return matUp();
   if (!drag) return;
   const d = drag; drag = null;
@@ -1738,22 +1754,210 @@ async function powerTest() {
   }
   if (led) { led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c); }
   if (!(issue && issue.mute)) sfx[dv.test.sfx]();
+  // a gadget that works comes up close while it boots; the repair time stops here, playing with it is free
+  if (!issue) {
+    if (j.kind === 'order' && !j.secs) { j.secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000); j.doneAt = Date.now(); save(); }
+    beginUse();
+  }
   await tween(1.5, k => drawScreen(k * 1.6), k => k);
   if (issue) {
     await wait(.4); drawScreen(-1); if (led) { led.emissive.setHex(0); led.color.setHex(0x5a1510); }
     busy = false; return say(meter || issue.text, 'worried');
   }
   face($('hero'), 'laughing');
-  await wait(.5); busy = false;
+  busy = false; runApp();
+}
+
+/* ---------- what is on a phone that comes in: its owner's messages and calls, and somebody ringing ---------- */
+const SMS = [
+  ['Мама', 'Купи хлеба и молока. И не задерживайся!'], ['Мама', 'Ты где? Перезвони, ужин стынет.'], ['Мама', 'Позвони бабушке, она волнуется.'],
+  ['Папа', 'Машину не бери, я завтра на ней на дачу.'], ['Бабушка', 'Солнышко, я научилась писать смс! Целую.'],
+  ['Лёха', 'Идёшь в субботу на дискотеку?'], ['Лёха', 'Пиццу будешь? Заказываю на всех.'], ['Серёга', 'Скинь мелодию, которая у тебя на звонке!'],
+  ['Серёга', 'Вчерашний матч — это нечто! Какой гол!'], ['Оля', 'Спасибо за вчера! Было очень весело :)'], ['Оля', 'Не забудь: завтра в 10 у фонтана.'],
+  ['Димон', 'Верни кассету, мне брат голову оторвёт.'], ['Димон', 'Есть два билета на концерт. Пойдёшь?'], ['Света', 'Встречаемся у кинотеатра в 7. Не опаздывай!'],
+  ['Шеф', 'Завтра планёрка в 9:00. Без опозданий.'], ['Катюха', 'С днём рождения!!! Счастья, любви и новый телефон :)'], ['Вовчик', 'Я на остановке, жду. Ты скоро?'],
+  ['Оператор', 'Баланс: 12,40 р. Пополните счёт, чтобы оставаться на связи.'], ['Оператор', 'Новинка! Мелодия вместо гудков всего за 1 р. в день.'],
+  ['Сестра', 'Верни зарядку, у меня телефон сел.'], ['Танюша', 'Скучаю :) Позвони, как освободишься.'], ['Андрюха', 'Контрольную по алгебре перенесли на четверг!'],
+  ['Брат', 'Мой компьютер не трогай, там сохранения!'],
+];
+// what happened to it, in somebody's words
+const SMS_FAULT = {
+  phWet: ['Лёха', 'Ну что, телефон высох? Говорил же: не ходи с ним по лужам.'], phCrack: ['Оля', 'Видела, как он у тебя упал. Живой хоть?'],
+  phSticky: ['Мама', 'Опять чай над телефоном? Кнопки же склеятся!'], phBattDead: ['Сестра', 'Тебе не дозвониться — опять аккумулятор сел?'],
+  phInk: ['Димон', 'Как ты смс читаешь, там же весь экран в кляксах?'], phEarDead: ['Мама', 'Я звоню, а у тебя только «алло, алло». Почини уже!'],
+  phLoose: ['Серёга', 'Ты опять пропадаешь посреди разговора. Постучи по нему!'], phWorn: ['Брат', 'Столько смс строчишь, что все кнопки стёрлись :)'],
+  phScrews: ['Папа', 'Кто телефон разбирал? Винтики на столе нашёл.'],
+};
+// and the story its owner told in the order
+const SMS_NOTE = [
+  ['первый телефон', 'Мама', 'Поздравляем с первым телефоном! Теперь звони каждый день :)'], ['Бабушкина', 'Внуки', 'Бабуль, приедем в субботу! Испеки пирожки :)'],
+  ['походы', 'Лёха', 'Встречаемся у электрички в 7:15. Палатку беру я.'], ['змейку', 'Андрюха', 'Мой рекорд в змейке — 2350. Слабо побить?'],
+  ['пятого этажа', 'Мама', 'Зачем телефон с балкона бросать?! Он же не голубь.'], ['неубиваемую', 'Серёга', 'Говорил же: кирпич тоже не вечный :)'],
+  ['цветные панели', 'Оля', 'Нашла тебе панель с блёстками! Брать?'],
+];
+const CALL_LINES = [
+  'Алло! Ой… это не хозяин? Мастерская? Значит, телефон ожил! Передайте, пусть сразу перезвонит.',
+  'Алло-алло! Наконец-то гудки! Вы мастер? Спасибо, а то неделю дозвониться не получалось.',
+  'Алло? Кто это? Ремонт? Отлично, значит, скоро наговоримся. Привет хозяину!',
+  'Алло, ты где пропадаешь?! Ой, извините… Мастерская? Тогда передайте привет!',
+];
+// made once per phone and kept with the job, so what was read stays read
+function phoneLog(j) {
+  if (j.log) return j.log;
+  const r = seeded(j.id * 13 + 5), any = a => a[Math.floor(r() * a.length)], o = j.order;
+  const time = () => (8 + Math.floor(r() * 15)) + ':' + String(Math.floor(r() * 60)).padStart(2, '0');
+  const nums = {}, num = who => nums[who] || (nums[who] = '+79' + Array.from({ length: 9 }, () => Math.floor(r() * 10)).join(''));
+  // newest first: the messages that waited while it was dead, then the owner's story, then everyday life
+  const inbox = [];
+  if (o) o.faults.forEach(f => { if (SMS_FAULT[f]) inbox.push({ from: SMS_FAULT[f][0], text: SMS_FAULT[f][1] }); });
+  const n = o && o.note && SMS_NOTE.find(([k]) => o.note.includes(k)); if (n) inbox.push({ from: n[1], text: n[2] });
+  SMS.slice().sort(() => r() - .5).forEach(m => { if (inbox.length < 6 && !inbox.some(x => x.text === m[1])) inbox.push({ from: m[0], text: m[1] }); });
+  const days = ['Сегодня', 'Сегодня', 'Вчера', 'Вчера', 'Пн', 'Вс'];
+  inbox.forEach((m, i) => { m.day = days[i]; m.when = time(); m.read = i > 1; });
+  const people = [...new Set(inbox.map(m => m.from).filter(f => f !== 'Оператор' && f !== 'Внуки'))], who = people[0] || 'Мама';
+  const calls = [{ who, type: 'missed', n: 2 + Math.floor(r() * 3), day: 'Сегодня', when: time(), num: num(who) }];
+  for (let i = 0; i < 4; i++) {
+    const p = any(people.length ? people : ['Мама']), type = any(['in', 'out', 'out', 'missed']);
+    calls.push({ who: p, type, day: ['Вчера', 'Вчера', 'Пн', 'Вс'][i], when: time(), num: num(p), dur: type === 'missed' ? '' : Math.floor(r() * 9) + ':' + String(Math.floor(r() * 60)).padStart(2, '0') });
+  }
+  return (j.log = { inbox, calls, caller: { who, line: any(CALL_LINES), num: num(who) } });
+}
+
+/* ---------- a working gadget in hand: it comes up close and its own buttons work ---------- */
+// the gadget's program draws on the LCD; a tap presses the button nearest the finger on the 3D model
+function appCtx(j) {
+  return {
+    beep: (f, d, type = 'square', vol = .04, when = 0, slide) => tone(f, d, type, vol, when, slide),
+    record: devOf(j).id === 'pal' ? j.rec || (j.rec = ownerRecord(j)) : null,
+    onRecord: r => { j.rec = r; save(); say('Новый рекорд! Вот владелец удивится.', 'excited'); },
+    phone: devOf(j).id === 'phone' ? phoneLog(j) : null,
+    vibrate: on => { if (using) using.shake = on; if (on) buzz(200); },
+    say,
+  };
+}
+// the cartridge keeps its owner's high score, three letters and all
+function ownerRecord(j) {
+  const r = seeded(j.id * 7 + 3), who = j.order ? whoOf(j.order) : pick1(['Аня', 'Max', 'Дима', 'Оля', 'Vik']);
+  return { score: 120 + Math.floor(r() * 30) * 10, name: who.replace(/[^A-Za-zА-Яа-яЁё]/g, '').slice(0, 3).toUpperCase() };
+}
+// where the holder goes so the gadget's screen and buttons fill the room between the speech panel and «Готово»
+function useView() {
+  if (!using) return { x: 0, y: 0, rx: -.3, s: 1 };
+  const f = using.frame, ppu = innerHeight / viewH, task = $('task').getBoundingClientRect();
+  const top = Math.max($('hud').getBoundingClientRect().bottom, task.height ? task.bottom : 0) + 10;
+  const bot = ($('useBar').hidden ? innerHeight : $('useBar').getBoundingClientRect().top) - 10;
+  const s = Math.min((innerWidth - 24) / ((f[2] - f[0]) * ppu), (bot - top) / ((f[3] - f[1]) * ppu), 3.5);
+  // the camera's view is shifted down by 2.5% of the height (see resize)
+  return { x: -s * (f[0] + f[2]) / 2, y: (innerHeight * .525 - (top + bot) / 2) / ppu - s * (f[1] + f[3]) / 2, rx: -.05, s };
+}
+function moveTo(v, dur) {
+  const a = { x: rest.x, y: rest.y, rx: rest.rx, s: holder.scale.x };
+  return tween(dur, k => { rest.x = a.x + (v.x - a.x) * k; rest.y = a.y + (v.y - a.y) * k; rest.rx = a.rx + (v.rx - a.rx) * k; holder.scale.setScalar(a.s + (v.s - a.s) * k); }, ease.inOut);
+}
+function beginUse() {
+  const j = J(), dv = DV(), spec = dv.lib().use;
+  using = { j, dv, spec, frame: spec.frame, keys: spec.keys.map(k => Object.assign({ v: new V3(...k.at) }, k)), down: new Map(), app: null, acc: 0, shake: false };
+  document.body.classList.add('use'); $('useBar').hidden = false; setHint(null); renderActions();
+  device.rotation.y = 0; holder.position.z = 0;
+  say(dv.usage, 'laughing');
+  moveTo(useView(), .9);
+}
+function runApp() {
+  if (!using) return;
+  using.app = using.dv.lib().app(appCtx(using.j)); using.acc = 1;
+  refreshHint(true);
+}
+// out of use at once: the gadget is leaving the bench
+function stopUse() {
+  if (!using) return;
+  using.down.forEach(p => press(p.k, p.id, false));
+  using = null; document.body.classList.remove('use'); $('useBar').hidden = true;
+  rest.x = rest.y = 0; rest.rx = -.3; holder.scale.setScalar(1); holder.rotation.z = 0;
+}
+async function finishUse() {
+  if (!using || busy) return;
+  const j = using.j; busy = true;
+  using.down.forEach(p => press(p.k, p.id, false)); using.down.clear();
+  using.app = null; drawScreen(-1); holder.rotation.z = 0;
+  if (K.materials.led) { K.materials.led.emissive.setHex(0); K.materials.led.color.setHex(0x5a1510); }
+  using = null; document.body.classList.remove('use'); $('useBar').hidden = true;
+  await moveTo(useView(), .45);
+  busy = false; renderActions(); refreshHint(true);
   if (j.kind === 'order') markReady(); else offerSale();
 }
+$('useDone').addEventListener('click', () => { initAudio(); sfx.tick(); finishUse(); });
+// a button goes down (or the dial and the rocker tilt) on its own model
+function press(k, id, down) {
+  const part = objs.get(k.slot), o = part && (part.getObjectByName(k.mesh) || part); if (!o) return;
+  const u = o.userData; if (!u.rest) u.rest = { p: o.position.clone(), rx: o.rotation.x, ry: o.rotation.y };
+  o.position.copy(u.rest.p); o.rotation.x = u.rest.rx; o.rotation.y = u.rest.ry;
+  if (!down) return;
+  if (k.dial) { o.rotation.x += id === 'up' ? -.16 : id === 'down' ? .16 : 0; o.rotation.y += id === 'right' ? .16 : id === 'left' ? -.16 : 0; }
+  else if (k.tilt) { o.rotation.x += k.tilt[0]; o.rotation.y += k.tilt[1]; o.position.z -= .012; }
+  else if (k.push) o.position.add(new V3(...k.push));
+  else o.position.z -= .045;
+}
+// the button under the finger: the nearest by its own size, a little generous
+function keyAt(e) {
+  let best = null, bd = 1.25;
+  using.keys.forEach(k => {
+    if (!objs.get(k.slot)) return;
+    const c = toScreen(device, k.v), edge = toScreen(device, k.v.clone().setX(k.v.x + k.r));
+    const d = Math.hypot(e.clientX - c.x, e.clientY - c.y) / Math.max(12, Math.hypot(edge.x - c.x, edge.y - c.y));
+    if (d < bd) { bd = d; best = { k, c }; }
+  });
+  return best;
+}
+function useDown(e) {
+  if (!using.app) return;
+  let hit = keyAt(e), id = hit && hit.k.id;
+  // the dial is pressed on the side the finger lands on
+  if (hit && hit.k.dial) { const dx = e.clientX - hit.c.x, dy = e.clientY - hit.c.y; id = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); }
+  if (!hit && using.spec.screen) {
+    const lcd = objs.get(using.spec.lcd[0]), m = lcd && lcd.getObjectByName(using.spec.lcd[1]);
+    if (m && pick(e, [m])) { hit = { k: using.keys.find(k => k.id === using.spec.screen) }; id = hit.k.id; }
+  }
+  if (!hit) return;
+  canvas.setPointerCapture(e.pointerId);
+  using.down.set(e.pointerId, { k: hit.k, id });
+  keyEvent(hit.k, id, true);
+}
+function useUp(e) {
+  const p = e && using.down.get(e.pointerId); if (!p) return;
+  using.down.delete(e.pointerId); keyEvent(p.k, p.id, false);
+}
+function keyEvent(k, id, down) {
+  press(k, id, down);
+  if (down) { tone(2600, .012, 'square', .02); buzz(8); }
+  if (id === 'power') { if (down) reboot(); return; }
+  if (using.app) using.app.key(id, down);
+}
+// the power button switches it off and on again: the program starts over
+async function reboot() {
+  const u = using; if (!u.app) return;
+  u.app = null; u.shake = false; holder.rotation.z = 0; drawScreen(-1); sfx.clunk();
+  await wait(.6); if (using !== u) return;
+  sfx[u.dv.test.sfx]();
+  await tween(1.5, k => { if (using === u) drawScreen(k * 1.6); }, k => k);
+  if (using === u) runApp();
+}
+addEventListener('keydown', e => {
+  if (!using || !using.app || e.repeat || uiOpen() || S.mode !== 'bench' || !$('tablet').hidden) return;
+  const id = (using.spec.kbd || {})[e.code]; if (!id) return;
+  const k = using.keys.find(x => x.id === id) || using.keys.find(x => x.dial); if (!k) return;
+  e.preventDefault(); using.down.set('kb' + e.code, { k, id }); keyEvent(k, id, true);
+});
+addEventListener('keyup', e => {
+  const p = using && using.down.get('kb' + e.code); if (!p) return;
+  using.down.delete('kb' + e.code); keyEvent(p.k, p.id, false);
+});
 function star(on) {
   return `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" fill="${on ? '#e7b04a' : '#d9c7a3'}" stroke="${on ? '#a8701c' : '#c4ad84'}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 }
 // the owner comes back to the window to collect it (and pay)
 function markReady() {
   const j = J(), o = j.order;
-  const secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 60 + o.faults.reduce((a, f) => a + (FAULTS[f].time || 60), 0);
+  const secs = j.secs || Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000), par = 60 + o.faults.reduce((a, f) => a + (FAULTS[f].time || 60), 0);
   const stars = secs < par * .6 ? 3 : secs < par ? 2 : 1;
   if (o.nick) return shipOut(j, secs, stars);
   S.ready.push({ id: j.id, job: j, secs, stars, tip: [0, 0, 10, 20][stars], at: Date.now() + 5000 });
@@ -1762,7 +1966,7 @@ function markReady() {
   refreshHint(true); say('Готово! ' + CUSTOMERS[o.cust].name + ' скоро зайдёт за ней к окошку.', 'proud');
 }
 function shipOut(j, secs, stars) {
-  const o = j.order, late = o.deadline && Date.now() > o.deadline;
+  const o = j.order, late = o.deadline && (j.doneAt || Date.now()) > o.deadline;
   const tip = late ? 0 : [0, 0, 5, 10][stars], total = late ? Math.round(o.pay / 2) : o.pay + tip;
   S.job = null; S.ordersDone++; S.story.since++; save(); clearDevice();
   const dRep = late ? -3 : stars; gainRep(dRep);
@@ -2123,14 +2327,22 @@ function frame(now) {
     const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t / tw.dur); tw.fn(tw.e(k));
     if (k >= 1) { tweens.splice(i, 1); tw.res(); }
   }
-  holder.rotation.y = Math.sin(clock * .6) * .04;
+  holder.rotation.y = Math.sin(clock * .6) * (using ? .012 : .04);
+  holder.rotation.x = rest.rx; holder.position.x = rest.x;
+  if (using) {
+    holder.rotation.z = using.shake ? Math.sin(clock * 70) * .02 : 0;
+    if (using.app) {
+      using.app.tick(dt);
+      if ((using.acc += dt) >= 1 / 30) { using.acc = 0; const cv = screenTex.cv; using.app.draw(cv.getContext('2d'), cv.width, cv.height); screenTex.needsUpdate = true; }
+    }
+  }
   // the lit magnifier makes leftover dirt glow on the mat
   if (onMat && has('lens')) { const k = .55 + .45 * Math.sin(clock * 5); onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) o.material.color.setRGB(1, 1, .45 + .55 * k); }); }
-  holder.position.y = Math.sin(clock * 1.1) * .03;
+  holder.position.y = rest.y + Math.sin(clock * 1.1) * (using ? .012 : .03);
   const sw = J() && DV().swell, bat = sw && objs.get(sw);
   if (bat && J().slots[sw] && J().slots[sw].cond === 'broken' && !(drag && drag.obj === bat)) bat.scale.z = 1 + Math.sin(clock * 3) * .06;
   if (onMat) { const j = onMat.obj.getObjectByName('joint'); if (j && !onMat.solder) j.material.emissiveIntensity = .4 + .4 * Math.sin(clock * 5); solderStep(dt); }
-  shadow.visible = !!J();
+  shadow.visible = !!J() && rest.rx < -.25; // not while it is up close
   if (hintTarget && hintEl.classList.contains('on')) {
     const p = toScreen(hintTarget.obj, hintTarget.at);
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
@@ -2146,6 +2358,8 @@ if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now:
   pt: (x, y, z) => toScreen(device, new V3(x, y, z)), joint: () => toScreen(onMat.obj.getObjectByName('joint')), state: () => S,
   rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
   thumb: it => thumb(it), deviceThumb: (d, v) => deviceThumb(d, v),
+  using: () => !!(using && using.app), key: id => { const k = using.keys.find(x => x.id === id); return toScreen(device, k.v); },
+  screen: () => screenTex.cv.toDataURL(), ff: sec => { for (let i = 0; i < sec * 30; i++) using.app.tick(1 / 30); },
   grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o, o.userData.c)); }); return out; } };
 
 /* ---------- boot ---------- */
