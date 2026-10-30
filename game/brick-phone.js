@@ -561,7 +561,7 @@ function app(ctx) {
     }
     if (id === 'navi') {
       if (view === 'menu') { const m = MENU[menuI]; go(m.go); if (m.go === 'calls') calls.forEach(c => { c.seen = true; }); }
-      else if (view === 'inbox' && inbox.length) { sel0 = sel; go('read'); inbox[sel0].read = true; }
+      else if (view === 'inbox' && inbox.length) { sel0 = sel; go('read'); inbox[sel0].read = true; if (ctx.onRead) ctx.onRead(inbox[sel0]); }
       else if (view === 'read') { const s = sel0; go('inbox'); sel = s; top = Math.max(0, s - 2); }
       else if (view === 'calls' && calls.length) { sel0 = sel; go('info'); }
       else if (view === 'info') { const s = sel0; go('calls'); sel = s; top = Math.max(0, s - 2); }

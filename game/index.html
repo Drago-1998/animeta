@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@600;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Nunito:wght@600;800&family=Caveat:wght@600&display=swap">
 <style>
 /* Layout: one portrait screen — painted workshop behind, the gadget (or one part on the mat) in 3D, the mechanic's
    speech panel on top, tools down the right edge, the bench (removed parts, screw cup, store) along the bottom,
@@ -222,6 +222,12 @@ body.use #bench, body.use #tools, body.use #desk { display: none; }
 .btn.danger { background: #e9b3a6; box-shadow: 0 4px 0 #b97a6a; }
 .btn:disabled { opacity: .45; cursor: default; }
 .btns { display: flex; flex-direction: column; gap: 10px; }
+/* a note found inside a gadget, in the old master's hand */
+.paper { margin: 2px 4px; padding: 12px 16px; border-radius: 3px; transform: rotate(-1.2deg); color: #23336b;
+  background: #fffbe6 repeating-linear-gradient(transparent 0 27px, #cfdcef 27px 28px); box-shadow: 0 6px 14px rgba(0,0,0,.22);
+  font: 600 23px/28px "Caveat", cursive; }
+.card.ending p { font-weight: 600; }
+.card .reply { padding: 10px 12px; background: #fff6dc; border-left: 4px solid var(--mustard); border-radius: 6px; font-style: italic; }
 .itemhead { display: flex; gap: 14px; align-items: center; }
 .itemhead img { width: 96px; height: 96px; border-radius: 14px; background: #eadcc3; object-fit: contain; flex: none; }
 .state { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 8px; font: 800 12px/1.2 var(--body); color: #fff; background: #7d8a5c; }
@@ -245,6 +251,29 @@ body.use #bench, body.use #tools, body.use #desk { display: none; }
 .taskbar b { border: 2px outset #eee; padding: 2px 6px; font: 800 11px/1 var(--body); }
 .taskbar span { border: 1px inset #eee; padding: 3px 6px; font-variant-numeric: tabular-nums; }
 body.pc #c, body.pc #task, body.pc #tools, body.pc #bench, body.pc #hint, body.pc #street, body.pc #streetBar, body.pc #matBar, body.pc #useBar { display: none !important; }
+/* the case file: a notepad window on the computer */
+#caseBody { flex: 1; min-height: 0; overflow-y: auto; margin: 4px 2px 2px; padding: 12px 12px 18px; background: #fffdf3; border: 2px inset #e0ddd5;
+  color: var(--ink); font: 600 14px/1.4 var(--body); }
+#caseBody h3 { margin: 0 0 8px; font: 700 17px/1.2 var(--display); }
+#caseBody h4 { margin: 18px 0 4px; font: 800 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: #8a6a45; }
+#caseBody p { margin: 2px 0; }
+#caseBody .lead { padding: 8px 10px; background: #f6e7bd; border-left: 4px solid var(--mustard); border-radius: 4px; }
+#caseBody .clue, #caseBody .person { padding: 8px 0; border-bottom: 1px dashed #d8c9a8; }
+#caseBody .clue.new b::after { content: " · новое"; color: var(--orange); font-size: 12px; }
+#caseBody .hand { font: 600 20px/1.2 "Caveat", cursive; color: #23336b; }
+#caseBody small { color: #8a6a45; font-weight: 800; }
+#caseBody .tr { color: var(--orange); letter-spacing: 1px; font-size: 13px; }
+#caseBody .deduce { margin-top: 10px; padding: 10px; background: #e7eefc; border: 1px solid #9db3dd; border-radius: 6px; }
+#caseBody .deduce code { display: block; margin: 6px 0 4px; font: 800 16px/1.35 ui-monospace, Menlo, monospace; word-break: break-word; }
+#caseBody .abc { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+#caseBody .abc span { white-space: nowrap; padding: 2px 6px; background: #fff; border: 1px solid #c5d3ee; border-radius: 4px; font: 800 13px/1.2 ui-monospace, Menlo, monospace; }
+#caseBody .abc b { margin-right: 5px; font-family: var(--body); }
+#caseBody .deduce .opts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+#caseBody .deduce button { appearance: none; border: 2px outset #eee; background: #c3c0b6; padding: 9px 10px; text-align: left; cursor: pointer; font: 800 13px/1.2 var(--body); color: var(--ink); }
+#caseBody .deduce .no { margin-top: 6px; color: var(--red); font-weight: 800; }
+#caseBody .ends span { display: inline-block; margin: 4px 6px 0 0; padding: 4px 9px; border-radius: 6px; background: #eadcc3; font-weight: 800; }
+#caseBody .ends span.got { background: var(--mustard); }
+#caseBody .restart { margin-top: 16px; width: 100%; }
 .screen { position: absolute; z-index: 2; left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
   top: calc(env(safe-area-inset-top, 0px) + 60px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   background: #c3c0b6; color: var(--ink); display: flex; flex-direction: column; overflow: hidden; padding: 3px; border: 2px outset #eee;
@@ -293,6 +322,8 @@ body.street #c, body.street #task, body.street #tools, body.street #bench, body.
 .walker .bob { height: 100%; transform-origin: 50% 100%; }
 .walker.walking .bob { animation: bob .42s ease-in-out infinite alternate; }
 .walker img { display: block; height: 100%; width: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+/* somebody whose picture is not drawn yet comes as a silhouette */
+.walker.shadow img { filter: brightness(0) drop-shadow(0 6px 10px rgba(0,0,0,.35)); opacity: .9; }
 @keyframes bob { from { transform: translateY(0) rotate(-1.2deg); } to { transform: translateY(-9px) rotate(1.2deg); } }
 #streetBar { position: fixed; z-index: 6; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: none; gap: 8px; }
 body.street #streetBar { display: flex; }
@@ -380,6 +411,7 @@ body.street #streetBar { display: flex; }
       <button class="pcIcon" data-app="shop"><svg viewBox="0 0 32 32"><path d="M5 9h22l-2 14H7z" fill="#e7b04a" stroke="#5a3a10"/><path d="M11 9a5 5 0 0 1 10 0" stroke="#5a3a10" fill="none" stroke-width="2"/></svg><span>Запчасти</span></button>
       <button class="pcIcon" data-app="upgrades"><svg viewBox="0 0 32 32"><path d="M19 5a6 6 0 0 0-7.5 7.5L4 20l4 4 7.5-7.5A6 6 0 0 0 23 9l-3.5 3.5-3-1-1-3z" fill="#c9ccd1" stroke="#333" stroke-linejoin="round"/></svg><span>Мастерская</span><span class="dot" id="upgDot" hidden></span></button>
       <button class="pcIcon" data-app="post"><svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="16" fill="#c9955a" stroke="#5a3a10"/><path d="M4 9l12 9 12-9" stroke="#5a3a10" fill="none"/></svg><span>Посылки</span><span class="dot" id="postDot" hidden></span></button>
+      <button class="pcIcon" data-app="case" id="caseIcon" hidden><svg viewBox="0 0 32 32"><path d="M3 8h10l3 3h13v16H3z" fill="#e7c46a" stroke="#6b4a10"/><path d="M3 13h26" stroke="#6b4a10"/><rect x="17" y="17" width="9" height="4" fill="#c0392b" transform="rotate(-14 21 19)"/></svg><span>Дело</span><span class="dot" id="caseDot" hidden></span></button>
     </div>
     <div class="taskbar"><b>Пуск</b><span id="pcClock">00:00</span></div>
   </div>
@@ -393,6 +425,10 @@ body.street #streetBar { display: flex; }
     </div>
     <div id="tabBody"></div>
   </div>
+  <div class="screen" id="caseScreen" role="dialog" aria-label="Дело" hidden>
+    <header><b>Блокнот — Дело.txt</b><button class="x" id="caseClose" aria-label="Закрыть окно">×</button></header>
+    <div id="caseBody"></div>
+  </div>
 </div>
 <div class="overlay sheet" id="boxSheet" hidden><div class="card boxcard" role="dialog" aria-label="Коробка">
   <div class="boxhead"><h3>Коробка</h3><button class="x" id="boxClose" aria-label="Закрыть коробку">×</button></div>
@@ -405,6 +441,7 @@ body.street #streetBar { display: flex; }
 <script src="pocket-pal.js"></script>
 <script src="pixel-pet.js"></script>
 <script src="brick-phone.js"></script>
+<script src="story.js"></script>
 <script>
 (() => {
 'use strict';
@@ -753,21 +790,28 @@ const DISCOVER = {
 };
 // face: index of the "upset" portrait in customers.webp; the next one is the same person happy
 const CUSTOMERS = [
-  { name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', scale: 0.95, poses: true, story: 'Дарил её внуку в девяносто первом.',
+  { key: 'petr', name: 'Пётр Ильич', who: 'пенсионер, радиолюбитель', face: 0, fig: 'grandpa', scale: 0.95, poses: true, story: 'Дарил её внуку в девяносто первом.',
     more: 'Внук вырос, а приставку хранит. Я сам паяльник держать умею, но тут глаза уже не те.', leave: 'Зайду, как будет готово. Спасибо, сынок!', thanks: 'Как новенькая! Внук будет счастлив.' },
-  { name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', scale: 0.92, poses: true, story: 'Купил на барахолке за 300 рублей.',
+  { key: 'timur', name: 'Тимур', who: 'школьник, 14 лет', face: 2, fig: 'gamer', scale: 0.92, poses: true, story: 'Купил на барахолке за 300 рублей.',
     more: 'Продавец клялся, что работает. Я все карманные на неё потратил!', leave: 'Только не потеряйте её, ладно?', thanks: 'Огонь! Пойду рекорды ставить.' },
-  { name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, fig: 'business', scale: 1.05, poses: true, story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.',
+  { key: 'marina', name: 'Марина Сергеевна', who: 'руководитель отдела', face: 4, fig: 'business', scale: 1.05, poses: true, story: 'Мой первый гаджет — хочу поставить его на стол в кабинете.',
     more: 'Мне её подарил отец, когда я была в пятом классе. Хочу, чтобы она снова работала.', leave: 'Хорошо. Позвоните… то есть, я сама зайду.', thanks: 'Быстро и аккуратно. Беру вашу визитку.' },
-  { name: 'Ваня', who: 'ученик второго класса', face: 6, fig: 'kid', scale: 0.78, poses: true,
+  { key: 'vanya', name: 'Ваня', who: 'ученик второго класса', face: 6, fig: 'kid', scale: 0.78, poses: true,
     alias: { wave: 'cheer', thumbs: 'proud', idea: 'think', shy: 'laugh', nervous: 'shock', explain: 'neutral' }, story: 'Папа сказал, что она сломалась навсегда. Это правда?',
     more: 'Я её не ронял! Ну… почти не ронял.', leave: 'Я буду каждый день приходить и смотреть!', thanks: 'Ура, работает! Спасибо!' },
-  { name: 'Лёва', who: 'музыкант', face: 8, fig: 'hipster', scale: 1.05, poses: true,
+  { key: 'leva', name: 'Лёва', who: 'музыкант', face: 8, fig: 'hipster', scale: 1.05, poses: true,
     alias: { thumbs: 'relax', proud: 'relax', idea: 'guitar', shy: 'laugh', sad: 'explain', nervous: 'think', thanks: 'listen' }, story: 'Хочу записывать с неё восьмибитные звуки для альбома.',
     more: 'У неё особенный писк. Новые так не умеют — я проверял.', leave: 'Без неё альбом не допишу. Жду!', thanks: 'Вот это звук! Будет хит.' },
-  { name: 'Аркадий Львович', who: 'коллекционер', face: 10, fig: 'collector', scale: 1.08, poses: true,
+  { key: 'arkady', name: 'Аркадий Львович', who: 'коллекционер', face: 10, fig: 'collector', scale: 1.08, poses: true,
     alias: { thumbs: 'explain', idea: 'hat', shy: 'hat', sad: 'think', angry: 'proud', thanks: 'calm', nervous: 'neutral' }, story: 'Редкая расцветка, мне нужна в идеальном состоянии.',
     more: 'В коллекции таких две на весь город. Вторая у меня уже есть.', leave: 'Надеюсь на вашу аккуратность.', thanks: 'Безупречно. Я ещё вернусь.' },
+  // art: false — no pictures yet: they stand in as a silhouette of `stand`
+  { key: 'kravets', name: 'Виктор Кравец', who: 'владелец «ТехноГрада»', face: 10, fig: 'kravets', scale: 1.08, poses: true, art: false, stand: 5,
+    alias: { shy: 'neutral', nervous: 'think', sad: 'think', cheer: 'proud', thanks: 'proud' }, thanks: 'Благодарю.' },
+  { key: 'sokolova', name: 'Лейтенант Соколова', who: 'участковый', face: 4, fig: 'sokolova', scale: 1.0, poses: true, art: false, stand: 2,
+    alias: { shy: 'neutral', nervous: 'think' }, thanks: 'Спасибо.' },
+  { key: 'grisha', name: 'Мастер Гриша', who: 'прежний мастер киоска', face: 0, fig: 'grisha', scale: 0.96, poses: true, art: false, stand: 0,
+    alias: { shy: 'neutral', nervous: 'think', angry: 'shock' }, thanks: 'Спасибо, мастер.' },
 ];
 const SELLERS = ['Сергей', 'Ольга', 'дядя Миша', 'Kolya_95', 'Антон', 'Вера Павловна'];
 /* the gadgets: what each is made of, its screws and their rules, how it is tested, what it sells for */
@@ -868,10 +912,12 @@ function gainRep(n) {
 
 /* ---------- save ---------- */
 const SAVE_KEY = 'retro-repair-v2';
+// the investigation: beats done, choices made, trust, clues found (and seen in the case file), people met, story orders posted
+const freshCase = () => ({ done: {}, flags: {}, trust: {}, clues: [], seen: [], met: {}, posted: {}, since: 0, active: null, endings: [] });
 function newGame() {
   return { money: 40, uid: 1, box: [], boxScrews: { screw: 0, bscrew: 0 }, tray: [], cup: { screw: 4, bscrew: 2 },
     orders: [], offers: [], nextCustomer: 0, ordersDone: 0, job: null, shelf: [], deliveries: [], seen: false,
-    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, story: { step: 0, since: 0, active: null }, rep: 0, upg: {}, screwNext: 0, lic: {} };
+    mode: 'street', visitor: null, nextVisit: 0, ready: [], web: [], webNext: 0, webSeen: true, case: freshCase(), rep: 0, upg: {}, screwNext: 0, lic: {} };
 }
 let S = null;
 try { S = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { S = null; }
@@ -879,7 +925,9 @@ if (!S || !Array.isArray(S.box)) S = newGame();
 function migrate() {
   S.shelf = S.shelf || []; S.deliveries = S.deliveries || []; S.ready = S.ready || []; S.nextCustomer = S.nextCustomer || 0; S.mode = S.mode || 'street';
   S.web = S.web || []; S.webNext = S.webNext || 0; if (S.webSeen === undefined) S.webSeen = true;
-  S.story = S.story || { step: 0, since: 0, active: null };
+  // the old chain of chapters gave way to the investigation, which starts from the beginning
+  S.case = Object.assign(freshCase(), S.case || {}); delete S.story;
+  if (S.visitor && S.visitor.kind === 'story') S.visitor = null;
   S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0; S.lic = S.lic || {};
   // screws no longer go in the box: pour whatever was stored there into the cups
   if (S.boxScrews && (S.boxScrews.screw || S.boxScrews.bscrew)) { S.cup.screw += S.boxScrews.screw; S.cup.bscrew += S.boxScrews.bscrew; S.boxScrews = { screw: 0, bscrew: 0 }; }
@@ -961,7 +1009,7 @@ function makeJob(kind, src) {
   return { id: S.uid++, dev: dv.id, kind, order: kind === 'order' ? src : null, slots, tight, side: 'front', started: 0, variant: src.variant };
 }
 const variantOf = (dv, v) => dv.variants[v] || dv.variants[0];
-const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + whoOf(j.order) : 'Б/у ' + devOf(j).name + ', ' + variantOf(devOf(j), j.variant).name;
+const jobTitle = j => j.kind === 'order' ? 'Заказ: ' + whoOf(j.order) : j.kind === 'find' ? j.title : 'Б/у ' + devOf(j).name + ', ' + variantOf(devOf(j), j.variant).name;
 
 /* ---------- kits: one per body colour, shared by everything built in that colour ---------- */
 const kits = {}, thumbKits = {};
@@ -1469,6 +1517,8 @@ async function removePart(slot, target) {
   await tween(.45, k => { o.position.lerpVectors(from, at, k); o.rotation.z = r0 + k * .5; o.scale.setScalar(1 - k * .55); }, ease.in);
   device.remove(o);
   renderTray(); busy = false;
+  const f = j.order && j.order.find;
+  if (f && f.slot === slot && !j.found) { j.found = true; save(); setTimeout(() => showFind(f.clue), 700); }
   const dsc = DISCOVER[it.type] && DISCOVER[it.type][it.cond];
   if (target) { stowPart(it, target); if (dsc) say(dsc[0] + (target === 'boxBtn' ? ' Убрал в коробку.' : ' Выбросил.'), dsc[1]); refreshHint(); return it; }
   if (dsc) say(dsc[0], dsc[1]); else say(PARTS[it.type].name + ' — на столе.', 'focused');
@@ -1753,7 +1803,9 @@ async function powerTest() {
     busy = false; return say(meter || issue.text, 'worried');
   }
   if (led) { led.color.setHex(0xff5a3c); led.emissive.setHex(0xe0200c); }
-  if (!(issue && issue.mute)) sfx[dv.test.sfx]();
+  // Лёва's Pal beeps its secret instead of the usual tune
+  const morse = !issue && j.order && j.order.boot === 'morse';
+  if (morse) playMorse('ДОМ 7 ПОДВАЛ'); else if (!(issue && issue.mute)) sfx[dv.test.sfx]();
   // a gadget that works comes up close while it boots; the repair time stops here, playing with it is free
   if (!issue) {
     if (j.kind === 'order' && !j.secs) { j.secs = Math.round(((j.worked || 0) + (Date.now() - j.started)) / 1000); j.doneAt = Date.now(); save(); }
@@ -1766,6 +1818,16 @@ async function powerTest() {
   }
   face($('hero'), 'laughing');
   busy = false; runApp();
+  if (morse) setTimeout(() => storyClue('morse'), 1800);
+}
+const MORSE = { 'А': '.-', 'В': '.--', 'Д': '-..', 'Л': '.-..', 'М': '--', 'О': '---', 'П': '.--.', '7': '--...' };
+function playMorse(text) {
+  let t = 0; const u = .075;
+  [...text].forEach(ch => {
+    if (ch === ' ') { t += u * 4; return; }
+    [...MORSE[ch]].forEach(s => { const d = s === '.' ? u : u * 3; tone(1250, d, 'square', .05, t); t += d + u; });
+    t += u * 2;
+  });
 }
 
 /* ---------- what is on a phone that comes in: its owner's messages and calls, and somebody ringing ---------- */
@@ -1804,6 +1866,7 @@ const CALL_LINES = [
 // made once per phone and kept with the job, so what was read stays read
 function phoneLog(j) {
   if (j.log) return j.log;
+  if (j.order && j.order.log) return (j.log = JSON.parse(JSON.stringify(j.order.log)));
   const r = seeded(j.id * 13 + 5), any = a => a[Math.floor(r() * a.length)], o = j.order;
   const time = () => (8 + Math.floor(r() * 15)) + ':' + String(Math.floor(r() * 60)).padStart(2, '0');
   const nums = {}, num = who => nums[who] || (nums[who] = '+79' + Array.from({ length: 9 }, () => Math.floor(r() * 10)).join(''));
@@ -1828,7 +1891,8 @@ function phoneLog(j) {
 function appCtx(j) {
   return {
     beep: (f, d, type = 'square', vol = .04, when = 0, slide) => tone(f, d, type, vol, when, slide),
-    record: devOf(j).id === 'pal' ? j.rec || (j.rec = ownerRecord(j)) : null,
+    record: devOf(j).id === 'pal' ? j.rec || (j.rec = j.order && j.order.rec ? { ...j.order.rec } : ownerRecord(j)) : null,
+    onRead: m => { if (m.clue) storyClue(m.clue); },
     onRecord: r => { j.rec = r; save(); say('Новый рекорд! Вот владелец удивится.', 'excited'); },
     phone: devOf(j).id === 'phone' ? phoneLog(j) : null,
     vibrate: on => { if (using) using.shake = on; if (on) buzz(200); },
@@ -1866,6 +1930,8 @@ function runApp() {
   if (!using) return;
   using.app = using.dv.lib().app(appCtx(using.j)); using.acc = 1;
   refreshHint(true);
+  const u = using, o = u.j.order;
+  if (o && o.onUse) setTimeout(() => { if (using === u && u.app) storyClue(o.onUse); }, 1400);
 }
 // out of use at once: the gadget is leaving the bench
 function stopUse() {
@@ -1876,14 +1942,25 @@ function stopUse() {
 }
 async function finishUse() {
   if (!using || busy) return;
-  const j = using.j; busy = true;
+  const j = using.j;
+  if (j.kind === 'find' && (j.need || []).some(id => !S.case.clues.includes(id))) return say('Сначала прочитаю, что в нём. Синяя кнопка — меню, потом «Сообщения».', 'thinking');
+  if (j.order && j.order.onUse) storyClue(j.order.onUse);
+  if (j.order && j.order.boot === 'morse') storyClue('morse');
+  busy = true;
   using.down.forEach(p => press(p.k, p.id, false)); using.down.clear();
   using.app = null; drawScreen(-1); holder.rotation.z = 0;
   if (K.materials.led) { K.materials.led.emissive.setHex(0); K.materials.led.color.setHex(0x5a1510); }
   using = null; document.body.classList.remove('use'); $('useBar').hidden = true;
   await moveTo(useView(), .45);
   busy = false; renderActions(); refreshHint(true);
-  if (j.kind === 'order') markReady(); else offerSale();
+  // a story order may want a word before it goes
+  const b = j.kind === 'order' && j.order.beat && beatOf(j.order.beat);
+  if (b && b.atDone) return talk(b.atDone(j), () => markReady());
+  if (j.kind === 'order') markReady(); else if (j.kind === 'find') stowFind(j); else offerSale();
+}
+function stowFind(j) {
+  S.job = null; save(); clearDevice(); renderTray(); renderActions(); refreshHint(true);
+  say(j.title + ' — в ящик стола. Всё, что в нём было, теперь в «Деле».', 'determined');
 }
 $('useDone').addEventListener('click', () => { initAudio(); sfx.tick(); finishUse(); });
 // a button goes down (or the dial and the rocker tilt) on its own model
@@ -1968,7 +2045,7 @@ function markReady() {
 function shipOut(j, secs, stars) {
   const o = j.order, late = o.deadline && (j.doneAt || Date.now()) > o.deadline;
   const tip = late ? 0 : [0, 0, 5, 10][stars], total = late ? Math.round(o.pay / 2) : o.pay + tip;
-  S.job = null; S.ordersDone++; S.story.since++; save(); clearDevice();
+  S.job = null; S.ordersDone++; S.case.since++; save(); clearDevice();
   const dRep = late ? -3 : stars; gainRep(dRep);
   const mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
   const card = $('card');
@@ -1976,6 +2053,7 @@ function shipOut(j, secs, stars) {
     <div class="eyebrow" style="text-align:center">Курьер забрал посылку</div>
     <div class="hero big" id="heroBig" aria-hidden="true"></div>
     <h2>${late ? 'Опоздали…' : 'Отправлено!'}</h2>
+    ${o.beat && beatOf(o.beat) && beatOf(o.beat).reply ? `<p class="reply">${esc(beatOf(o.beat).reply(j))}</p>` : ''}
     <div class="stars">${star(!late && stars > 0)}${star(!late && stars > 1)}${star(!late && stars > 2)}</div>
     <div class="rows"><div><span>${esc(o.nick)}</span><span></span></div><div><span>Время работы</span><span>${mm}</span></div>
       <div><span>Оплата</span><span>${late ? Math.round(o.pay / 2) + ' (половина)' : o.pay}</span></div>
@@ -1985,8 +2063,8 @@ function shipOut(j, secs, stars) {
   card.hidden = false;
   face($('heroBig'), late ? 'worried' : ['relieved', 'happy', 'proud'][stars - 1]);
   flyCoins(total);
-  if (storyDue()) S.nextVisit = Math.min(S.nextVisit || Infinity, Date.now() + 8000);
-  $('next').onclick = () => { sfx.pop(); card.hidden = true; refreshHint(true); if (storyDue()) say('Кажется, к окошку кто-то идёт…', 'surprised'); };
+  if (beatDue()) S.nextVisit = Math.min(S.nextVisit || Infinity, Date.now() + 8000);
+  $('next').onclick = () => { sfx.pop(); card.hidden = true; refreshHint(true); if (o.beat) finishBeat(beatOf(o.beat)); else if (beatDue()) say('Кажется, к окошку кто-то идёт…', 'surprised'); };
 }
 function showPaid(r, then) {
   const o = r.job.order, c = CUSTOMERS[o.cust], total = o.pay + r.tip;
@@ -2004,7 +2082,6 @@ function showPaid(r, then) {
   card.hidden = false;
   face($('heroBig'), ['relieved', 'happy', 'proud'][r.stars - 1]);
   S.ready = S.ready.filter(x => x !== r); S.ordersDone++; gainRep(r.stars + 2);
-  if (o.story != null && S.story.active === o.story) { S.story.step = o.story + 1; S.story.since = 0; S.story.active = null; }
   save();
   flyCoins(total);
   $('next').onclick = () => { sfx.pop(); card.hidden = true; then && then(); };
@@ -2020,6 +2097,85 @@ function offerSale() {
   $('sell').onclick = () => { card.hidden = true; S.job = null; ensureListings(); save(); clearDevice(); flyCoins(dv.sell); refreshHint(true); say('Продано! Можно брать следующую.', 'happy'); };
   $('keep').onclick = () => { card.hidden = true; };
 }
+/* ---------- the investigation on screen: a note found inside a gadget, the ending, the case file ---------- */
+function showFind(id) {
+  const c = STORY.CLUES[id]; if (!c) return;
+  if (!$('card').hidden || novel) return setTimeout(() => showFind(id), 800);
+  const card = $('card');
+  card.innerHTML = `<div class="card" role="dialog" aria-label="Находка">
+    <div class="eyebrow" style="text-align:center">Находка</div>
+    <p>${esc(c.found || '')}</p>
+    ${c.note ? `<div class="paper">${esc(c.text)}</div>` : ''}
+    <button class="btn" id="next">В дело</button></div>`;
+  card.hidden = false; sfx.pop(); buzz(30);
+  $('next').onclick = () => { card.hidden = true; storyClue(id); refreshHint(); };
+}
+function showEnding(id) {
+  const e = STORY.ENDINGS[id]; if (!e) return;
+  if (!$('card').hidden) return setTimeout(() => showEnding(id), 800);
+  S.case.endShown = true; if (!S.case.endings.includes(id)) S.case.endings.push(id); save();
+  const card = $('card'), all = Object.keys(STORY.ENDINGS).length;
+  card.innerHTML = `<div class="card ending" role="dialog" aria-label="Концовка">
+    <div class="eyebrow" style="text-align:center">Концовка · открыто ${S.case.endings.length} из ${all}</div>
+    <div class="hero big" id="heroBig" aria-hidden="true"></div>
+    <h2>«${esc(e.title)}»</h2>
+    ${e.text.map(t => `<p>${esc(t)}</p>`).join('')}
+    <div class="rows"><div><span>Улик найдено</span><span>${S.case.clues.length} из ${Object.keys(STORY.CLUES).length}</span></div>
+      <div><span>Союзников</span><span>${STORY.allies()}</span></div>${e.money ? `<div class="total"><span>Награда</span><span>${e.money}</span></div>` : ''}</div>
+    <button class="btn" id="next">Продолжить работу</button></div>`;
+  card.hidden = false; face($('heroBig'), e.face); sfx.bell();
+  $('next').onclick = () => {
+    card.hidden = true; if (e.money) flyCoins(e.money); if (e.rep) gainRep(e.rep);
+    refreshHint(true); say('Историю можно пройти заново — с другими решениями. Кнопка в «Деле» на компьютере.', 'happy', 6000);
+  };
+}
+const caseNews = () => !!(S.case.flags.case_open && (S.case.clues.some(id => !S.case.seen.includes(id)) || STORY.DEDUCTIONS.some(d => d.when())));
+let dedNote = null; // what the master said about the last wrong answer
+function caseLead() {
+  const a = !S.case.flags.ending && S.case.active && beatOf(S.case.active);
+  if (a && a.order) return S.ready.some(r => r.job.order && r.job.order.beat === a.id) ? `Готово — ждём, когда ${CUSTOMERS[custIdx(a.who)].name} заберёт заказ у окошка.`
+    : `Почини ${DEVICES[a.order.dev || 'pal'].noun[1]} — заказ «${CUSTOMERS[custIdx(a.who)].name}». Внутри может найтись что-то важное.`;
+  if (J() && J().kind === 'find') return 'Почини телефон Гриши и прочитай его сообщения.';
+  return STORY.lead();
+}
+function openCase() { $('pcScreen').hidden = true; $('caseScreen').hidden = false; dedNote = null; renderCase(); sfx.tick(); }
+function renderCase() {
+  const sc = S.case, h = [];
+  h.push(`<h3>Дело: ${esc(STORY.TITLE)}</h3><div class="lead"><b>Что дальше.</b> ${esc(caseLead())}</div>`);
+  STORY.DEDUCTIONS.filter(d => d.when()).forEach(d => h.push(`<div class="deduce"><b>Вывод.</b> ${esc(d.q)}${d.code ? `<code>${esc(d.code)}</code>` : ''}${d.hint ? `<div class="abc">${d.hint.map(([l, c]) => `<span><b>${esc(l)}</b>${esc(c)}</span>`).join('')}</div>` : ''}
+    <div class="opts">${d.opts.map((o, i) => `<button data-ded="${d.id}" data-i="${i}">${esc(o.label)}</button>`).join('')}</div>${dedNote && dedNote.id === d.id ? `<p class="no">${esc(dedNote.text)}</p>` : ''}</div>`));
+  h.push(`<h4>Улики · ${sc.clues.length}</h4>`);
+  if (!sc.clues.length) h.push('<p>Пока пусто.</p>');
+  [...sc.clues].reverse().forEach(id => {
+    const c = STORY.CLUES[id];
+    h.push(`<div class="clue${sc.seen.includes(id) ? '' : ' new'}"><b>${esc(c.title)}</b><p${c.note ? ' class="hand"' : ''}>${esc(c.note ? '«' + c.text + '»' : c.text)}</p><small>${esc(c.where)}</small></div>`);
+  });
+  h.push('<h4>Люди</h4>');
+  STORY.PEOPLE.filter(p => p.key === 'grisha' || sc.met[p.key]).forEach(p => {
+    const t = sc.trust[p.key] || 0;
+    h.push(`<div class="person"><b>${esc(CUSTOMERS[custIdx(p.key)].name)}</b>${t ? ` <span class="tr" title="${t > 0 ? 'доверяет' : 'обижен'}">${t > 0 ? '♥'.repeat(Math.min(3, t)) : '✕'}</span>` : ''}<p>${esc(p.note())}</p></div>`);
+  });
+  const ends = Object.entries(STORY.ENDINGS);
+  h.push(`<h4>Концовки · ${sc.endings.length} из ${ends.length}</h4><div class="ends">${ends.map(([id, e]) => `<span class="${sc.endings.includes(id) ? 'got' : ''}">${sc.endings.includes(id) ? esc(e.title) : '???'}</span>`).join('')}</div>`);
+  if (sc.flags.ending) h.push('<button class="btn restart" id="caseRestart">Начать историю заново</button>');
+  $('caseBody').innerHTML = h.join('');
+  sc.seen = [...sc.clues]; save(); renderNav();
+}
+$('caseBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-ded]');
+  if (b) {
+    const d = STORY.DEDUCTIONS.find(x => x.id === b.dataset.ded), o = d && d.opts[+b.dataset.i];
+    if (!o || !d.when()) return;
+    initAudio();
+    if (o.ok) { dedNote = null; sfx.coin(); d.win(); } else { dedNote = { id: d.id, text: o.no }; sfx.nope(); buzz(30); }
+    return renderCase();
+  }
+  if (e.target.id === 'caseRestart') {
+    S.case = Object.assign(freshCase(), { endings: S.case.endings }); save(); sfx.pop(); renderCase();
+    notice('История начнётся заново — скоро кто-нибудь зайдёт к окошку.');
+  }
+});
+$('caseClose').addEventListener('click', () => { $('caseScreen').hidden = true; sfx.tick(); });
 function flyCoins(total) {
   const target = document.querySelector('#hud .coin').getBoundingClientRect();
   const tx = target.left + 9, ty = target.top + 9, n = 8, final = S.money + total, per = Math.floor(total / n);
@@ -2048,7 +2204,7 @@ function putOnBench(job) {
   sfx.pop();
   const dv = devOf(job);
   if (dv.id === 'pet' && !S.petSeen) { S.petSeen = true; save(); say('Это Pixel Pet. Батарейка — под круглой крышкой сзади, её держит один винтик. Чтобы вскрыть корпус, открути 4 винта по краям.', 'excited'); }
-  else say(job.worked ? 'Вернулись к ней — продолжаем.' : job.kind === 'order' ? 'Посмотрим, что с ней. ' + dv.test.short + ' или поверни её пальцем.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
+  else say(job.worked ? 'Вернулись к ней — продолжаем.' : job.hello ? job.hello : job.kind === 'order' ? 'Посмотрим, что с ней. ' + dv.test.short + ' или поверни её пальцем.' : 'Б/у на разбор. Снимай всё полезное.', 'thinking');
   refreshHint();
 }
 async function shelve() {
@@ -2115,9 +2271,10 @@ let tab = 'orders', toastTimer = 0, toastHost = null;
 function openTablet(t) {
   if (onMat) closeMat(); $('boxSheet').hidden = true;
   $('tablet').hidden = false; document.body.classList.add('pc'); drawPC(); renderNav(); sfx.tick();
+  $('caseScreen').hidden = true;
   if (t) openApp(t); else $('pcScreen').hidden = true;
 }
-function openApp(t) { tab = t; $('pcScreen').hidden = false; renderTablet(); sfx.tick(); }
+function openApp(t) { if (t === 'case') return openCase(); tab = t; $('caseScreen').hidden = true; $('pcScreen').hidden = false; renderTablet(); sfx.tick(); }
 document.querySelector('#pcDesk .icons').addEventListener('click', e => { const b = e.target.closest('[data-app]'); if (b) { initAudio(); openApp(b.dataset.app); } });
 function closePC() { $('tablet').hidden = true; document.body.classList.remove('pc'); renderNav(); refreshHint(); }
 function go(m) {
@@ -2133,7 +2290,8 @@ function renderNav() {
   const here = !$('tablet').hidden ? 'pc' : S.mode;
   document.querySelectorAll('#nav [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === here)));
   $('dotStreet').hidden = !(S.visitor && here !== 'street');
-  $('dotPc').hidden = S.webSeen || here === 'pc';
+  $('dotPc').hidden = (S.webSeen && !caseNews()) || here === 'pc';
+  $('caseIcon').hidden = !(S.case.flags.case_open || S.case.endings.length); $('caseDot').hidden = !caseNews();
   $('postDot').hidden = !S.deliveries.length;
   $('ordersDot').hidden = S.webSeen;
   const canBuy = UPGRADES.some(u => !has(u.id) && repLevel() >= u.rep && (!u.needs || has(u.needs)) && S.money >= u.price)
@@ -2348,7 +2506,7 @@ function frame(now) {
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
-  if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); }
+  if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); storyTick(); }
   if (S.mode !== 'street') renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -2359,6 +2517,14 @@ if (location.hash === '#test') window.__retro = { visitor: () => S.visitor, now:
   rush: () => { S.deliveries.forEach(d => { d.eta = Date.now(); }); },
   thumb: it => thumb(it), deviceThumb: (d, v) => deviceThumb(d, v),
   using: () => !!(using && using.app), key: id => { const k = using.keys.find(x => x.id === id); return toScreen(device, k.v); },
+  case: () => S.case, beatDue: () => (beatDue() || {}).id, story: () => STORY,
+  line: () => novel ? { who: $('nname').textContent, text: novel.full, typing: novel.typing, choices: novel.opts ? novel.opts.map(o => o.label) : null } : null,
+  adv: () => { if (!novel) return; if (novel.typing) finishTyping(); else if (!novel.opts) nextLine(); }, pick: i => choose(i),
+  find: id => showFind(id), ending: id => showEnding(id),
+  pull: slot => removePart(slot), skip: n => { S.case.since += n; save(); },
+  fix: () => { const j = S.job, dv = devOf(j); dv.parts.forEach(t => { if (j.slots[t]) j.slots[t].cond = 'ok'; else j.slots[t] = item(t, 'ok', true, j.variant); });
+    dv.screws.forEach(k => { j.slots[k] = { type: kindOf(k) }; j.tight[k] = true; }); j.side = 'front'; save(); buildJobScene(); },
+  webBench: beat => { const o = S.web.find(x => x.beat === beat); S.web = S.web.filter(x => x !== o); o.deadline = Date.now() + o.mins * 60000; const j = makeJob('order', o); S.shelf.push(j); putOnBench(j); },
   screen: () => screenTex.cv.toDataURL(), ff: sec => { for (let i = 0; i < sec * 30; i++) using.app.tick(1 / 30); },
   grime: () => { const out = []; onMat.obj.traverse(o => { if (o.name === 'grime' && o.visible) out.push(toScreen(o, o.userData.c)); }); return out; } };
 
@@ -2379,53 +2545,77 @@ function start(data) {
 }
 
 /* ---------- the street: kiosk window, customers who walk up, novel-style talks ---------- */
-/* chapter one: the neighbourhood finds out about the kiosk, one story order at a time.
-   after: internet orders to finish since the previous chapter; faults: what is wrong with the gadget they bring */
+/* ---------- the story (story.js): an investigation told through visits, finds inside gadgets and the case file ---------- */
+// lines: C — the visitor, M — the master, P — someone else by key; ask/opt — a choice; when — lines on a condition; act — an effect
 const C = (pose, text) => ({ who: 'cust', face: 'upset', pose, text }), M = (face, text, cpose) => ({ who: 'hero', face, text, cpose });
-const STORY = [
-  { cust: 0, after: 0, faults: ['battery'], variant: 0,
-    intro: [C('wave', 'Здравствуйте, молодой человек! Это вы тут открылись?'), M('happy', 'Я! Чиню старую электронику. Чем помочь?', 'idea'),
-      C('explain', 'Подарил внуку эту приставку в девяносто первом. Вчера нашёл на антресолях — а она молчит.')],
-    more: [C('explain', 'Внук теперь большой, Тимуром зовут. Хочу сделать ему сюрприз — пусть вспомнит, как мы вместе играли.'), M('thinking', 'Отличный сюрприз. Сделаем.', 'idea')],
-    leave: 'Вот она. Зайду, как будет готово. Спасибо, сынок!',
-    done: [C('nervous', 'Ну как, ожила моя старушка?'), M('proud', 'Как новенькая. Аккумулятор вздулся — поставил новый.', 'shock'), C('cheer', 'Вот это да! Тимур будет счастлив. Я ему про вас расскажу!')],
-    after2: [M('excited', 'Пока жду новых гостей — загляну в компьютер. Там заказы со всей страны.')] },
-  { cust: 1, after: 2, faults: ['lcd', 'buttons'], variant: 1,
-    intro: [C('wave', 'Привет! Дед сказал, вы его приставку оживили. Это правда?'), M('happy', 'Правда. А у тебя что?', 'idea'),
-      C('explain', 'Свою купил на барахолке за триста рублей. Продавец клялся, что работает…')],
-    more: [C('shy', 'Я все карманные на неё потратил. Деду не говорите, ладно?'), M('thinking', 'Могила. Посмотрим, что можно сделать.', 'idea')],
-    leave: 'Только не потеряйте её! Я после школы зайду.',
-    done: [C('nervous', 'Ну что? Ну что?!'), M('proud', 'Экран и кнопки — новые. Можно рекорды ставить.', 'shock'), C('cheer', 'Огонь! Дед был прав — вы волшебник. Расскажу всему двору!')] },
-  { cust: 3, after: 2, faults: ['pads', 'speaker'], variant: 2,
-    intro: [C('wave', 'Здравствуйте! Тимур сказал, вы чините всё-всё!'), M('happy', 'Ну, почти всё. Показывай.', 'idea'),
-      C('explain', 'Папа сказал, что она сломалась навсегда. Это правда?')],
-    more: [C('shy', 'Я её не ронял! Ну… я на неё сок пролил. Чуть-чуть.'), M('thinking', 'Сок — это поправимо. Почистим.', 'idea')],
-    leave: 'Я буду каждый день приходить и смотреть!',
-    done: [C('nervous', 'Она… живая?'), M('proud', 'Живая. Кнопки отмыл, динамик новый. Только больше никакого сока!', 'shock'), C('cheer', 'Ура! Мама не поверит! Я её сейчас приведу!')] },
-  { cust: 2, after: 3, lvl: 1, faults: ['shell', 'bezel'], variant: 0,
-    intro: [C('wave', 'Добрый вечер. Я мама Вани — он мне все уши про вас прожужжал.'), M('happy', 'Добрый вечер! Рад, что ему понравилось.', 'idea'),
-      C('explain', 'У меня тоже есть такая. Мой первый гаджет — хочу поставить её на стол в кабинете.')],
-    more: [C('explain', 'Её подарил отец, когда я была в пятом классе. Работает, но выглядит ужасно.'), M('thinking', 'Значит, корпус и стекло. Сделаю красиво.', 'idea')],
-    leave: 'Хорошо. Позвоните… то есть, я сама зайду.',
-    done: [C('nervous', 'Ну, показывайте.'), M('proud', 'Новый корпус и стекло. Как с витрины.', 'shock'), C('cheer', 'Быстро и аккуратно. Беру вашу визитку — расскажу коллегам.')] },
-  { cust: 4, after: 3, lvl: 1, faults: ['speaker', 'wire'], variant: 1,
-    intro: [C('wave', 'Привет! Мне в офисе дали твою визитку. Говорят, ты чинишь Pocket Pal.'), M('happy', 'Чиню. Что стряслось?', 'idea'),
-      C('explain', 'Я музыкант. Хочу записать с неё восьмибитные звуки для альбома, а она то хрипит, то выключается.')],
-    more: [C('explain', 'У неё особенный писк. Новые так не умеют — я проверял.'), M('thinking', 'Похоже, отпаялся провод и сел динамик. Сделаю.', 'idea')],
-    leave: 'Без неё альбом не допишу. Жду!',
-    done: [C('nervous', 'Ну? Пищит?'), M('proud', 'Пищит как надо. Провод припаял, динамик заменил.', 'shock'), C('cheer', 'Вот это звук! Будет хит. Позову тебя на концерт!')] },
-  { cust: 5, after: 4, lvl: 2, faults: ['screws', 'dial', 'bezel'], variant: 2,
-    intro: [C('wave', 'Добрый вечер. Я слышал трек одного молодого музыканта — там звучит ваша работа.'), M('happy', 'Лёва? Да, было дело.', 'idea'),
-      C('explain', 'Я коллекционер. Редкая расцветка, мне нужна в идеальном состоянии.')],
-    more: [C('explain', 'В коллекции таких две на весь город. Вторая у меня уже есть. Её кто-то вскрывал до вас — неаккуратно.'), M('thinking', 'Винты, колёсико, стекло. Сделаю без единой царапины.', 'idea')],
-    leave: 'Надеюсь на вашу аккуратность.',
-    done: [C('nervous', 'Позвольте взглянуть…'), M('proud', 'Все родные винты, колёсико и стекло новые.', 'shock'), C('cheer', 'Безупречно. Я ещё вернусь — и не один.')],
-    after2: [M('excited', 'Кажется, о киоске узнал весь район. Продолжение следует!')] },
-];
+const custIdx = key => CUSTOMERS.findIndex(c => c.key === key);
+const P = (key, pose, text) => ({ who: 'cust', cust: custIdx(key), face: 'upset', pose, text });
+const ask = (text, choices, face = 'thinking', cpose = 'think') => ({ who: 'hero', face, cpose, text, choices });
+const opt = (label, next = [], fx = null, cond = null) => ({ label, next, fx, cond });
+const caseFlag = k => !!(S.case && S.case.flags[k]);
+const when = (cond, lines) => () => (typeof cond === 'string' ? caseFlag(cond) : cond()) ? [].concat(lines) : [];
+const act = fn => () => { fn(); return []; };
+const STORY = RetroStory({ C, M, P, ask, opt, when, act,
+  flag: caseFlag, set: (k, v = true) => { S.case.flags[k] = v; save(); },
+  trust: (k, d) => { S.case.trust[k] = (S.case.trust[k] || 0) + d; save(); }, trustOf: k => S.case.trust[k] || 0,
+  clue: id => addClue(id), has: id => S.case.clues.includes(id), count: () => S.case.clues.length,
+  money: n => { if (n > 0) flyCoins(n); else { S.money = Math.max(0, S.money + n); save(); renderMoney(); } },
+  done: id => !!S.case.done[id], since: () => S.case.since, say: (t, m) => say(t, m, 6000), findJob });
+const beatOf = id => STORY.BEATS.find(b => b.id === id);
+// a beat is ready once the ones it follows are done, enough orders have passed, the reputation is there and its condition holds
+function beatReady(b) {
+  return (b.epilogue ? S.case.flags.ending === b.epilogue : !S.case.flags.ending) && !S.case.done[b.id] && [].concat(b.after || []).every(id => S.case.done[id])
+    && S.case.since >= (b.pace || 0) && repLevel() >= (b.lvl || 0) && (!b.when || b.when());
+}
+// the next neighbour with a piece of the story; one who brings a gadget waits while another story gadget is in the works
+function beatDue() { return STORY.BEATS.find(b => !b.event && !b.web && beatReady(b) && !(b.order && S.case.active)); }
+function addClue(id) {
+  const c = STORY.CLUES[id]; if (!c || S.case.clues.includes(id)) return false;
+  S.case.clues.push(id); save(); sfx.shine(); buzz(40);
+  notice('В деле новая улика: «' + c.title + '»'); renderNav();
+  return true;
+}
+// a clue found by looking (inside a gadget, on its screen): the master says what he makes of it
+function storyClue(id) { if (addClue(id) && STORY.CLUES[id].say) say(...STORY.CLUES[id].say); }
+function finishBeat(b) {
+  if (!b || S.case.done[b.id]) return;
+  // a story order from the internet counts as an ordinary order towards the next visit
+  S.case.done[b.id] = true; if (S.case.active === b.id) S.case.active = null; if (!b.web) S.case.since = 0;
+  if (b.fx) b.fx();
+  save(); renderNav(); refreshHint(true);
+  const end = () => { if (S.case.flags.ending && !S.case.endShown) showEnding(S.case.flags.ending); };
+  if (b.then) setTimeout(() => talk(b.then(), end), 900); else end();
+}
+function beatOrder(b) {
+  const r = b.order, dev = r.dev || 'pal';
+  return { id: S.uid++, cust: custIdx(b.who), beat: b.id, dev, faults: r.faults, pay: orderPay(r.faults, dev), variant: r.variant || 0, find: r.find, rec: r.rec, onUse: r.onUse, boot: r.boot };
+}
+// a story order that comes over the internet
+function postWebBeat(b) {
+  const r = b.order, dev = r.dev || 'pal';
+  S.web.unshift({ id: S.uid++, nick: r.nick, note: r.note, faults: r.faults, dev, pay: r.pay || orderPay(r.faults, dev), variant: r.variant || 0, mins: r.mins || 10, beat: b.id, find: r.find, rec: r.rec, log: r.log });
+  S.case.posted[b.id] = true; S.webSeen = false; save(); renderNav();
+}
+// something found at the bench: a gadget nobody brought, worked on like any other
+function findJob(spec) {
+  const j = makeJob('find', { dev: spec.dev, conds: spec.conds, missing: 0, variant: spec.variant });
+  j.title = spec.title; j.log = JSON.parse(JSON.stringify(spec.log)); j.need = spec.need;
+  j.hello = 'Аккумулятор вздулся, плата в окислах. Почищу, поменяю — и посмотрю, что в нём.';
+  S.shelf.push(j); putOnBench(j);
+}
+// events play when the master is free: no talk, no card, nothing in his hands, the bench empty if they need it
+function storyTick() {
+  STORY.BEATS.filter(b => b.web && !S.case.posted[b.id] && beatReady(b)).forEach(postWebBeat);
+  const b = STORY.BEATS.find(x => x.event && beatReady(x));
+  if (!b || novel || busy || drag || onMat || using || !uiClosed() || !$('novel').hidden || (b.bench && J())) return;
+  if (S.mode === 'street' && (S.visitor || walker)) return;
+  talk(b.visit(), () => finishBeat(b));
+}
 const INTRO = [
   { who: 'hero', face: 'happy', text: 'Привет! Это мой киоск. Чиню старую электронику прямо на улице.' },
   { who: 'hero', face: 'excited', text: 'Выслушаю, возьму приставку — и за верстак.' },
   { who: 'hero', face: 'focused', text: 'Соседи заходят к окошку сами, а остальные заказы приходят через интернет — на компьютере.' },
+  { who: 'hero', face: 'worried', text: 'Киоск мне сдали недорого: прежний мастер этой весной просто исчез. Странная история…' },
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
 
@@ -2453,7 +2643,7 @@ function placeWalker(walk) {
   const v = S.visitor; if (!v) return;
   const c = CUSTOMERS[v.cust], { h, top } = figSize(c);
   if (!walker) {
-    walker = document.createElement('div'); walker.className = 'walker'; walker.cust = c;
+    walker = document.createElement('div'); walker.className = 'walker' + (c.art === false ? ' shadow' : ''); walker.cust = c;
     walker.innerHTML = `<div class="bob"><img alt="${esc(c.name)}" src="${figSrc(c, 'neutral')}"></div>`;
     if (c.poses) POSES.forEach(n => { new Image().src = figSrc(c, n); });
     walker.addEventListener('click', () => { if (S.mode === 'street' && v === S.visitor && !walker.moving && $('novel').hidden) converse(); });
@@ -2472,7 +2662,10 @@ function placeWalker(walk) {
 // customers with a pose sheet change pose line by line; the rest have one picture
 const POSES = ['neutral', 'wave', 'cheer', 'think', 'thumbs', 'proud', 'idea', 'shock', 'shy', 'sad', 'angry', 'thanks', 'nervous', 'explain'];
 // a short pose sheet stands in for the missing poses through c.alias
-const figSrc = (c, pose) => { pose = pose || 'neutral'; return c.poses ? `people/${c.fig}/${(c.alias && c.alias[pose]) || pose}.webp` : `people/${c.fig}.webp`; };
+const figSrc = (c, pose) => {
+  pose = pose || 'neutral'; if (c.art === false) c = CUSTOMERS[c.stand];
+  return c.poses ? `people/${c.fig}/${(c.alias && c.alias[pose]) || pose}.webp` : `people/${c.fig}.webp`;
+};
 function setPose(pose) {
   const c = walker && walker.cust; if (!c || !c.poses || !pose) return;
   const img = walker.querySelector('img'), src = figSrc(c, pose); if (!img.src.endsWith(src)) img.src = src;
@@ -2484,13 +2677,11 @@ function walkAway(pose) {
   el.animate([{ transform: 'translateX(-50%)' }, { transform: `translateX(${-innerWidth * .5 - el.offsetHeight * .4 - 60}px)` }], { duration: 2400, easing: 'cubic-bezier(.5,0,.7,.6)', fill: 'forwards' })
     .finished.then(() => el.remove());
 }
-// the next chapter comes to the window once enough internet orders are done since the last one
-function storyDue() { const st = STORY[S.story.step]; return st && S.story.active == null && S.story.since >= st.after && repLevel() >= (st.lvl || 0) ? st : null; }
 function streetTick() {
   if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden) return;
-  const now = Date.now(), due = S.ready.find(r => r.at <= now), st = storyDue();
+  const now = Date.now(), due = S.ready.find(r => r.at <= now), b = beatDue();
   if (due) S.visitor = { kind: 'pickup', id: due.id, cust: due.job.order.cust };
-  else if (st) S.visitor = { kind: 'story', step: S.story.step, cust: st.cust };
+  else if (b) S.visitor = { kind: 'beat', id: b.id, cust: custIdx(b.who) };
   else { S.nextVisit = now + 10000; return; }
   S.nextVisit = 0; save();
   placeWalker(true).then(() => { if (S.mode === 'street' && $('novel').hidden && uiClosed()) converse(); });
@@ -2513,12 +2704,14 @@ function talk(lines, done) { novel = { lines, i: -1, done }; $('novel').hidden =
 function nextLine() {
   const n = novel; if (!n) return;
   n.i++;
+  while (n.i < n.lines.length && typeof n.lines[n.i] === 'function') n.lines.splice(n.i, 1, ...[].concat(n.lines[n.i]() || []));
   if (n.i >= n.lines.length) { $('novel').hidden = true; novel = null; n.done && n.done(); return; }
   const L = n.lines[n.i], box = $('nbox'), fc = $('nface');
-  const hero = L.who === 'hero', c = S.visitor ? CUSTOMERS[S.visitor.cust] : null;
+  const hero = L.who === 'hero', c = L.cust != null ? CUSTOMERS[L.cust] : S.visitor ? CUSTOMERS[S.visitor.cust] : null;
+  if (c && c.key && S.case) S.case.met[c.key] = true;
   box.classList.toggle('right', !hero); box.classList.toggle('noface', !hero);
   const pose = hero ? L.cpose : L.pose || (L.face === 'happy' ? 'cheer' : 'sad');
-  setPose(pose);
+  if (L.cust == null || (walker && walker.cust === c)) setPose(pose);
   if (!hero && c.poses) {
     fc.className = 'nface pose-face'; fc.style.backgroundImage = `url("${walker ? walker.querySelector('img').getAttribute('src') : figSrc(c, pose)}")`; fc.style.backgroundPositionX = '';
   } else {
@@ -2534,12 +2727,20 @@ function nextLine() {
     if (k >= L.text.length) finishTyping();
   }, 30);
 }
+// a choice: its effect, its own lines, then the rest of the talk
+function choose(i) {
+  const n = novel, ch = n.opts[i]; sfx.tick(); $('novel').hidden = true; novel = null;
+  if (ch.act) return ch.act();
+  if (ch.fx) ch.fx();
+  talk([...[].concat(ch.next || []), ...n.lines.slice(n.i + 1)], n.done);
+}
 function finishTyping() {
   const n = novel; if (!n || !n.typing) return;
   clearInterval(typer); n.typing = false; $('ntext').textContent = n.full;
   const L = n.lines[n.i];
   n.shown = performance.now();
-  if (L.choices) $('nchoices').innerHTML = L.choices.map((ch, i) => `<button class="btn${i ? ' alt' : ''}" data-ch="${i}">${esc(ch.label)}</button>`).join('');
+  n.opts = L.choices ? L.choices.filter(ch => !ch.cond || ch.cond()) : null;
+  if (n.opts) $('nchoices').innerHTML = n.opts.map((ch, i) => `<button class="btn${i ? ' alt' : ''}" data-ch="${i}">${esc(ch.label)}</button>`).join('');
   else $('nnext').hidden = false;
 }
 $('nbox').addEventListener('click', e => {
@@ -2547,7 +2748,7 @@ $('nbox').addEventListener('click', e => {
   const n = novel; if (!n) return;
   const b = e.target.closest('[data-ch]');
   if (b && performance.now() - n.shown < 450) return; // a stray second tap must not pick an answer
-  if (b) { const ch = n.lines[n.i].choices[+b.dataset.ch]; sfx.tick(); $('novel').hidden = true; novel = null; ch.act(); return; }
+  if (b) return choose(+b.dataset.ch);
   if (n.typing) return finishTyping();
   if (n.lines[n.i].choices) return;
   nextLine();
@@ -2559,21 +2760,27 @@ function converse() {
   if (v.kind === 'pickup') {
     const r = S.ready.find(x => x.id === v.id);
     if (!r) { S.visitor = null; save(); walkAway(); return; }
-    const total = r.job.order.pay + r.tip, st = STORY[r.job.order.story];
+    const total = r.job.order.pay + r.tip, b = r.job.order.beat && beatOf(r.job.order.beat);
     const pay = { who: 'cust', face: 'happy', pose: 'thanks', text: r.tip ? `Вот, держите ${total} — и спасибо, что так быстро!` : `Вот, держите ${total}.` };
-    return talk(st ? [...st.done, pay] : [
+    return talk(b && b.pickup ? [...b.pickup(), pay] : [
       { who: 'cust', face: 'upset', pose: 'nervous', text: 'Здравствуйте! Ну как, получилось?' },
       { who: 'hero', face: 'proud', cpose: 'shock', text: 'Готово — работает как новенькая. Всё проверил.' },
       { who: 'cust', face: 'happy', pose: 'cheer', text: c.thanks }, pay,
-    ], () => showPaid(r, () => { leave(true); if (st && st.after2) setTimeout(() => talk(st.after2), 900); }));
+    ], () => showPaid(r, () => { leave(true); finishBeat(b); }));
   }
-  if (v.kind === 'story') {
-    const st = STORY[v.step], o = { id: S.uid++, cust: st.cust, story: v.step, faults: st.faults, pay: orderPay(st.faults), variant: st.variant };
-    const decide = { who: 'hero', face: 'focused', cpose: 'think', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
-      { label: `Беру в работу · ${o.pay}`, act: () => talk([{ who: 'cust', face: 'happy', pose: 'thumbs', text: st.leave }], () => { S.story.active = v.step; accept(o); }) },
-      { label: 'Расскажите подробнее', act: () => talk([...st.more, decide]) },
-    ] };
-    return talk([...st.intro, { who: 'cust', face: 'upset', pose: 'sad', text: o.faults.map(f => FAULTS[f].hint).join(' ') }, { who: 'hero', face: 'thinking', cpose: 'nervous', text: 'Дайте-ка взгляну…' }, decide]);
+  if (v.kind === 'beat') {
+    const b = beatOf(v.id);
+    if (!b || S.case.done[b.id]) { S.visitor = null; save(); walkAway(); return; }
+    S.case.met[b.who] = true; save();
+    if (!b.order) return talk(b.visit(), () => { finishBeat(b); leave(true); });
+    // somebody with a gadget: the story, what is wrong with it, the price; «tell me more» once
+    const o = beatOrder(b);
+    let told = false;
+    const decide = ask(`Возьмусь. Ремонт будет стоить ${o.pay}.`, [
+      opt(`Беру в работу · ${o.pay}`, [C('thumbs', b.leave), act(() => { S.case.active = b.id; accept(o); })]),
+      opt('Расскажите подробнее', [...(b.more || []), () => decide], () => { told = true; }, () => !told && !!b.more),
+    ], 'focused');
+    return talk([...b.visit(), C('sad', o.faults.map(f => FAULTS[f].hint).join(' ')), M('thinking', 'Дайте-ка взгляну…', 'nervous'), decide]);
   }
   const o = v.order;
   const decide = { who: 'hero', face: 'focused', cpose: 'think', text: `Возьмусь. Ремонт будет стоить ${o.pay}.`, choices: [
@@ -2590,14 +2797,15 @@ function converse() {
 }
 function accept(o) {
   const j = makeJob('order', o);
-  if (J()) { S.shelf.push(j); save(); notice('Верстак занят — приставка ждёт на полке.'); }
-  else { S.shelf.push(j); putOnBench(j); notice('Приставка уже на верстаке.'); }
+  const n = devOf(o).noun[0];
+  if (J()) { S.shelf.push(j); save(); notice('Верстак занят — ' + n + ' ждёт на полке.'); }
+  else { S.shelf.push(j); putOnBench(j); notice(n[0].toUpperCase() + n.slice(1) + ' уже на верстаке.'); }
   leave(true);
 }
 function leave(ok) {
   S.visitor = null; S.nextVisit = Date.now() + (ok ? 15000 : 9000) + Math.random() * 12000; save();
   walkAway(ok ? 'wave' : 'sad'); renderActions(); refreshHint(true);
-  if (ok && S.mode === 'street' && J() && !J().worked && !J().opened) say('Приставка на верстаке — жми «К верстаку».', 'happy');
+  if (ok && S.mode === 'street' && J() && !J().worked && !J().opened) say(devOf(J()).noun[0][0].toUpperCase() + devOf(J()).noun[0].slice(1) + ' на верстаке — жми «К верстаку».', 'happy');
 }
 // labels on the model are painted once, so wait for the faces they use (but never block the game on them)
 const fontsReady = document.fonts && document.fonts.load
