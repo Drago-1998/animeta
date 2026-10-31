@@ -2351,6 +2351,9 @@ function dayNight() {
 function workshopTime() {
   const { day, night } = dayNight(), w = $('win'), dOk = artOk(ART.workshop_day), nOk = artOk(ART.workshop_night);
   $('bgDay').style.opacity = dOk ? day : 0; $('bgNight').style.opacity = nOk ? night : 0;
+  // drawn pictures carry their own light: the room tint only covers what is still the evening picture
+  const left = Math.max(0, 1 - (dOk ? day : 0) - (nOk ? night : 0)), L = lookNow();
+  $('tod').style.opacity = (Math.min(1, L.room[3] * 1.6) * left).toFixed(2);
   // no picture for this hour yet: tint the sky in the window (it sits at 410–748 × 84–400 on the 940×1672 picture)
   const s = Math.max(innerWidth / 940, innerHeight / 1672), x0 = (innerWidth - 940 * s) / 2, y0 = (innerHeight - 1672 * s) / 2;
   Object.assign(w.style, { left: x0 + 410 * s + 'px', top: y0 + 84 * s + 'px', width: 338 * s + 'px', height: 316 * s + 'px' });
