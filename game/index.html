@@ -45,6 +45,15 @@ body.street #win, body.street .bgAlt { display: none; }
 #tod { position: fixed; inset: 0; mix-blend-mode: multiply; pointer-events: none; }
 body.street #tod { display: none; }
 #clock { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); font-variant-numeric: tabular-nums; color: var(--muted); }
+/* TEMP: the time tool — tap the clock (remove this block, #timeDbg and the TEMP script to take it out) */
+#clock { cursor: pointer; }
+#timeDbg { position: fixed; z-index: 60; top: calc(env(safe-area-inset-top, 0px) + 58px); left: 12px; width: min(300px, calc(100vw - 24px)); padding: 12px; border-radius: 14px;
+  background: rgba(24, 18, 30, .92); color: #f3e9dc; font: 600 13px system-ui, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+#timeDbg .tdr { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+#timeDbg input { flex: 1; accent-color: #f0b84a; }
+#timeDbg button { flex: 1; min-height: 34px; border: 0; border-radius: 9px; background: #3a2e44; color: inherit; font: inherit; }
+#timeDbg button.on { background: #f0b84a; color: #241a10; }
+#timeDbg b { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
 #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 /* HUD */
@@ -370,6 +379,13 @@ body.street #streetBar { display: flex; }
 <canvas id="c"></canvas>
 <div id="street"><canvas id="streetBg"></canvas><div id="walkers"></div><canvas id="streetFg"></canvas></div>
 
+<!-- TEMP: the time tool -->
+<div id="timeDbg" hidden>
+  <div class="tdr" style="margin-top:0"><span>Время</span><input id="tdSlide" type="range" min="0" max="23.95" step="0.05"><b id="tdVal"></b></div>
+  <div class="tdr"><button data-dh="-1">−1 ч</button><button data-dh="1">+1 ч</button><button data-to="6">6:00</button><button data-to="12">12:00</button></div>
+  <div class="tdr"><button data-to="18">18:00</button><button data-to="20">20:00</button><button data-to="23">23:00</button><button data-to="2">2:00</button></div>
+  <div class="tdr"><span>Скорость</span><button data-sp="1" class="on">×1</button><button data-sp="10">×10</button><button data-sp="60">×60</button></div>
+</div>
 <div id="hud">
   <div class="chip"><span class="coin"></span><span id="money">0</span><span id="clock" aria-label="Время"></span></div>
   <div class="chip" id="nav" role="toolbar" aria-label="Куда пойти">
@@ -2425,7 +2441,7 @@ function renderBox() {
   if (!S.shelf.length) h += '<p class="note">Пусто. Отложенные устройства и привезённые б/у ждут здесь.</p>';
   S.shelf.forEach(j => {
     const removed = devOf(j).parts.filter(s => !j.slots[s]).length;
-    h += `<div class="row"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
+    h += `<div class="tdr"><div class="top"><img class="th" alt="" src="${jobThumb(j)}">
       <div class="meta"><b>${esc(jobTitle(j))}</b><span>${removed ? `снято деталей: ${removed}${j.parts && j.parts.length ? ', лежат рядом с ней' : ''}` : 'собрана'}</span></div></div>
       <button class="btn" data-bench="${j.id}" ${J() ? 'disabled' : ''}>${J() ? 'Стол занят — отложи текущую' : 'На стол'}</button></div>`;
   });
@@ -2433,7 +2449,7 @@ function renderBox() {
   if (!S.box.length) h += '<p class="note">Деталей пока нет. Закажи в магазине на компьютере или разбери б/у устройство.</p>';
   S.box.forEach(it => {
     const dv = partDev(it);
-    h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb(it)}">
+    h += `<div class="tdr"><div class="top"><img class="th" alt="" src="${thumb(it)}">
       <div class="meta"><b>${esc(PARTS[it.type].name)}${COLORED(it.type) ? ', ' + variantOf(dv, it.variant || 0).name : ''}</b><span>${dv.name} · ${it.fresh && it.cond === 'ok' ? 'новая' : COND[it.cond]}</span></div></div>
       <button class="btn alt" data-tray="${it.id}">На стол</button></div>`;
   });
@@ -2458,27 +2474,27 @@ function renderTablet() {
     h += '<div class="sec">В работе</div>';
     if (!rows.length) h += '<p class="note">Пока ничего. Возьми заказ ниже.</p>';
     rows.forEach(([o, where]) => {
-      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${devOf(o).name} · ${where}</span></div>${due(o) || price(o.pay)}</div>
+      h += `<div class="tdr"><div class="top">${ava(o)}<div class="meta"><b>${esc(whoOf(o))}</b><span>${devOf(o).name} · ${where}</span></div>${due(o) || price(o.pay)}</div>
         <p class="quote">«${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p></div>`;
     });
     const busyWeb = rows.filter(([o]) => o.nick).length, cap = webCap();
     h += '<div class="sec">Новые заказы</div>';
     if (!S.web.length) h += '<p class="note">Новых заказов нет. Загляни попозже.</p>';
     S.web.forEach(o => {
-      h += `<div class="row"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>${devOf(o).name} · срок ${o.mins} мин</span></div>${price(o.pay)}</div>
+      h += `<div class="tdr"><div class="top">${ava(o)}<div class="meta"><b>${esc(o.nick)}</b><span>${devOf(o).name} · срок ${o.mins} мин</span></div>${price(o.pay)}</div>
         <p class="quote">«${esc(o.note)} ${o.faults.map(f => FAULTS[f].hint).join(' ')}»</p>
         <button class="btn" data-web="${o.id}" ${busyWeb >= cap ? 'disabled' : ''}>${busyWeb >= cap ? `Полка занята (${cap}) — закончи начатые` : 'Взять заказ'}</button></div>`;
     });
   } else if (tab === 'upgrades') {
     const lv = repLevel(), next = LEVELS[lv + 1];
     const pct = next ? Math.round((S.rep - LEVELS[lv].at) / (next.at - LEVELS[lv].at) * 100) : 100;
-    h += `<div class="row"><div class="top"><div class="meta"><b>${LEVELS[lv].name}</b><span>Репутация ${S.rep} ★${next ? ` · до «${next.name}» ещё ${next.at - S.rep}` : ' · высший уровень'}</span></div></div>
+    h += `<div class="tdr"><div class="top"><div class="meta"><b>${LEVELS[lv].name}</b><span>Репутация ${S.rep} ★${next ? ` · до «${next.name}» ещё ${next.at - S.rep}` : ' · высший уровень'}</span></div></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <p class="note">Звёзды дают за каждый заказ, за опоздание — минус 3. Чем выше репутация, тем дороже и сложнее заказы.</p></div>`;
     h += '<div class="sec">Лицензии</div><p class="note">Лицензия открывает новое устройство: заказы на него, б/у на барахолке и запчасти в магазине.</p>';
     ['pal', 'pet', 'phone'].map(d => DEVICES[d]).forEach(dv => {
       const own = dv.id === 'pal' || S.lic[dv.id], L = dv.licence, locked = L && lv < L.rep;
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, 0)}">
+      h += `<div class="tdr"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, 0)}">
         <div class="meta"><b>${dv.name} ${dv.model}</b><span>${own ? (dv.id === 'pal' ? 'есть с самого начала' : 'лицензия куплена') : esc(L.blurb)}</span></div>${own ? '<span class="tag">есть</span>' : price(L.price)}</div>
         ${own ? '' : `<button class="btn" data-lic="${dv.id}" ${locked || S.money < L.price ? 'disabled' : ''}>${locked ? 'Нужна репутация: ' + LEVELS[L.rep].name : 'Купить лицензию'}</button>`}</div>`;
     });
@@ -2493,7 +2509,7 @@ function renderTablet() {
     h += '<p class="note">Б/у устройства на разбор. Что внутри исправно — неизвестно, пока не вскроешь. Рабочее можно перепродать.</p>';
     S.offers.forEach(o => {
       const dv = devOf(o);
-      h += `<div class="row"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, o.variant)}">
+      h += `<div class="tdr"><div class="top"><img class="th" alt="" src="${deviceThumb(dv.id, o.variant)}">
         <div class="meta"><b>${dv.name} ${dv.model}</b><span>${variantOf(dv, o.variant).name} · продаёт ${esc(o.seller)}</span></div>${price(o.price)}</div>
         <div class="tags"><span class="tag">${esc(o.desc)}</span>${o.missing ? '<span class="tag">не хватает винтов</span>' : ''}<span class="tag">остальное — как повезёт</span></div>
         <button class="btn" data-buyoff="${o.id}" ${S.money < o.price ? 'disabled' : ''}>Купить на разбор</button></div>`;
@@ -2505,14 +2521,14 @@ function renderTablet() {
       h += `<div class="sec">${dv.name}</div>`;
       [...dv.shop.map(t => ({ type: t })), ...dv.variants.map((v, i) => ({ type: dv.shopColored || dv.shell, variant: i }))].forEach(s => {
         const P = PARTS[s.type], cost = P.price, label = COLORED(s.type) ? `${P.name}, ${variantOf(dv, s.variant).name}` : P.name;
-        h += `<div class="row"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
+        h += `<div class="tdr"><div class="top"><img class="th" alt="" src="${thumb({ type: s.type, cond: 'ok', fresh: true, variant: s.variant || 0 })}">
           <div class="meta"><b>${esc(label)}</b><span>новая, для ${dv.name}</span></div>${price(cost)}</div>
           <button class="btn" data-buy="${s.type}" data-variant="${s.variant || 0}" ${S.money < cost ? 'disabled' : ''}>Заказать</button></div>`;
       });
     });
     h += '<div class="sec">Винты</div>';
     ['screw', 'bscrew'].forEach(k => {
-      h += `<div class="row"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
+      h += `<div class="tdr"><div class="top"><div class="slotbtn" style="background:#eadcc3;border:0;cursor:default">${screwIcon(k === 'screw')}</div>
         <div class="meta"><b>${SCREW[k].name}</b><span>набор, ${SCREW[k].pack} шт.</span></div>${price(SCREW[k].price)}</div>
         <button class="btn" data-buys="${k}" ${S.money < SCREW[k].price ? 'disabled' : ''}>Заказать</button></div>`;
     });
@@ -2520,7 +2536,7 @@ function renderTablet() {
     h += '<p class="note">Курьерская служба. Посылки приезжают прямо в киоск: детали — в коробку, устройства — на полку.</p>';
     if (!S.deliveries.length) h += '<p class="note">Сейчас в пути ничего нет.</p>';
     [...S.deliveries].sort((a, b) => a.eta - b.eta).forEach(d => {
-      h += `<div class="row"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : d.what.kind === 'screws' ? 'высыплет в чашку' : 'приедет в коробку'}</span></div>
+      h += `<div class="tdr"><div class="top"><div class="meta"><b>${esc(d.label)}</b><span>${d.what.kind === 'job' ? 'приедет на полку' : d.what.kind === 'screws' ? 'высыплет в чашку' : 'приедет в коробку'}</span></div>
         <span class="eta" data-eta="${d.eta}">${mmss(d.eta - now)}</span></div></div>`;
     });
   }
@@ -2601,7 +2617,7 @@ function frame(now) {
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
   if (!document.hidden) {
-    const h0 = hour(); S.clock += dt; const h1 = hour(), past = t => h0 < t && h1 >= t;
+    const h0 = hour(); S.clock += dt * timeSpeed; const h1 = hour(), past = t => h0 < t && h1 >= t;
     if (past(23)) setClosed(true, 'hours'); if (past(6)) setClosed(false, 'hours');
   }
   const shutTo = isClosed() ? 1 : 0;
@@ -2768,6 +2784,27 @@ function drawShutter(g, m, day, night) {
     g.restore();
   }
 }
+
+/* TEMP: the time tool. Tap the clock: set the hour, jump by an hour, or run the time faster. The kiosk opens and closes
+   for the hour it lands on, as it would by itself */
+let timeSpeed = 1;
+(() => {
+  const box = $('timeDbg'), sl = $('tdSlide');
+  const show = () => { sl.value = hour().toFixed(2); $('tdVal').textContent = $('clock').textContent.replace(/^\S+ /, ''); };
+  const setHour = h => {
+    h = ((h % 24) + 24) % 24; S.clock = Math.floor(S.clock / 1440) * 1440 + h * 60;
+    setClosed(h >= 23 || h < 6, 'hours'); save(); applyTime(true); if (S.mode === 'street') drawStreet(); show();
+  };
+  $('clock').addEventListener('click', e => { e.stopPropagation(); box.hidden = !box.hidden; show(); });
+  sl.addEventListener('input', () => setHour(+sl.value));
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.dh) setHour(hour() + +b.dataset.dh);
+    if (b.dataset.to) setHour(+b.dataset.to);
+    if (b.dataset.sp) { timeSpeed = +b.dataset.sp; box.querySelectorAll('[data-sp]').forEach(x => x.classList.toggle('on', x === b)); }
+  });
+  setInterval(() => { if (!box.hidden && document.activeElement !== sl) show(); }, 250);
+})();
 
 /* pictures by weight (the weights add up to one): one alone is drawn as it is, several are added up on a canvas of their own
    so that where one has its window cut out the others show by their weight only, not over a picture drawn in full */
