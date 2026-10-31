@@ -940,7 +940,7 @@ function migrate() {
   S.case = Object.assign(freshCase(), S.case || {}); delete S.story;
   if (S.visitor && S.visitor.kind === 'story') S.visitor = null;
   if (S.clock == null) S.clock = S.seen ? 18 * 60 : 9 * 60;
-  if (S.closed == null) { const h = (S.clock / 60) % 24; S.closed = h >= 23 || h < 7; }
+  if (S.closed == null) { const h = (S.clock / 60) % 24; S.closed = h >= 23 || h < 6; }
   S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0; S.lic = S.lic || {};
   // screws no longer go in the box: pour whatever was stored there into the cups
   if (S.boxScrews && (S.boxScrews.screw || S.boxScrews.bscrew)) { S.cup.screw += S.boxScrews.screw; S.cup.bscrew += S.boxScrews.bscrew; S.boxScrews = { screw: 0, bscrew: 0 }; }
@@ -2332,7 +2332,7 @@ const DAYLOOK = [
 ];
 const hour = () => (S.clock / 60) % 24;
 const isDark = () => hour() >= 20 || hour() < 6;
-// the kiosk is open or closed by the master's button; at eleven at night it closes by itself and at seven it opens.
+// the kiosk is open or closed by the master's button; at eleven at night it closes by itself and at six it opens.
 // While the shutter is down nobody comes to the window
 const isClosed = () => !!S.closed;
 function setClosed(on, why) {
@@ -2341,7 +2341,7 @@ function setClosed(on, why) {
   // whoever waits at the window goes away and comes back when it opens
   if (on && S.visitor && $('novel').hidden) { S.visitor = null; S.nextVisit = Date.now() + 15000; save(); if (walker) walkAway('wave'); renderActions(); }
   if (on || S.nextVisit < Date.now()) S.nextVisit = Math.max(S.nextVisit || 0, Date.now() + 4000);
-  if (S.mode === 'street' || why === 'button') say(on ? (why === 'button' ? 'Закрываю окошко. Клиенты подождут.' : 'Ночь. Киоск закрываю до семи утра — можно спокойно поработать за верстаком.')
+  if (S.mode === 'street' || why === 'button') say(on ? (why === 'button' ? 'Закрываю окошко. Клиенты подождут.' : 'Ночь. Киоск закрываю до шести утра — можно спокойно поработать за верстаком.')
     : (why === 'button' ? 'Открываю окошко!' : 'Утро! Открываю окошко.'), on ? 'relieved' : 'happy');
 }
 function renderShut() {
@@ -2602,7 +2602,7 @@ function frame(now) {
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
   if (!document.hidden) {
     const h0 = hour(); S.clock += dt; const h1 = hour(), past = t => h0 < t && h1 >= t;
-    if (past(23)) setClosed(true, 'hours'); if (past(7)) setClosed(false, 'hours');
+    if (past(23)) setClosed(true, 'hours'); if (past(6)) setClosed(false, 'hours');
   }
   const shutTo = isClosed() ? 1 : 0;
   if (shut == null) shut = shutTo;
