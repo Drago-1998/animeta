@@ -2722,15 +2722,16 @@ function drawStreet() {
     // the room by day, evening and night (drawn pictures carry their own light; the tint covers what is still the evening one)
     const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
     const layers = (names, alpha) => names.forEach((n, i) => { if (i && !(alpha[i] > 0 && artOk(ART[n]))) return; fg.globalAlpha = i ? alpha[i] : 1; fg.drawImage(artOk(ART[n]) ? ART[n] : ART.kiosk, ...at); });
+    // the shutter rolls down behind the awning: the closed pictures go first, slid down inside the window, and the open
+    // room goes over them, so they show only through the window hole and the awning, frame and counter stay the room's own
+    if (shut > 0 && artOk(ART.kiosk_closed)) {
+      const wy = m.y(150), wh = (975 - 150) * m.s, dy = -(1 - shut) * wh;
+      fg.save(); fg.beginPath(); fg.rect(0, wy, W, wh * shut + 1); fg.clip(); fg.translate(0, dy);
+      layers(['kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'], [1, day, night]); fg.restore(); fg.globalAlpha = 1;
+    }
     layers(['kiosk', 'kiosk_day', 'kiosk_night'], [1, day, night]); fg.globalAlpha = 1;
     const left = Math.max(0, 1 - (artOk(ART.kiosk_day) ? day : 0) - (artOk(ART.kiosk_night) ? night : 0));
     fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H); fg.restore();
-    // the shutter rolls down over the window: the closed pictures, slid down inside the window frame
-    if (shut > 0 && artOk(ART.kiosk_closed)) {
-      const wx = m.x(130), wy = m.y(150), ww = (850 - 130) * m.s, wh = (975 - 150) * m.s, dy = -(1 - shut) * wh;
-      fg.save(); fg.beginPath(); fg.rect(wx, wy, ww, wh * shut + 1); fg.clip(); fg.translate(0, dy);
-      layers(['kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'], [1, day, night]); fg.restore(); fg.globalAlpha = 1;
-    }
   }
   else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
   STREET.win = win; STREET.top = top;
