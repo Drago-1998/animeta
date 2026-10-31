@@ -2359,7 +2359,7 @@ function lookNow() {
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a == null ? c[3] : a})`;
 function multiply(g, c, x, y, w, h) { if (c[3] <= .005) return; g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = rgba(c, 1); g.globalAlpha = c[3]; g.fillRect(x, y, w, h); g.restore(); }
 let lastTod = -1;
-['workshop_day', 'workshop_night', 'kiosk_day', 'kiosk_night', 'kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'].forEach(n => { const i = new Image(); i.onload = () => applyTime(true); i.src = n + '.webp'; ART[n] = i; });
+['workshop_day', 'workshop_night', 'kiosk_day', 'kiosk_night', 'shutter_slats', 'shutter_bar', 'shutter_sign', 'pc_day', 'pc_night'].forEach(n => { const i = new Image(); i.onload = () => applyTime(true); i.src = n + '.webp'; ART[n] = i; });
 // how much of the day and of the night picture shows over the evening one
 function dayNight() {
   const h = hour(), ramp = (a, b) => Math.max(0, Math.min(1, (h - a) / (b - a)));
@@ -2391,6 +2391,7 @@ function applyTime(force) {
   $('walkers').style.filter = `brightness(${L.fig[0].toFixed(2)}) saturate(${L.fig[1].toFixed(2)})`;
   key.intensity = L.light[1]; hemi.intensity = L.light[0]; key.color.copy(L.light[2]);
   if (S.mode === 'street') drawStreet();
+  if (!$('tablet').hidden) drawPC();
 }
 function coverMap() { const W = innerWidth, H = innerHeight, s = Math.max(W / 941, H / 1672); return { s, x: v => (W - 941 * s) / 2 + v * s, y: v => (H - 1672 * s) / 2 + v * s }; }
 function paintCanvas(c) {
@@ -2402,8 +2403,12 @@ function paintCanvas(c) {
 function drawPC() {
   const g = paintCanvas($('pcBg')), m = coverMap(), SCR = [158, 419, 777, 881];
   Object.assign($('pcDesk').style, { left: m.x(SCR[0]) + 'px', top: m.y(SCR[1]) + 'px', width: (SCR[2] - SCR[0]) * m.s + 'px', height: (SCR[3] - SCR[1]) * m.s + 'px' });
-  if (ART.pc.complete && ART.pc.naturalWidth) g.drawImage(ART.pc, m.x(0), m.y(0), 941 * m.s, 1672 * m.s);
-  const d = new Date(); $('pcClock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
+  if (artOk(ART.pc)) g.drawImage(ART.pc, ...at);
+  if (artOk(ART.pc_day) && day > 0) { g.globalAlpha = day; g.drawImage(ART.pc_day, ...at); }
+  if (artOk(ART.pc_night) && night > 0) { g.globalAlpha = night; g.drawImage(ART.pc_night, ...at); }
+  g.globalAlpha = 1;
+  $('pcClock').textContent = String(Math.floor(hour())).padStart(2, '0') + ':' + String(Math.floor(S.clock) % 60).padStart(2, '0');
 }
 addEventListener('resize', () => { if (!$('tablet').hidden) drawPC(); });
 document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; renderTablet(); sfx.tick(); } });
@@ -2604,10 +2609,11 @@ function frame(now) {
   const shutTo = isClosed() ? 1 : 0;
   if (shut == null) shut = shutTo;
   if (shut !== shutTo) {
+    if (shut === 0 || shut === 1) shutMoved = performance.now();
     shut = shutTo > shut ? Math.min(1, shut + dt / 1.6) : Math.max(0, shut - dt / 1.6);
-    if (S.mode === 'street') drawStreet();
-    if (shut === shutTo) sfx.clunk();
+    if (shut === shutTo) { sfx.clunk(); shutMoved = performance.now(); }
   }
+  if (S.mode === 'street' && (shut !== shutTo || performance.now() - shutMoved < 2500)) drawStreet();
   if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); storyTick(); applyTime(); }
   if (S.mode !== 'street') renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -2722,6 +2728,49 @@ const INTRO = [
   { who: 'hero', face: 'thinking', text: 'О, кажется, кто-то идёт…' },
 ];
 
+/* the roller shutter, put together from its pieces: slats stacked up from the bottom rail (they travel with it), the rail
+   with its padlock, the «ЗАКРЫТО» sign that swings when the shutter stops; light leaks through the gaps in the colour of
+   the hour and the metal is shaded for it. Device units are those of the 941×1672 kiosk picture */
+let shutMoved = 0; // when the shutter last started or stopped, for the sign's swing
+const signCv = document.createElement('canvas');
+const mixRGB = (cols, ws) => [0, 1, 2].map(i => cols.reduce((a, c, j) => a + c[i] * ws[j], 0));
+function drawShutter(g, m, day, night) {
+  const eve = Math.max(0, 1 - day - night), w = [day, eve, night];
+  const X0 = m.x(125), Wd = (845 - 125) * m.s, top = m.y(150), floor = m.y(955);
+  const sl = ART.shutter_slats, bar = ART.shutter_bar, sign = ART.shutter_sign;
+  const th = sl.naturalHeight * Wd / sl.naturalWidth, bh = bar.naturalHeight * Wd / bar.naturalWidth, rail = bh * .75;
+  const lockBottom = top + (floor - top) * shut, railTop = lockBottom - bh, railBottom = railTop + rail;
+  g.save(); g.beginPath(); g.rect(X0, top, Wd, lockBottom - top); g.clip();
+  // the gap under the rail, then the slats upwards from the rail, then the rail
+  g.fillStyle = '#140d09'; g.fillRect(X0, railBottom - 2, Wd, lockBottom - railBottom + 2);
+  for (let y = railTop - th + 1; y > top - th; y -= th - 1) g.drawImage(sl, X0, y, Wd, th);
+  g.drawImage(bar, X0, railTop, Wd, bh);
+  multiply(g, [...mixRGB([[255, 255, 255], [255, 215, 170], [60, 70, 130]], w), .18 * eve + .6 * night], X0, top, Wd, lockBottom - top);
+  // light through the gaps between the slats and under the rail, in short uneven streaks
+  const glow = mixRGB([[255, 246, 220], [255, 150, 60], [110, 165, 255]], w), col = `rgb(${glow.map(v => v | 0)})`;
+  g.globalCompositeOperation = 'lighter'; g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = 8 * m.s; g.lineCap = 'round';
+  g.lineWidth = Math.max(1, 2.4 * m.s); g.globalAlpha = .55 + .3 * night;
+  for (let j = 0, y = railTop; y > top; j++, y = railTop - j * (th - 1) / 4) {
+    const r = seeded(j * 31 + 7); r();
+    for (let k = 0, x = 40 + r() * 80; k < 4 && x < 680; k++) { const len = 50 + r() * 150; g.beginPath(); g.moveTo(X0 + x * m.s, y); g.lineTo(X0 + Math.min(700, x + len) * m.s, y); g.stroke(); x += len + 40 + r() * 120; }
+  }
+  if (lockBottom - railBottom > 2) { g.globalAlpha = .7; g.beginPath(); g.moveTo(X0 + 20 * m.s, railBottom + 3 * m.s); g.lineTo(X0 + Wd - 20 * m.s, railBottom + 3 * m.s); g.stroke(); }
+  g.restore();
+  // the sign hangs from a hook on the shutter, about halfway up, and swings a little after the shutter stops
+  if (artOk(sign)) {
+    const sw = 250 * m.s, sh = sign.naturalHeight * sw / sign.naturalWidth, hx = m.x(483), hy = railTop - 432 * m.s;
+    const t = (performance.now() - shutMoved) / 1000, a = .14 * Math.sin(t * 7) * Math.exp(-t * 1.8);
+    g.save(); g.beginPath(); g.rect(X0, top, Wd, lockBottom - top); g.clip();
+    // shaded on a canvas of its own, so the shade stays on the cardboard and not around it
+    const c = signCv; c.width = Math.ceil(sw); c.height = Math.ceil(sh); const q = c.getContext('2d');
+    q.drawImage(sign, 0, 0, sw, sh);
+    multiply(q, [...mixRGB([[255, 255, 255], [255, 215, 170], [60, 70, 130]], w), .12 * eve + .55 * night], 0, 0, sw, sh);
+    q.globalCompositeOperation = 'destination-in'; q.drawImage(sign, 0, 0, sw, sh);
+    g.translate(hx, hy); g.rotate(a); g.drawImage(c, -sw * 244 / sign.naturalWidth, -6 * sw / sign.naturalWidth);
+    g.restore();
+  }
+}
+
 // the window scene: the street picture, then the customers, then the kiosk interior with the window cut out
 function drawStreet() {
   const bg = paintCanvas($('streetBg')), fg = paintCanvas($('streetFg')), m = coverMap(), W = innerWidth, H = innerHeight;
@@ -2740,13 +2789,8 @@ function drawStreet() {
     // the room by day, evening and night (drawn pictures carry their own light; the tint covers what is still the evening one)
     const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
     const layers = (names, alpha) => names.forEach((n, i) => { if (i && !(alpha[i] > 0 && artOk(ART[n]))) return; fg.globalAlpha = i ? alpha[i] : 1; fg.drawImage(artOk(ART[n]) ? ART[n] : ART.kiosk, ...at); });
-    // the shutter rolls down behind the awning: the closed pictures go first, slid down inside the window, and the open
-    // room goes over them, so they show only through the window hole and the awning, frame and counter stay the room's own
-    if (shut > 0 && artOk(ART.kiosk_closed)) {
-      const wy = m.y(150), wh = (975 - 150) * m.s, dy = -(1 - shut) * wh;
-      fg.save(); fg.beginPath(); fg.rect(0, wy, W, wh * shut + 1); fg.clip(); fg.translate(0, dy);
-      layers(['kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'], [1, day, night]); fg.restore(); fg.globalAlpha = 1;
-    }
+    // the shutter goes first and the room over it, so it shows only through the window and comes down from behind the awning
+    if (shut > 0 && artOk(ART.shutter_slats) && artOk(ART.shutter_bar)) drawShutter(fg, m, day, night);
     layers(['kiosk', 'kiosk_day', 'kiosk_night'], [1, day, night]); fg.globalAlpha = 1;
     const left = Math.max(0, 1 - (artOk(ART.kiosk_day) ? day : 0) - (artOk(ART.kiosk_night) ? night : 0));
     fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H); fg.restore();
