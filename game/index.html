@@ -407,7 +407,7 @@ body.street #streetBar { display: flex; }
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
 <div id="useBar" hidden><button class="pill main" id="useDone">Готово</button></div>
-<div id="streetBar"><button class="pill main" id="toBench">К верстаку</button></div>
+<div id="streetBar"><button class="pill" id="openEarly" hidden>Открыть до утра</button><button class="pill main" id="toBench">К верстаку</button></div>
 <div id="novel" hidden><div class="nbox" id="nbox" role="dialog" aria-live="polite"><div class="nface" id="nface" aria-hidden="true"></div><div class="nname" id="nname"></div>
   <div class="ntext" id="ntext"></div><div class="nchoices" id="nchoices"></div><div class="nnext" id="nnext" aria-hidden="true">▼</div></div></div>
 <div id="desk"></div>
@@ -2331,6 +2331,9 @@ const DAYLOOK = [
 ];
 const hour = () => (S.clock / 60) % 24;
 const isDark = () => hour() >= 20 || hour() < 6;
+// the kiosk keeps hours: from eleven at night to seven in the morning the shutter is down and nobody comes
+const isClosed = () => hour() >= 23 || hour() < 7;
+let shut = null; // how far the shutter is down, 0..1
 function lookNow() {
   const h = hour(); let i = 0; while (DAYLOOK[i + 1].h <= h) i++;
   const a = DAYLOOK[i], b = DAYLOOK[i + 1], k = (h - a.h) / (b.h - a.h), mix = (x, y) => x.map((v, j) => v + (y[j] - v) * k);
@@ -2341,7 +2344,7 @@ function lookNow() {
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a == null ? c[3] : a})`;
 function multiply(g, c, x, y, w, h) { if (c[3] <= .005) return; g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = rgba(c, 1); g.globalAlpha = c[3]; g.fillRect(x, y, w, h); g.restore(); }
 let lastTod = -1;
-['workshop_day', 'workshop_night'].forEach(n => { const i = new Image(); i.onload = () => applyTime(true); i.src = n + '.webp'; ART[n] = i; });
+['workshop_day', 'workshop_night', 'kiosk_day', 'kiosk_night', 'kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'].forEach(n => { const i = new Image(); i.onload = () => applyTime(true); i.src = n + '.webp'; ART[n] = i; });
 // how much of the day and of the night picture shows over the evening one
 function dayNight() {
   const h = hour(), ramp = (a, b) => Math.max(0, Math.min(1, (h - a) / (b - a)));
@@ -2580,6 +2583,13 @@ function frame(now) {
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
   if (!document.hidden) S.clock += dt;
+  const shutTo = isClosed() ? 1 : 0;
+  if (shut == null) shut = shutTo;
+  if (shut !== shutTo) {
+    shut = shutTo > shut ? Math.min(1, shut + dt / 1.6) : Math.max(0, shut - dt / 1.6);
+    if (S.mode === 'street') drawStreet();
+    if (shut === shutTo) { sfx.clunk(); $('openEarly').hidden = !isClosed(); if (S.mode === 'street') say(isClosed() ? 'Ночь. Киоск закрыт до семи утра — можно спокойно поработать за верстаком.' : 'Утро! Открываю окошко.', isClosed() ? 'relieved' : 'happy'); }
+  }
   if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); storyTick(); applyTime(); }
   if (S.mode !== 'street') renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -2608,7 +2618,7 @@ function start(data) {
   try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
   ensureListings(); while (S.web.length < 3) S.web.push(makeWebOrder()); save();
   face($('hero'), 'happy');
-  buildJobScene(); renderTray(); renderMoney(); renderCourier(); applyTime(true); refreshHint(true);
+  buildJobScene(); renderTray(); renderMoney(); renderCourier(); applyTime(true); $('openEarly').hidden = !isClosed(); refreshHint(true);
   if (S.visitor) placeWalker(false);
   setMode(S.mode);
   requestAnimationFrame(frame);
@@ -2708,9 +2718,19 @@ function drawStreet() {
     if (L.b !== L.a && L.k > 0) { bg.globalAlpha = L.k; bg.drawImage(ART[L.b], x, y, 941 * s2, 1672 * s2); bg.globalAlpha = 1; }
     multiply(bg, L.mul, 0, 0, W, H);
   }
-  if (ART.kiosk.complete && ART.kiosk.naturalWidth) {
-    fg.drawImage(ART.kiosk, m.x(0), m.y(0), 941 * m.s, 1672 * m.s);
-    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, L.room, 0, 0, W, H); fg.restore();
+  if (artOk(ART.kiosk)) {
+    // the room by day, evening and night (drawn pictures carry their own light; the tint covers what is still the evening one)
+    const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
+    const layers = (names, alpha) => names.forEach((n, i) => { if (i && !(alpha[i] > 0 && artOk(ART[n]))) return; fg.globalAlpha = i ? alpha[i] : 1; fg.drawImage(artOk(ART[n]) ? ART[n] : ART.kiosk, ...at); });
+    layers(['kiosk', 'kiosk_day', 'kiosk_night'], [1, day, night]); fg.globalAlpha = 1;
+    const left = Math.max(0, 1 - (artOk(ART.kiosk_day) ? day : 0) - (artOk(ART.kiosk_night) ? night : 0));
+    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H); fg.restore();
+    // the shutter rolls down over the window: the closed pictures, slid down inside the window frame
+    if (shut > 0 && artOk(ART.kiosk_closed)) {
+      const wx = m.x(130), wy = m.y(150), ww = (850 - 130) * m.s, wh = (975 - 150) * m.s, dy = -(1 - shut) * wh;
+      fg.save(); fg.beginPath(); fg.rect(wx, wy, ww, wh * shut + 1); fg.clip(); fg.translate(0, dy);
+      layers(['kiosk_closed', 'kiosk_closed_day', 'kiosk_closed_night'], [1, day, night]); fg.restore(); fg.globalAlpha = 1;
+    }
   }
   else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
   STREET.win = win; STREET.top = top;
@@ -2760,7 +2780,7 @@ function walkAway(pose) {
     .finished.then(() => el.remove());
 }
 function streetTick() {
-  if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden) return;
+  if (S.visitor || !S.nextVisit || Date.now() < S.nextVisit || !$('novel').hidden || isClosed()) return;
   const now = Date.now(), due = S.ready.find(r => r.at <= now), b = beatDue();
   if (due) S.visitor = { kind: 'pickup', id: due.id, cust: due.job.order.cust };
   else if (b) S.visitor = { kind: 'beat', id: b.id, cust: custIdx(b.who) };
@@ -2779,6 +2799,11 @@ function setMode(m) {
   renderActions(); refreshHint(true); renderTray();
 }
 $('toBench').addEventListener('click', () => { initAudio(); sfx.tick(); setMode('bench'); });
+// sleep till morning: the clock jumps to seven and the shutter goes up
+$('openEarly').addEventListener('click', () => {
+  initAudio(); sfx.tick(); if (!isClosed()) return;
+  S.clock += ((7 - hour() + 24) % 24) * 60; save(); applyTime(true); $('openEarly').hidden = true;
+});
 
 /* a conversation: lines with a speaker, a face and optional choices */
 let novel = null, typer = 0;
