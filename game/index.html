@@ -407,7 +407,7 @@ body.street #streetBar { display: flex; }
 </div>
 <div id="matBar" hidden><button class="pill main" id="matDone">Вернуть на стол</button></div>
 <div id="useBar" hidden><button class="pill main" id="useDone">Готово</button></div>
-<div id="streetBar"><button class="pill" id="openEarly" hidden>Открыть до утра</button><button class="pill main" id="toBench">К верстаку</button></div>
+<div id="streetBar"><button class="pill" id="shutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path id="shutArc" d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span id="shutLabel">Закрыть киоск</span></button><button class="pill main" id="toBench">К верстаку</button></div>
 <div id="novel" hidden><div class="nbox" id="nbox" role="dialog" aria-live="polite"><div class="nface" id="nface" aria-hidden="true"></div><div class="nname" id="nname"></div>
   <div class="ntext" id="ntext"></div><div class="nchoices" id="nchoices"></div><div class="nnext" id="nnext" aria-hidden="true">▼</div></div></div>
 <div id="desk"></div>
@@ -940,6 +940,7 @@ function migrate() {
   S.case = Object.assign(freshCase(), S.case || {}); delete S.story;
   if (S.visitor && S.visitor.kind === 'story') S.visitor = null;
   if (S.clock == null) S.clock = S.seen ? 18 * 60 : 9 * 60;
+  if (S.closed == null) { const h = (S.clock / 60) % 24; S.closed = h >= 23 || h < 7; }
   S.rep = S.rep || 0; S.upg = S.upg || {}; S.screwNext = S.screwNext || 0; S.lic = S.lic || {};
   // screws no longer go in the box: pour whatever was stored there into the cups
   if (S.boxScrews && (S.boxScrews.screw || S.boxScrews.bscrew)) { S.cup.screw += S.boxScrews.screw; S.cup.bscrew += S.boxScrews.bscrew; S.boxScrews = { screw: 0, bscrew: 0 }; }
@@ -2331,8 +2332,22 @@ const DAYLOOK = [
 ];
 const hour = () => (S.clock / 60) % 24;
 const isDark = () => hour() >= 20 || hour() < 6;
-// the kiosk keeps hours: from eleven at night to seven in the morning the shutter is down and nobody comes
-const isClosed = () => hour() >= 23 || hour() < 7;
+// the kiosk is open or closed by the master's button; at eleven at night it closes by itself and at seven it opens.
+// While the shutter is down nobody comes to the window
+const isClosed = () => !!S.closed;
+function setClosed(on, why) {
+  if (!!S.closed === on) return;
+  S.closed = on; save(); renderShut();
+  // whoever waits at the window goes away and comes back when it opens
+  if (on && S.visitor && $('novel').hidden) { S.visitor = null; S.nextVisit = Date.now() + 15000; save(); if (walker) walkAway('wave'); renderActions(); }
+  if (on || S.nextVisit < Date.now()) S.nextVisit = Math.max(S.nextVisit || 0, Date.now() + 4000);
+  if (S.mode === 'street' || why === 'button') say(on ? (why === 'button' ? 'Закрываю окошко. Клиенты подождут.' : 'Ночь. Киоск закрываю до семи утра — можно спокойно поработать за верстаком.')
+    : (why === 'button' ? 'Открываю окошко!' : 'Утро! Открываю окошко.'), on ? 'relieved' : 'happy');
+}
+function renderShut() {
+  $('shutLabel').textContent = isClosed() ? 'Открыть киоск' : 'Закрыть киоск';
+  $('shutArc').setAttribute('d', isClosed() ? 'M8 10V7a4 4 0 0 1 8 0v3' : 'M8 10V7a4 4 0 0 1 7.5-2');
+}
 let shut = null; // how far the shutter is down, 0..1
 function lookNow() {
   const h = hour(); let i = 0; while (DAYLOOK[i + 1].h <= h) i++;
@@ -2582,13 +2597,16 @@ function frame(now) {
     hintEl.style.transform = `translate(${p.x}px, ${p.y}px)`;
   }
   if (sayUntil && now > sayUntil) { sayUntil = 0; refreshHint(); }
-  if (!document.hidden) S.clock += dt;
+  if (!document.hidden) {
+    const h0 = hour(); S.clock += dt; const h1 = hour(), past = t => h0 < t && h1 >= t;
+    if (past(23)) setClosed(true, 'hours'); if (past(7)) setClosed(false, 'hours');
+  }
   const shutTo = isClosed() ? 1 : 0;
   if (shut == null) shut = shutTo;
   if (shut !== shutTo) {
     shut = shutTo > shut ? Math.min(1, shut + dt / 1.6) : Math.max(0, shut - dt / 1.6);
     if (S.mode === 'street') drawStreet();
-    if (shut === shutTo) { sfx.clunk(); $('openEarly').hidden = !isClosed(); if (S.mode === 'street') say(isClosed() ? 'Ночь. Киоск закрыт до семи утра — можно спокойно поработать за верстаком.' : 'Утро! Открываю окошко.', isClosed() ? 'relieved' : 'happy'); }
+    if (shut === shutTo) sfx.clunk();
   }
   if ((slow += dt) > .5) { slow = 0; checkDeliveries(); streetTick(); storyTick(); applyTime(); }
   if (S.mode !== 'street') renderer.render(scene, camera);
@@ -2618,7 +2636,7 @@ function start(data) {
   try { window.claude?.hot?.snapshot?.(() => ({ state: S })); } catch (e) {}
   ensureListings(); while (S.web.length < 3) S.web.push(makeWebOrder()); save();
   face($('hero'), 'happy');
-  buildJobScene(); renderTray(); renderMoney(); renderCourier(); applyTime(true); $('openEarly').hidden = !isClosed(); refreshHint(true);
+  buildJobScene(); renderTray(); renderMoney(); renderCourier(); applyTime(true); renderShut(); refreshHint(true);
   if (S.visitor) placeWalker(false);
   setMode(S.mode);
   requestAnimationFrame(frame);
@@ -2800,11 +2818,7 @@ function setMode(m) {
   renderActions(); refreshHint(true); renderTray();
 }
 $('toBench').addEventListener('click', () => { initAudio(); sfx.tick(); setMode('bench'); });
-// sleep till morning: the clock jumps to seven and the shutter goes up
-$('openEarly').addEventListener('click', () => {
-  initAudio(); sfx.tick(); if (!isClosed()) return;
-  S.clock += ((7 - hour() + 24) % 24) * 60; save(); applyTime(true); $('openEarly').hidden = true;
-});
+$('shutBtn').addEventListener('click', () => { initAudio(); sfx.tick(); setClosed(!isClosed(), 'button'); });
 
 /* a conversation: lines with a speaker, a face and optional choices */
 let novel = null, typer = 0;
