@@ -590,7 +590,7 @@ function app(ctx) {
     } else if (call.state === 'ended' && k > 1.6) call = null;
   }
   const RING = [[1319, 0], [1568, .12], [1760, .24], [1568, .36], [1319, .48], [1175, .6], [1319, .72]];
-  const clock = () => { const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const clock = () => { if (ctx.clock) return ctx.clock(); const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
   const mmss = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
   // the label over the navi key
   const soft = label => F.text(q, label, 42, 38, INK, 'small', 'center');

@@ -7,7 +7,7 @@
    A beat is one step: somebody at the window (maybe with a gadget to mend and a talk when they collect it), something
    that happens at the bench (an event), or an internet order (web). Beats come in list order, each after the ones
    named in `after`, once `pace` orders have been done since the last beat, at reputation level `lvl`, when `when()`.
-   When a beat is over, fx() runs and then() is what the master says to himself. An internet order may ask the master
+   An event with `at` moves the clock on to that hour when it plays. When a beat is over, fx() runs and then() is what the master says to himself. An internet order may ask the master
    something when he is done with it (atDone) and get a reply on the shipping card (reply).
    Lines: C — the visitor, M — the master, P — anyone else; ask/opt — a choice (fx runs when it is picked, cond hides
    it); when(cond, lines) — lines shown only if cond holds at that moment; act(fn) — an effect at that point. */
@@ -484,7 +484,7 @@ const BEATS = [
     ] },
 
   /* the deduction «Где Гриша?» sends the master to the cellar */
-  { id: 'cellar', event: true, after: 'phone', pace: 0, when: () => flag('go_cellar'),
+  { id: 'cellar', event: true, at: 23, after: 'phone', pace: 0, when: () => flag('go_cellar'),
     visit: () => [
       M('focused', 'Ночь. Подвал дома 7. На двери — облупленная надпись «Радиоклуб».'),
       ask('С кем идти?', [
@@ -509,7 +509,7 @@ const BEATS = [
     ] },
 
   /* the night before the hearing: what to do with everything found */
-  { id: 'finale', event: true, after: ['kravets2', 'arkady2'], pace: 0, when: () => flag('grisha_found') || since() >= 3,
+  { id: 'finale', event: true, at: 22, after: ['kravets2', 'arkady2'], pace: 0, when: () => flag('grisha_found') || since() >= 3,
     visit: () => [
       M('thinking', 'Завтра слушания о сносе. Пора решать, что делать со всем, что я нашёл.'),
       ask('Что сделать?', [
