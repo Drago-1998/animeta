@@ -2404,10 +2404,8 @@ function drawPC() {
   const g = paintCanvas($('pcBg')), m = coverMap(), SCR = [158, 419, 777, 881];
   Object.assign($('pcDesk').style, { left: m.x(SCR[0]) + 'px', top: m.y(SCR[1]) + 'px', width: (SCR[2] - SCR[0]) * m.s + 'px', height: (SCR[3] - SCR[1]) * m.s + 'px' });
   const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
-  if (artOk(ART.pc)) g.drawImage(ART.pc, ...at);
-  if (artOk(ART.pc_day) && day > 0) { g.globalAlpha = day; g.drawImage(ART.pc_day, ...at); }
-  if (artOk(ART.pc_night) && night > 0) { g.globalAlpha = night; g.drawImage(ART.pc_night, ...at); }
-  g.globalAlpha = 1;
+  const d = artOk(ART.pc_day) ? day : 0, n = artOk(ART.pc_night) ? night : 0;
+  drawMix(g, [['pc', 1 - d - n], ['pc_day', d], ['pc_night', n]], at);
   $('pcClock').textContent = String(Math.floor(hour())).padStart(2, '0') + ':' + String(Math.floor(S.clock) % 60).padStart(2, '0');
 }
 addEventListener('resize', () => { if (!$('tablet').hidden) drawPC(); });
@@ -2771,6 +2769,18 @@ function drawShutter(g, m, day, night) {
   }
 }
 
+/* pictures by weight (the weights add up to one): one alone is drawn as it is, several are added up on a canvas of their own
+   so that where one has its window cut out the others show by their weight only, not over a picture drawn in full */
+const mixCv = document.createElement('canvas');
+function drawMix(g, list, at) {
+  const on = list.filter(([n, w]) => w > .004 && artOk(ART[n]));
+  if (on.length < 2) { if (on.length) g.drawImage(ART[on[0][0]], ...at); return; }
+  const c = mixCv; c.width = g.canvas.width; c.height = g.canvas.height; const q = c.getContext('2d');
+  q.setTransform(g.getTransform()); q.globalCompositeOperation = 'lighter';
+  on.forEach(([n, w]) => { q.globalAlpha = w; q.drawImage(ART[n], ...at); });
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(c, 0, 0); g.restore();
+}
+
 // the window scene: the street picture, then the customers, then the kiosk interior with the window cut out
 function drawStreet() {
   const bg = paintCanvas($('streetBg')), fg = paintCanvas($('streetFg')), m = coverMap(), W = innerWidth, H = innerHeight;
@@ -2786,14 +2796,20 @@ function drawStreet() {
     multiply(bg, L.mul, 0, 0, W, H);
   }
   if (artOk(ART.kiosk)) {
-    // the room by day, evening and night (drawn pictures carry their own light; the tint covers what is still the evening one)
-    const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
-    const layers = (names, alpha) => names.forEach((n, i) => { if (i && !(alpha[i] > 0 && artOk(ART[n]))) return; fg.globalAlpha = i ? alpha[i] : 1; fg.drawImage(artOk(ART[n]) ? ART[n] : ART.kiosk, ...at); });
+    // the room by day, evening and night. The day and night pictures are one painting in two lights; the evening one is a
+    // painting of its own with the awning and the bell elsewhere, so with both at hand the evening is the day picture in the
+    // sunset light — or the old awning would show through the window of the new one
+    const { day, night } = dayNight(), eve = Math.max(0, 1 - day - night), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
+    const dOk = artOk(ART.kiosk_day), nOk = artOk(ART.kiosk_night), both = dOk && nOk;
+    const mix = both ? [['kiosk_day', 1 - night], ['kiosk_night', night]]
+      : [['kiosk', 1 - (dOk ? day : 0) - (nOk ? night : 0)], ['kiosk_day', dOk ? day : 0], ['kiosk_night', nOk ? night : 0]];
     // the shutter goes first and the room over it, so it shows only through the window and comes down from behind the awning
     if (shut > 0 && artOk(ART.shutter_slats) && artOk(ART.shutter_bar)) drawShutter(fg, m, day, night);
-    layers(['kiosk', 'kiosk_day', 'kiosk_night'], [1, day, night]); fg.globalAlpha = 1;
-    const left = Math.max(0, 1 - (artOk(ART.kiosk_day) ? day : 0) - (artOk(ART.kiosk_night) ? night : 0));
-    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H); fg.restore();
+    drawMix(fg, mix, at);
+    const left = both ? eve : mix[0][1];
+    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H);
+    if (both) multiply(fg, [255, 196, 150, .3 * eve], 0, 0, W, H);
+    fg.restore();
   }
   else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
   STREET.win = win; STREET.top = top;
