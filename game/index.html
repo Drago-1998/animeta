@@ -36,7 +36,12 @@ button:focus-visible { outline: 2px solid var(--mustard); outline-offset: 2px; }
   background: radial-gradient(ellipse 80% 55% at 50% 52%, rgba(20,10,4,0) 35%, rgba(20,10,4,.6) 100%),
               linear-gradient(rgba(20,10,4,.35), rgba(20,10,4,0) 30%); }
 body.mat #bg::after { background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(20,10,4,.35) 20%, rgba(20,10,4,.85) 100%); }
-/* the time of day over the workshop picture */
+/* the time of day over the workshop picture: day and night versions fade in over it; until they exist the sky in
+   its window is tinted on its own (#win), then the whole room (#tod) */
+.bgAlt { position: fixed; inset: 0; background: center / cover no-repeat; opacity: 0; pointer-events: none; }
+#bgDay { background-image: url("workshop_day.webp"); } #bgNight { background-image: url("workshop_night.webp"); }
+#win { position: fixed; pointer-events: none; opacity: 0; -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+body.street #win, body.street .bgAlt { display: none; }
 #tod { position: fixed; inset: 0; mix-blend-mode: multiply; pointer-events: none; }
 body.street #tod { display: none; }
 #clock { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); font-variant-numeric: tabular-nums; color: var(--muted); }
@@ -359,7 +364,8 @@ body.street #streetBar { display: flex; }
 @media (prefers-reduced-motion: reduce) { .card, .dpart.pop, #task.flash, #hint svg, .hero.react, .walker.walking .bob, .nnext { animation: none !important; } }
 </style>
 
-<div id="bg"></div>
+<div id="bg"></div><div class="bgAlt" id="bgDay"></div><div class="bgAlt" id="bgNight"></div>
+<div id="win"></div>
 <div id="tod"></div>
 <canvas id="c"></canvas>
 <div id="street"><canvas id="streetBg"></canvas><div id="walkers"></div><canvas id="streetFg"></canvas></div>
@@ -2335,6 +2341,24 @@ function lookNow() {
 const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a == null ? c[3] : a})`;
 function multiply(g, c, x, y, w, h) { if (c[3] <= .005) return; g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = rgba(c, 1); g.globalAlpha = c[3]; g.fillRect(x, y, w, h); g.restore(); }
 let lastTod = -1;
+['workshop_day', 'workshop_night'].forEach(n => { const i = new Image(); i.onload = () => applyTime(true); i.src = n + '.webp'; ART[n] = i; });
+// how much of the day and of the night picture shows over the evening one
+function dayNight() {
+  const h = hour(), ramp = (a, b) => Math.max(0, Math.min(1, (h - a) / (b - a)));
+  const day = h < 12 ? ramp(5.5, 8) : 1 - ramp(16.5, 19), night = h < 12 ? 1 - ramp(5, 7) : ramp(19.5, 21.5);
+  return { day, night };
+}
+function workshopTime() {
+  const { day, night } = dayNight(), w = $('win'), dOk = artOk(ART.workshop_day), nOk = artOk(ART.workshop_night);
+  $('bgDay').style.opacity = dOk ? day : 0; $('bgNight').style.opacity = nOk ? night : 0;
+  // no picture for this hour yet: tint the sky in the window (it sits at 410–748 × 84–400 on the 940×1672 picture)
+  const s = Math.max(innerWidth / 940, innerHeight / 1672), x0 = (innerWidth - 940 * s) / 2, y0 = (innerHeight - 1672 * s) / 2;
+  Object.assign(w.style, { left: x0 + 410 * s + 'px', top: y0 + 84 * s + 'px', width: 338 * s + 'px', height: 316 * s + 'px' });
+  if (!nOk && night > 0) Object.assign(w.style, { background: '#101a48', mixBlendMode: 'multiply', opacity: (night * .8).toFixed(2) });
+  else if (!dOk && day > 0) Object.assign(w.style, { background: 'linear-gradient(#9cc4f2, #d8e8f6)', mixBlendMode: 'hard-light', opacity: (day * .8).toFixed(2) });
+  else w.style.opacity = 0;
+}
+addEventListener('resize', () => workshopTime());
 // everything that is not redrawn every frame follows the clock a few times a minute
 function applyTime(force) {
   const L = lookNow(), m = Math.floor(S.clock);
@@ -2342,6 +2366,7 @@ function applyTime(force) {
   if (!force && Math.abs(m - lastTod) < 3) return;
   lastTod = m;
   $('tod').style.background = rgba(L.room, 1); $('tod').style.opacity = Math.min(1, L.room[3] * 1.6);
+  workshopTime();
   $('walkers').style.filter = `brightness(${L.fig[0].toFixed(2)}) saturate(${L.fig[1].toFixed(2)})`;
   key.intensity = L.light[1]; hemi.intensity = L.light[0]; key.color.copy(L.light[2]);
   if (S.mode === 'street') drawStreet();
