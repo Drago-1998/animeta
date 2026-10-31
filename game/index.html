@@ -2320,14 +2320,14 @@ const artOk = i => i && i.complete && i.naturalWidth;
 // keyframes over the day: which street picture, a colour to multiply it by (a: how much), the same for the kiosk room and the
 // workshop, the customers' filter, the light on the gadget. A picture not drawn yet is stood in for by the evening one, tinted (`no`).
 const DAYLOOK = [
-  { h: 0, img: 'street_night', mul: [40, 60, 140, .55], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
-  { h: 5, img: 'street_night', mul: [40, 60, 140, .5], no: [40, 60, 140, .5], room: [80, 90, 150, .28], fig: [.75, .8], light: [.35, .5, 0x9fb0ff] },
+  { h: 0, img: 'street_night', mul: [200, 210, 255, .12], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
+  { h: 5, img: 'street_night', mul: [200, 210, 255, .1], no: [40, 60, 140, .5], room: [80, 90, 150, .28], fig: [.75, .8], light: [.35, .5, 0x9fb0ff] },
   { h: 7, img: 'street_day', mul: [255, 200, 160, .25], no: [255, 210, 190, .1], room: [255, 230, 210, .08], fig: [.95, .95], light: [.45, .7, 0xffe2c0] },
   { h: 11, img: 'street_day', mul: [255, 255, 255, 0], no: [230, 235, 255, .12], room: [255, 255, 255, 0], fig: [1.05, 1], light: [.55, .8, 0xffffff] },
   { h: 16, img: 'street_day', mul: [255, 245, 230, .1], no: [240, 235, 255, .08], room: [255, 255, 255, 0], fig: [1.02, 1], light: [.5, .78, 0xfff4e0] },
   { h: 19, img: 'street', mul: [255, 255, 255, 0], no: [255, 255, 255, 0], room: [255, 255, 255, 0], fig: [1, 1], light: [.5, .75, 0xffd59a] },
-  { h: 21.5, img: 'street_night', mul: [40, 60, 140, .55], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
-  { h: 24, img: 'street_night', mul: [40, 60, 140, .55], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
+  { h: 21.5, img: 'street_night', mul: [200, 210, 255, .12], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
+  { h: 24, img: 'street_night', mul: [200, 210, 255, .12], no: [40, 60, 140, .55], room: [80, 90, 150, .3], fig: [.72, .8], light: [.32, .5, 0x9fb0ff] },
 ];
 const hour = () => (S.clock / 60) % 24;
 const isDark = () => hour() >= 20 || hour() < 6;
