@@ -2833,20 +2833,15 @@ function drawStreet() {
     multiply(bg, L.mul, 0, 0, W, H);
   }
   if (artOk(ART.kiosk)) {
-    // the room by day, evening and night. The day and night pictures are one painting in two lights; the evening one is a
-    // painting of its own with the awning and the bell elsewhere, so with both at hand the evening is the day picture in the
-    // sunset light — or the old awning would show through the window of the new one
-    const { day, night } = dayNight(), eve = Math.max(0, 1 - day - night), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
-    const dOk = artOk(ART.kiosk_day), nOk = artOk(ART.kiosk_night), both = dOk && nOk;
-    const mix = both ? [['kiosk_day', 1 - night], ['kiosk_night', night]]
-      : [['kiosk', 1 - (dOk ? day : 0) - (nOk ? night : 0)], ['kiosk_day', dOk ? day : 0], ['kiosk_night', nOk ? night : 0]];
+    // the room by day, evening and night: one painting in three lights (tools/relight_kiosk.py), so they fade into each
+    // other without anything moving
+    const { day, night } = dayNight(), at = [m.x(0), m.y(0), 941 * m.s, 1672 * m.s];
+    const d = artOk(ART.kiosk_day) ? day : 0, n = artOk(ART.kiosk_night) ? night : 0;
+    const mix = [['kiosk', 1 - d - n], ['kiosk_day', d], ['kiosk_night', n]];
     // the shutter goes first and the room over it, so it shows only through the window and comes down from behind the awning
     if (shut > 0 && artOk(ART.shutter_slats) && artOk(ART.shutter_bar)) drawShutter(fg, m, day, night);
     drawMix(fg, mix, at);
-    const left = both ? eve : mix[0][1];
-    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * left], 0, 0, W, H);
-    if (both) multiply(fg, [255, 196, 150, .3 * eve], 0, 0, W, H);
-    fg.restore();
+    fg.save(); fg.globalCompositeOperation = 'source-atop'; multiply(fg, [...L.room.slice(0, 3), L.room[3] * mix[0][1]], 0, 0, W, H); fg.restore();
   }
   else { fg.fillStyle = '#4b2f1c'; fg.beginPath(); fg.rect(0, 0, W, H); fg.rect(win.x + win.w, win.y, -win.w, win.h); fg.fill('evenodd'); }
   STREET.win = win; STREET.top = top;
